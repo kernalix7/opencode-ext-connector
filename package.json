@@ -1,0 +1,49 @@
+{
+  "name": "opencode-ext-connector",
+  "version": "0.1.0",
+  "description": "External provider connector for OpenCode",
+  "type": "module",
+  "license": "BSD-3-Clause",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "check": "bun run lint && bun run typecheck && bun run check:policy && bun run check:loc && bun run test:foundation",
+    "check:loc": "bun run scripts/check-file-size.ts",
+    "check:policy": "bun run scripts/check-source-policy.ts",
+    "lint": "biome check .",
+    "test": "bun test",
+    "test:foundation": "bun test tests/unit/scripts",
+    "test:integration": "bun test tests/integration",
+    "test:provider": "bun test tests/unit/providers",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "verify:package": "bun run build && bun pm pack --dry-run"
+  },
+  "dependencies": {
+    "@ai-sdk/provider": "3.0.8",
+    "@opencode-ai/plugin": "1.18.18",
+    "zod": "4.1.8"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.9",
+    "@types/bun": "1.3.14",
+    "typescript": "6.0.2"
+  },
+  "engines": {
+    "bun": ">=1.3.14"
+  },
+  "packageManager": "bun@1.3.14"
+}
