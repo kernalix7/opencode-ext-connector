@@ -1,0 +1,30 @@
+import type { ConnectorOptionsInput } from "../core/options"
+
+function positiveInteger(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : undefined
+}
+
+function pickHealth(value: unknown): ConnectorOptionsInput["health"] {
+  if (typeof value !== "object" || value === null) {
+    return undefined
+  }
+  const initialBackoffMs =
+    "initialBackoffMs" in value ? positiveInteger(value.initialBackoffMs) : undefined
+  const maximumBackoffMs =
+    "maximumBackoffMs" in value ? positiveInteger(value.maximumBackoffMs) : undefined
+  if (initialBackoffMs === undefined && maximumBackoffMs === undefined) {
+    return undefined
+  }
+  return { initialBackoffMs, maximumBackoffMs }
+}
+
+export function pickConnectorOptionsInput(input: unknown): ConnectorOptionsInput {
+  if (typeof input !== "object" || input === null) {
+    return {}
+  }
+  return {
+    snapshotTimeoutMs:
+      "snapshotTimeoutMs" in input ? positiveInteger(input.snapshotTimeoutMs) : undefined,
+    health: "health" in input ? pickHealth(input.health) : undefined,
+  }
+}
