@@ -1,11 +1,23 @@
 // Derived from thaolaptrinh/commandcode-api-proxy@f4b3390e2f18a42bc164a1a94a4d796e20d19700.
 // Licensed under MIT. See THIRD_PARTY_NOTICES.md.
 
-import type { LanguageModelV3, LanguageModelV3CallOptions } from "@ai-sdk/provider"
+import type {
+  LanguageModelV3,
+  LanguageModelV3CallOptions,
+  LanguageModelV3FinishReason,
+  LanguageModelV3StreamPart,
+  LanguageModelV3StreamResult,
+  LanguageModelV3Usage,
+  SharedV3Warning,
+} from "@ai-sdk/provider"
 
 import { AdapterError, OperationCancelledError } from "../../core/errors"
 import type { HttpTransport } from "../../core/http"
 import { parseProviderId } from "../../core/ids"
+import { createNdjsonStreamParser, type NdjsonDelta, parseNdjsonStream } from "./ndjson"
+import { type BuildBodyOptions, type BuildHeadersOptions, buildBody, buildHeaders } from "./request"
+
+const CLI_VERSION = "0.1.0"
 
 export type CommandCodeLanguageModelOptions = {
   readonly modelId: string
@@ -46,38 +58,53 @@ function promptMessages(
   return messages
 }
 
-function parseNdjsonText(body: Uint8Array): string {
-  const texts: string[] = []
-  for (const line of new TextDecoder().decode(body).split("\n")) {
-    const trimmed = line.trim()
-    if (trimmed.length === 0 || trimmed === "[DONE]") {
-      continue
-    }
-    const payload = trimmed.startsWith("data:") ? trimmed.slice(5).trim() : trimmed
-    if (payload.length === 0 || payload === "[DONE]") {
-      continue
-    }
-    let parsed: unknown
-    try {
-      parsed = JSON.parse(payload)
-    } catch {
-      continue
-    }
-    if (typeof parsed !== "object" || parsed === null) {
-      continue
-    }
-    if ("text" in parsed && typeof parsed.text === "string") {
-      texts.push(parsed.text)
-      continue
-    }
-    if ("data" in parsed && typeof parsed.data === "object" && parsed.data !== null) {
-      const nested = parsed.data
-      if ("text" in nested && typeof nested.text === "string") {
-        texts.push(nested.text)
-      }
-    }
+function buildRequestOptions(
+  options: CommandCodeLanguageModelOptions,
+  call: LanguageModelV3CallOptions,
+  token: string,
+): { readonly url: string; readonly headers: Record<string, string>; readonly body: Uint8Array } {
+  const messages = promptMessages(call.prompt)
+  const bodyOptions: BuildBodyOptions = {
+    modelId: options.modelId,
+    messages,
   }
-  return texts.join("")
+  const headerOptions: BuildHeadersOptions = {
+    token,
+    cliVersion: CLI_VERSION,
+  }
+  return {
+    url: "https://api.commandcode.ai/alpha/generate",
+    headers: buildHeaders(headerOptions),
+    body: new TextEncoder().encode(JSON.stringify(buildBody(bodyOptions))),
+  }
+}
+
+function createUsage(): LanguageModelV3Usage {
+  return {
+    inputTokens: {
+      total: undefined,
+      noCache: undefined,
+      cacheRead: undefined,
+      cacheWrite: undefined,
+    },
+    outputTokens: { total: undefined, text: undefined, reasoning: undefined },
+  }
+}
+
+function createFinishReason(): LanguageModelV3FinishReason {
+  return { unified: "stop", raw: "stop" }
+}
+
+function createStreamStartWarning(): SharedV3Warning[] {
+  return []
+}
+
+function ndjsonDeltaToStreamPart(delta: NdjsonDelta): LanguageModelV3StreamPart {
+  return {
+    type: "text-delta",
+    id: delta.id,
+    delta: delta.delta,
+  }
 }
 
 export function createCommandCodeLanguageModel(
@@ -103,25 +130,13 @@ export function createCommandCodeLanguageModel(
           providerId: provider,
         })
       }
+      const requestOptions = buildRequestOptions(options, call, token)
       const response = await options.transport.request(
         {
           method: "POST",
-          url: "https://api.commandcode.ai/alpha/generate",
-          headers: {
-            authorization: `Bearer ${token}`,
-            "content-type": "application/json",
-            "user-agent": "commandcode-cli/0.1.0",
-            "x-command-code-version": "0.1.0",
-          },
-          body: new TextEncoder().encode(
-            JSON.stringify({
-              stream: true,
-              params: {
-                model: options.modelId,
-                messages: promptMessages(call.prompt),
-              },
-            }),
-          ),
+          url: requestOptions.url,
+          headers: requestOptions.headers,
+          body: requestOptions.body,
         },
         signal,
       )
@@ -133,35 +148,63 @@ export function createCommandCodeLanguageModel(
           providerId: provider,
         })
       }
+      const deltas = parseNdjsonStream(response.body)
+      const text = deltas.map((d) => d.delta).join("")
       return {
-        content: [{ type: "text", text: parseNdjsonText(response.body) }],
-        finishReason: { unified: "stop", raw: "stop" },
-        usage: {
-          inputTokens: {
-            total: undefined,
-            noCache: undefined,
-            cacheRead: undefined,
-            cacheWrite: undefined,
-          },
-          outputTokens: { total: undefined, text: undefined, reasoning: undefined },
-        },
+        content: [{ type: "text", text }],
+        finishReason: createFinishReason(),
+        usage: createUsage(),
         warnings: [],
       }
     },
-    doStream: async (call: LanguageModelV3CallOptions) => {
-      const generated = await createCommandCodeLanguageModel(options).doGenerate(call)
-      const textPart = generated.content.at(0)
-      const text = textPart !== undefined && textPart.type === "text" ? textPart.text : ""
-      const stream = new ReadableStream({
+    doStream: async (call: LanguageModelV3CallOptions): Promise<LanguageModelV3StreamResult> => {
+      const signal = call.abortSignal ?? new AbortController().signal
+      if (signal.aborted) {
+        throw new OperationCancelledError("command-code-stream")
+      }
+      const token = await options.readAccessToken(signal)
+      if (token === null) {
+        throw new AdapterError({
+          operation: "command-code-missing-credentials",
+          retryable: false,
+          cause: null,
+          providerId: provider,
+        })
+      }
+      const requestOptions = buildRequestOptions(options, call, token)
+      const response = await options.transport.request(
+        {
+          method: "POST",
+          url: requestOptions.url,
+          headers: requestOptions.headers,
+          body: requestOptions.body,
+        },
+        signal,
+      )
+      if (response.status >= 400) {
+        throw new AdapterError({
+          operation: "command-code-http",
+          retryable: response.status >= 500,
+          cause: null,
+          providerId: provider,
+        })
+      }
+      const parser = createNdjsonStreamParser()
+      const deltas = parser.parse(response.body)
+      const flushDeltas = parser.flush()
+      const allDeltas = [...deltas, ...flushDeltas]
+      const stream = new ReadableStream<LanguageModelV3StreamPart>({
         start(controller): void {
-          controller.enqueue({ type: "stream-start", warnings: [] })
+          controller.enqueue({ type: "stream-start", warnings: createStreamStartWarning() })
           controller.enqueue({ type: "text-start", id: "text-1" })
-          controller.enqueue({ type: "text-delta", id: "text-1", delta: text })
+          for (const delta of allDeltas) {
+            controller.enqueue(ndjsonDeltaToStreamPart(delta))
+          }
           controller.enqueue({ type: "text-end", id: "text-1" })
           controller.enqueue({
             type: "finish",
-            finishReason: generated.finishReason,
-            usage: generated.usage,
+            finishReason: createFinishReason(),
+            usage: createUsage(),
           })
           controller.close()
         },
