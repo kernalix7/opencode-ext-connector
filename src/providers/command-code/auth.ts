@@ -20,23 +20,46 @@ function tokenFromUnknown(value: unknown): string | null {
   return null
 }
 
+export type CommandCodeAuthLookup = {
+  readonly homeDir?: string
+}
+
+export function commandCodeCredentialPaths(
+  homeDir: string,
+  env: Readonly<Record<string, string | undefined>>,
+): readonly string[] {
+  const xdg = env["XDG_CONFIG_HOME"]
+  const paths = [
+    join(homeDir, ".commandcode", "auth.json"),
+    join(homeDir, ".commandcode", "cli-config.json"),
+    join(homeDir, ".config", "commandcode", "auth.json"),
+    join(homeDir, ".config", "commandcode", "cli-config.json"),
+    join(homeDir, ".config", "command-code", "auth.json"),
+  ]
+  if (xdg !== undefined && xdg.length > 0) {
+    return [
+      join(xdg, "commandcode", "auth.json"),
+      join(xdg, "commandcode", "cli-config.json"),
+      ...paths,
+    ]
+  }
+  return paths
+}
+
 export async function readCommandCodeAccessToken(
   env: Readonly<Record<string, string | undefined>>,
   signal: AbortSignal,
+  lookup: CommandCodeAuthLookup = {},
 ): Promise<string | null> {
   if (signal.aborted) {
     throw new OperationCancelledError("command-code-read-credentials")
   }
-  const envToken = env["COMMANDCODE_API_KEY"] ?? env["CC_API_KEY"]
+  const envToken = env["COMMAND_CODE_API_KEY"] ?? env["COMMANDCODE_API_KEY"] ?? env["CC_API_KEY"]
   if (envToken !== undefined && envToken.length > 0) {
     return envToken
   }
-  const home = homedir()
-  const candidates = [
-    join(home, ".commandcode", "auth.json"),
-    join(home, ".config", "commandcode", "auth.json"),
-    join(home, ".config", "command-code", "auth.json"),
-  ]
+  const home = lookup.homeDir ?? homedir()
+  const candidates = commandCodeCredentialPaths(home, env)
   for (const candidate of candidates) {
     try {
       const parsed: unknown = JSON.parse(await readFile(candidate, "utf8"))
