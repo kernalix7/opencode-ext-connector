@@ -7,6 +7,7 @@ import { createConsoleLogger } from "./logging/logger"
 import { createDefaultAdapters } from "./opencode/adapters"
 import { define, type Plugin } from "./opencode/beta-api"
 import { createCatalogPublisher } from "./opencode/catalog-bridge"
+import { pickConnectorOptionsInput } from "./opencode/host-options"
 import { PLUGIN_ID, setupConnector } from "./opencode/plugin"
 import { readClaudeAccessToken } from "./providers/claude/auth"
 import { createClaudeLanguageModel } from "./providers/claude/language-model"
@@ -34,7 +35,7 @@ export const plugin: Plugin = define({
   setup: async (context): Promise<void> => {
     const env = process.env
     const transport = createFetchHttpTransport()
-    const connectorOptions = parseConnectorOptions({})
+    const connectorOptions = parseConnectorOptions(pickConnectorOptionsInput(context.options))
     await setupConnector({
       catalog: context.catalog,
       adapters: createDefaultAdapters(env),
