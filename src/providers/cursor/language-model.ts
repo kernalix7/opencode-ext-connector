@@ -5,6 +5,7 @@ import type { LanguageModelV3, LanguageModelV3CallOptions } from "@ai-sdk/provid
 
 import { AdapterError, OperationCancelledError } from "../../core/errors"
 import { parseProviderId } from "../../core/ids"
+import { cursorToolParts } from "./tool-stream"
 
 export type CursorLanguageModelOptions = {
   readonly modelId: string
@@ -104,6 +105,7 @@ export function createCursorLanguageModel(options: CursorLanguageModelOptions): 
         const stream = new ReadableStream({
           async start(controller) {
             try {
+              let started = false
               let textStarted = false
               for await (const line of streamNdjson(prompt, signal)) {
                 if (signal.aborted) {
@@ -126,23 +128,24 @@ export function createCursorLanguageModel(options: CursorLanguageModelOptions): 
                 if (type === "thinking") {
                   continue
                 }
-                if (!textStarted) {
+                if (!started) {
                   controller.enqueue({ type: "stream-start", warnings: [] })
-                  controller.enqueue({ type: "text-start", id: "text-1" })
-                  textStarted = true
+                  started = true
                 }
-                if ("text" in parsed && typeof parsed.text === "string" && parsed.text.length > 0) {
-                  controller.enqueue({ type: "text-delta", id: "text-1", delta: parsed.text })
+                const toolParts = cursorToolParts(parsed)
+                for (const part of toolParts) {
+                  controller.enqueue(part)
                 }
-                if (
-                  "delta" in parsed &&
-                  typeof parsed.delta === "string" &&
-                  parsed.delta.length > 0
-                ) {
-                  controller.enqueue({ type: "text-delta", id: "text-1", delta: parsed.delta })
-                }
-                if ("result" in parsed && typeof parsed.result === "string") {
-                  // result signals completion, but we continue to drain
+                const text = "text" in parsed && typeof parsed.text === "string" ? parsed.text : ""
+                const delta =
+                  "delta" in parsed && typeof parsed.delta === "string" ? parsed.delta : ""
+                const nextText = text.length > 0 ? text : delta
+                if (nextText.length > 0 && type !== "tool_call") {
+                  if (!textStarted) {
+                    controller.enqueue({ type: "text-start", id: "text-1" })
+                    textStarted = true
+                  }
+                  controller.enqueue({ type: "text-delta", id: "text-1", delta: nextText })
                 }
               }
               if (textStarted) {
