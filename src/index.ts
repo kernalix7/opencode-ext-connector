@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process"
 import type { LanguageModelV3 } from "@ai-sdk/provider"
 
 import type { Clock } from "./core/clock"
@@ -13,6 +14,7 @@ import { readClaudeAccessToken } from "./providers/claude/auth"
 import { createClaudeLanguageModel } from "./providers/claude/language-model"
 import { readCommandCodeAccessToken } from "./providers/command-code/auth"
 import { createCommandCodeLanguageModel } from "./providers/command-code/language-model"
+import { resolveCursorAgent } from "./providers/cursor/auth"
 import { createCursorLanguageModel } from "./providers/cursor/language-model"
 import { runCursorAgentPrompt } from "./providers/cursor/runner"
 
@@ -55,7 +57,40 @@ export const plugin: Plugin = define({
         if (providerID === "cursor") {
           return createCursorLanguageModel({
             modelId,
-            runPrompt: (prompt, signal) => runCursorAgentPrompt(env, prompt, signal),
+            runPrompt: (prompt, signal) =>
+              runCursorAgentPrompt(env, prompt, signal, process.cwd(), modelId),
+            streamNdjson: async function* (_prompt, signal) {
+              const agent = await resolveCursorAgent(env, signal)
+              if (agent === null) {
+                return
+              }
+              const child = spawn(
+                agent,
+                [
+                  "--print",
+                  "--output-format",
+                  "stream-json",
+                  "--stream-partial-output",
+                  "--workspace",
+                  process.cwd(),
+                  "--model",
+                  modelId,
+                ],
+                {
+                  signal,
+                  stdio: ["pipe", "pipe", "pipe"],
+                },
+              )
+              for await (const chunk of child.stdout) {
+                const lines = chunk.toString("utf8").split("\n")
+                for (const line of lines) {
+                  const trimmed = line.trim()
+                  if (trimmed.length > 0) {
+                    yield trimmed
+                  }
+                }
+              }
+            },
           })
         }
         if (providerID === "command-code") {
