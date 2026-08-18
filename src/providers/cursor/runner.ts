@@ -12,6 +12,8 @@ export async function runCursorAgentPrompt(
   env: Readonly<Record<string, string | undefined>>,
   prompt: string,
   signal: AbortSignal,
+  cwd: string,
+  model: string,
 ): Promise<string | null> {
   if (signal.aborted) {
     throw new OperationCancelledError("cursor-run-prompt")
@@ -21,10 +23,23 @@ export async function runCursorAgentPrompt(
     return null
   }
   return await new Promise((resolve, reject) => {
-    const child = spawn(agent, ["--print", "--output-format", "stream-json", prompt], {
-      signal,
-      stdio: ["ignore", "pipe", "pipe"],
-    })
+    const child = spawn(
+      agent,
+      [
+        "--print",
+        "--output-format",
+        "stream-json",
+        "--stream-partial-output",
+        "--workspace",
+        cwd,
+        "--model",
+        model,
+      ],
+      {
+        signal,
+        stdio: ["pipe", "pipe", "pipe"],
+      },
+    )
     const chunks: Buffer[] = []
     child.stdout.on("data", (chunk: Buffer) => {
       chunks.push(chunk)
@@ -47,5 +62,7 @@ export async function runCursorAgentPrompt(
       }
       resolve(extractCursorNdjsonText(Buffer.concat(chunks).toString("utf8")))
     })
+    child.stdin.write(prompt)
+    child.stdin.end()
   })
 }
