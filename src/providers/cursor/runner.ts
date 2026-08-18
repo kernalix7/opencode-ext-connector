@@ -6,6 +6,7 @@ import { spawn } from "node:child_process"
 import { OperationCancelledError } from "../../core/errors"
 
 import { resolveCursorAgent } from "./auth"
+import { extractCursorNdjsonText } from "./ndjson"
 
 export async function runCursorAgentPrompt(
   env: Readonly<Record<string, string | undefined>>,
@@ -20,7 +21,7 @@ export async function runCursorAgentPrompt(
     return null
   }
   return await new Promise((resolve, reject) => {
-    const child = spawn(agent, ["--print", prompt], {
+    const child = spawn(agent, ["--print", "--output-format", "stream-json", prompt], {
       signal,
       stdio: ["ignore", "pipe", "pipe"],
     })
@@ -44,7 +45,7 @@ export async function runCursorAgentPrompt(
         resolve(null)
         return
       }
-      resolve(Buffer.concat(chunks).toString("utf8"))
+      resolve(extractCursorNdjsonText(Buffer.concat(chunks).toString("utf8")))
     })
   })
 }
