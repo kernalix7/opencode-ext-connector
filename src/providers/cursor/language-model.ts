@@ -9,6 +9,7 @@ import { parseProviderId } from "../../core/ids"
 export type CursorLanguageModelOptions = {
   readonly modelId: string
   readonly runPrompt: (prompt: string, signal: AbortSignal) => Promise<string | null>
+  readonly streamNdjson?: (prompt: string, signal: AbortSignal) => AsyncIterable<string>
 }
 
 function textFromContentParts(parts: readonly { readonly type: string }[]): string {
@@ -92,6 +93,76 @@ export function createCursorLanguageModel(options: CursorLanguageModelOptions): 
       }
     },
     doStream: async (call: LanguageModelV3CallOptions) => {
+      const signal = call.abortSignal ?? new AbortController().signal
+      if (signal.aborted) {
+        throw new OperationCancelledError("cursor-stream")
+      }
+      const prompt = promptText(call.prompt)
+
+      const streamNdjson = options.streamNdjson
+      if (streamNdjson !== undefined) {
+        const stream = new ReadableStream({
+          async start(controller) {
+            try {
+              let textStarted = false
+              for await (const line of streamNdjson(prompt, signal)) {
+                if (signal.aborted) {
+                  throw new OperationCancelledError("cursor-stream")
+                }
+                const trimmed = line.trim()
+                if (trimmed.length === 0) {
+                  continue
+                }
+                let parsed: unknown
+                try {
+                  parsed = JSON.parse(trimmed)
+                } catch {
+                  continue
+                }
+                if (typeof parsed !== "object" || parsed === null) {
+                  continue
+                }
+                const type = "type" in parsed && typeof parsed.type === "string" ? parsed.type : ""
+                if (type === "thinking") {
+                  continue
+                }
+                if (!textStarted) {
+                  controller.enqueue({ type: "stream-start", warnings: [] })
+                  controller.enqueue({ type: "text-start", id: "text-1" })
+                  textStarted = true
+                }
+                if ("text" in parsed && typeof parsed.text === "string" && parsed.text.length > 0) {
+                  controller.enqueue({ type: "text-delta", id: "text-1", delta: parsed.text })
+                }
+                if (
+                  "delta" in parsed &&
+                  typeof parsed.delta === "string" &&
+                  parsed.delta.length > 0
+                ) {
+                  controller.enqueue({ type: "text-delta", id: "text-1", delta: parsed.delta })
+                }
+                if ("result" in parsed && typeof parsed.result === "string") {
+                  // result signals completion, but we continue to drain
+                }
+              }
+              if (textStarted) {
+                controller.enqueue({ type: "text-end", id: "text-1" })
+              }
+              controller.enqueue({
+                type: "finish",
+                finishReason: { unified: "stop", raw: "stop" },
+                usage: emptyUsage(),
+              })
+              controller.close()
+            } catch (error) {
+              controller.error(error)
+            }
+          },
+        })
+        return { stream }
+      }
+
+      // Fallback to runPrompt (non-streaming)
       const generated = await createCursorLanguageModel(options).doGenerate(call)
       const textPart = generated.content.at(0)
       const text = textPart !== undefined && textPart.type === "text" ? textPart.text : ""
