@@ -73,10 +73,11 @@ describe("claudeCredentialsFileBody", () => {
       },
     )
     // Then
-    expect(written).toEqual([
+    expect(written.filter((path) => path.endsWith(".credentials.json"))).toEqual([
       "/tmp/claude-wb/.credentials.json",
       ...claudeWindowsCredentialPaths({ APPDATA: "C:\\Users\\x\\AppData\\Roaming" }),
     ])
+    expect(written.some((path) => path.endsWith("auth.json"))).toBe(true)
     expect(keychain).toEqual([])
   })
 
@@ -98,5 +99,32 @@ describe("claudeCredentialsFileBody", () => {
     // Then
     expect(keychain.at(0)?.at(0)).toBe("add-generic-password")
     expect(keychain.at(0)).toContain("-U")
+  })
+
+  it("merges OpenCode auth.json without dropping other providers", async () => {
+    // Given
+    const files = new Map<string, string>()
+    // When
+    await writeClaudeCredentials(
+      { XDG_DATA_HOME: "/xdg-data" },
+      { accessToken: "access", refreshToken: "refresh", expiresAtMs: 9 },
+      {
+        platform: "linux",
+        readFile: async (path) =>
+          path.endsWith("auth.json") ? JSON.stringify({ openai: { type: "api" } }) : null,
+        writeFile: async (path, body) => {
+          files.set(path, body)
+        },
+      },
+    )
+    // Then
+    const auth = [...files.entries()].find(([path]) => path.endsWith("auth.json"))
+    expect(auth).toBeDefined()
+    if (auth !== undefined) {
+      const parsed = JSON.parse(auth[1])
+      expect(parsed.openai).toEqual({ type: "api" })
+      expect(parsed.anthropic.type).toBe("oauth")
+      expect(parsed.anthropic.access).toBe("access")
+    }
   })
 })

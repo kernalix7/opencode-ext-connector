@@ -1,10 +1,11 @@
 import { execFile } from "node:child_process"
-import { mkdir, writeFile } from "node:fs/promises"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { promisify } from "node:util"
-
+import { mergeOpencodeAuthJson, opencodeAuthJsonPaths } from "./auth-json"
 import type { ClaudeCredentials } from "./credentials"
+import { parseKeychainAccount } from "./keychain-account"
 
 const execFileAsync = promisify(execFile)
 const CLAUDE_KEYCHAIN_SERVICE = "Claude Code-credentials"
@@ -12,7 +13,9 @@ const CLAUDE_KEYCHAIN_ACCOUNT = "Claude Code"
 
 export type ClaudeWriteBackHooks = {
   readonly writeFile?: (path: string, body: string) => Promise<void>
+  readonly readFile?: (path: string) => Promise<string | null>
   readonly writeKeychain?: (args: readonly string[]) => Promise<void>
+  readonly readKeychainDump?: () => Promise<string | null>
   readonly platform?: string
 }
 
@@ -61,6 +64,14 @@ export function claudeKeychainWriteArgs(
   ]
 }
 
+async function defaultReadFile(path: string): Promise<string | null> {
+  try {
+    return await readFile(path, "utf8")
+  } catch {
+    return null
+  }
+}
+
 async function defaultWriteFile(path: string, body: string): Promise<void> {
   await mkdir(dirname(path), { recursive: true })
   await writeFile(path, body, { encoding: "utf8", mode: 0o600 })
@@ -68,6 +79,29 @@ async function defaultWriteFile(path: string, body: string): Promise<void> {
 
 async function defaultWriteKeychain(args: readonly string[]): Promise<void> {
   await execFileAsync("security", [...args], { timeout: 2_000 })
+}
+
+async function defaultReadKeychainDump(): Promise<string | null> {
+  try {
+    const result = await execFileAsync(
+      "security",
+      ["find-generic-password", "-s", CLAUDE_KEYCHAIN_SERVICE],
+      { timeout: 2_000 },
+    )
+    return result.stdout
+  } catch {
+    return null
+  }
+}
+
+export async function resolveKeychainAccount(
+  readDump: () => Promise<string | null> = defaultReadKeychainDump,
+): Promise<string> {
+  const dump = await readDump()
+  if (dump === null) {
+    return CLAUDE_KEYCHAIN_ACCOUNT
+  }
+  return parseKeychainAccount(dump) ?? CLAUDE_KEYCHAIN_ACCOUNT
 }
 
 export async function writeClaudeCredentials(
@@ -85,9 +119,23 @@ export async function writeClaudeCredentials(
   for (const path of paths) {
     await write(path, body)
   }
+  const readExisting = hooks.readFile ?? defaultReadFile
+  for (const path of opencodeAuthJsonPaths(env, platform)) {
+    const raw = await readExisting(path)
+    let existing: unknown = {}
+    if (raw !== null) {
+      try {
+        existing = JSON.parse(raw)
+      } catch {
+        existing = {}
+      }
+    }
+    await write(path, mergeOpencodeAuthJson(existing, credentials))
+  }
   if (platform === "darwin") {
     const writeKeychain = hooks.writeKeychain ?? defaultWriteKeychain
-    await writeKeychain(claudeKeychainWriteArgs(credentials))
+    const account = await resolveKeychainAccount(hooks.readKeychainDump ?? defaultReadKeychainDump)
+    await writeKeychain(claudeKeychainWriteArgs(credentials, account))
   }
 }
 
