@@ -8,13 +8,14 @@ import type {
   LanguageModelV3StreamPart,
   LanguageModelV3StreamResult,
   LanguageModelV3Usage,
-  SharedV3Warning,
 } from "@ai-sdk/provider"
 
 import { AdapterError, OperationCancelledError } from "../../core/errors"
 import type { HttpTransport } from "../../core/http"
 import { parseProviderId } from "../../core/ids"
-import { createNdjsonStreamParser, type NdjsonDelta, parseNdjsonStream } from "./ndjson"
+import { openHttpBody } from "../../http/read-body"
+import { emitCommandCodeChunks } from "./emit-stream"
+import { parseNdjsonStream } from "./ndjson"
 import { type BuildBodyOptions, type BuildHeadersOptions, buildBody, buildHeaders } from "./request"
 
 const CLI_VERSION = "0.1.0"
@@ -95,18 +96,6 @@ function createFinishReason(): LanguageModelV3FinishReason {
   return { unified: "stop", raw: "stop" }
 }
 
-function createStreamStartWarning(): SharedV3Warning[] {
-  return []
-}
-
-function ndjsonDeltaToStreamPart(delta: NdjsonDelta): LanguageModelV3StreamPart {
-  return {
-    type: "text-delta",
-    id: delta.id,
-    delta: delta.delta,
-  }
-}
-
 export function createCommandCodeLanguageModel(
   options: CommandCodeLanguageModelOptions,
 ): LanguageModelV3 {
@@ -172,7 +161,8 @@ export function createCommandCodeLanguageModel(
         })
       }
       const requestOptions = buildRequestOptions(options, call, token)
-      const response = await options.transport.request(
+      const opened = await openHttpBody(
+        options.transport,
         {
           method: "POST",
           url: requestOptions.url,
@@ -181,26 +171,17 @@ export function createCommandCodeLanguageModel(
         },
         signal,
       )
-      if (response.status >= 400) {
+      if (opened.status >= 400) {
         throw new AdapterError({
           operation: "command-code-http",
-          retryable: response.status >= 500,
+          retryable: opened.status >= 500,
           cause: null,
           providerId: provider,
         })
       }
-      const parser = createNdjsonStreamParser()
-      const deltas = parser.parse(response.body)
-      const flushDeltas = parser.flush()
-      const allDeltas = [...deltas, ...flushDeltas]
       const stream = new ReadableStream<LanguageModelV3StreamPart>({
-        start(controller): void {
-          controller.enqueue({ type: "stream-start", warnings: createStreamStartWarning() })
-          controller.enqueue({ type: "text-start", id: "text-1" })
-          for (const delta of allDeltas) {
-            controller.enqueue(ndjsonDeltaToStreamPart(delta))
-          }
-          controller.enqueue({ type: "text-end", id: "text-1" })
+        async start(controller): Promise<void> {
+          await emitCommandCodeChunks(opened.chunks, controller)
           controller.enqueue({
             type: "finish",
             finishReason: createFinishReason(),
