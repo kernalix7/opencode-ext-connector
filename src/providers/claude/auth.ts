@@ -95,6 +95,7 @@ export function createClaudeTokenReader(options: {
   readonly clock: Clock
   readonly transport: HttpTransport
   readonly lookup?: ClaudeAuthLookup
+  readonly writeBack?: (credentials: ClaudeCredentials) => Promise<void>
 }): (signal: AbortSignal) => Promise<string | null> {
   let cached: ClaudeCredentials | null = null
   return async (signal: AbortSignal): Promise<string | null> => {
@@ -117,6 +118,9 @@ export function createClaudeTokenReader(options: {
       return cached.accessToken
     }
     cached = refreshed
+    if (options.writeBack !== undefined) {
+      await options.writeBack(refreshed)
+    }
     return cached.accessToken
   }
 }

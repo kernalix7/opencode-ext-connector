@@ -4,6 +4,7 @@ import type { HealthPolicy } from "./health"
 
 export type ConnectorOptionsInput = {
   readonly snapshotTimeoutMs?: number | undefined
+  readonly writeBackCredentials?: boolean | undefined
   readonly health?:
     | {
         readonly initialBackoffMs?: number | undefined
@@ -14,6 +15,7 @@ export type ConnectorOptionsInput = {
 
 export type ConnectorOptions = {
   readonly snapshotTimeoutMs: number
+  readonly writeBackCredentials: boolean
   readonly health: HealthPolicy
 }
 
@@ -22,6 +24,7 @@ const PositiveSafeIntegerSchema = z.number().int().positive().max(Number.MAX_SAF
 const ConnectorOptionsInputSchema = z
   .object({
     snapshotTimeoutMs: PositiveSafeIntegerSchema.optional(),
+    writeBackCredentials: z.boolean().optional(),
     health: z
       .object({
         initialBackoffMs: PositiveSafeIntegerSchema.optional(),
@@ -45,7 +48,11 @@ export const ConnectorOptionsSchema: z.ZodType<ConnectorOptions, ConnectorOption
       initialBackoffMs: input.health?.initialBackoffMs ?? 1_000,
       maximumBackoffMs: input.health?.maximumBackoffMs ?? 60_000,
     })
-    return Object.freeze({ snapshotTimeoutMs: input.snapshotTimeoutMs ?? 30_000, health })
+    return Object.freeze({
+      snapshotTimeoutMs: input.snapshotTimeoutMs ?? 30_000,
+      writeBackCredentials: input.writeBackCredentials ?? true,
+      health,
+    })
   })
 
 export function parseConnectorOptions(input: unknown): ConnectorOptions {

@@ -25,6 +25,10 @@ export function pickConnectorOptionsInput(input: unknown): ConnectorOptionsInput
   return {
     snapshotTimeoutMs:
       "snapshotTimeoutMs" in input ? positiveInteger(input.snapshotTimeoutMs) : undefined,
+    writeBackCredentials:
+      "writeBackCredentials" in input && typeof input.writeBackCredentials === "boolean"
+        ? input.writeBackCredentials
+        : undefined,
     health: "health" in input ? pickHealth(input.health) : undefined,
   }
 }

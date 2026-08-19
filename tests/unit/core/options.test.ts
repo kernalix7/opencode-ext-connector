@@ -11,6 +11,7 @@ describe("connector options", () => {
     // Then
     expect(options).toEqual({
       snapshotTimeoutMs: 30_000,
+      writeBackCredentials: true,
       health: { initialBackoffMs: 1_000, maximumBackoffMs: 60_000 },
     })
     expect(Object.isFrozen(options)).toBe(true)
@@ -25,6 +26,7 @@ describe("connector options", () => {
     // Then
     expect(options).toEqual({
       snapshotTimeoutMs: 50,
+      writeBackCredentials: true,
       health: { initialBackoffMs: 5, maximumBackoffMs: 10 },
     })
   })
