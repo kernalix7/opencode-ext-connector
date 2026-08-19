@@ -74,4 +74,33 @@ describe("createCommandCodeLanguageModel doStream", () => {
     )
     expect(textDeltas.map((d) => d.delta)).toEqual(["first", "second"])
   })
+
+  it("emits tool-input and tool-call parts for tool-call NDJSON", async () => {
+    // Given
+    const transport = new FakeHttpTransport()
+    transport.enqueueResponse({
+      status: 200,
+      headers: {},
+      body: new TextEncoder().encode(
+        '{"type":"tool-call","data":{"toolCallId":"t1","toolName":"Read","input":{"path":"a.ts"}}}\n',
+      ),
+    })
+    const model = createCommandCodeLanguageModel({
+      modelId: "default",
+      transport,
+      readAccessToken: async () => "cc-token",
+    })
+    // When
+    const { stream } = await model.doStream({
+      prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+    })
+    const types: string[] = []
+    for await (const chunk of stream) {
+      if (typeof chunk === "object" && chunk !== null && "type" in chunk) {
+        types.push(chunk.type)
+      }
+    }
+    // Then
+    expect(types).toEqual(["stream-start", "tool-input-end", "tool-call", "finish"])
+  })
 })
