@@ -66,5 +66,12 @@ export async function setupConnector(options: ConnectorSetupOptions): Promise<Re
       }
     })
   }
-  return catalogRegistration
+  return {
+    dispose: async (): Promise<void> => {
+      await catalogRegistration.dispose()
+      for (const adapter of options.adapters) {
+        await adapter.dispose()
+      }
+    },
+  }
 }

@@ -29,6 +29,13 @@ export function pickConnectorOptionsInput(input: unknown): ConnectorOptionsInput
       "writeBackCredentials" in input && typeof input.writeBackCredentials === "boolean"
         ? input.writeBackCredentials
         : undefined,
+    catalogReloadMs:
+      "catalogReloadMs" in input &&
+      typeof input.catalogReloadMs === "number" &&
+      Number.isSafeInteger(input.catalogReloadMs) &&
+      input.catalogReloadMs >= 0
+        ? input.catalogReloadMs
+        : undefined,
     health: "health" in input ? pickHealth(input.health) : undefined,
   }
 }
