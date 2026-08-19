@@ -3,7 +3,7 @@
 
 import type { LanguageModelV3StreamPart } from "@ai-sdk/provider"
 
-import { mapStopReason, parseAnthropicSse } from "./sse"
+import { createSseParseState, mapStopReason, parseAnthropicSse } from "./sse"
 
 type FinishReason = ReturnType<typeof mapStopReason>
 
@@ -15,9 +15,10 @@ export async function emitClaudeSseChunks(
   let finishReason: FinishReason = { unified: "stop", raw: "end_turn" }
   let textBlockIndex = 0
   let toolBlockIndex = 0
-  let buffer = ""
-  const emit = (chunk: Uint8Array, previous: string): string => {
-    const parsed = parseAnthropicSse(chunk, previous)
+  let state = createSseParseState()
+  const emit = (chunk: Uint8Array): void => {
+    const parsed = parseAnthropicSse(chunk, state)
+    state = parsed.state
     for (const event of parsed.events) {
       if (event.kind === "part") {
         const part = event.part
@@ -38,16 +39,15 @@ export async function emitClaudeSseChunks(
         finishReason = mapStopReason(event.stopReason)
       } else if (event.kind === "error") {
         controller.error(event.error)
-        return parsed.buffer
+        return
       }
     }
-    return parsed.buffer
   }
   for await (const chunk of chunks) {
-    buffer = emit(chunk, buffer)
+    emit(chunk)
   }
-  if (buffer.length > 0) {
-    emit(new TextEncoder().encode("\n"), buffer)
+  if (state.buffer.length > 0 || state.event !== null) {
+    emit(new TextEncoder().encode("\n"))
   }
   controller.enqueue({
     type: "finish",
