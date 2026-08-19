@@ -15,6 +15,13 @@ export type HttpResponse = {
   readonly body: Uint8Array
 }
 
+export type HttpStreamResponse = {
+  readonly status: number
+  readonly headers: HttpHeaders
+  readonly body: AsyncIterable<Uint8Array>
+}
+
 export interface HttpTransport {
   request(request: HttpRequest, signal: AbortSignal): Promise<HttpResponse>
+  stream?(request: HttpRequest, signal: AbortSignal): Promise<HttpStreamResponse>
 }

@@ -1,4 +1,4 @@
-import type { HttpRequest, HttpResponse, HttpTransport } from "../core/http"
+import type { HttpRequest, HttpResponse, HttpStreamResponse, HttpTransport } from "../core/http"
 
 export function createFetchHttpTransport(): HttpTransport {
   return {
@@ -17,6 +17,46 @@ export function createFetchHttpTransport(): HttpTransport {
         status: response.status,
         headers,
         body: new Uint8Array(await response.arrayBuffer()),
+      }
+    },
+    stream: async (request: HttpRequest, signal: AbortSignal): Promise<HttpStreamResponse> => {
+      const response = await fetch(request.url, {
+        method: request.method,
+        headers: request.headers,
+        body: request.body,
+        signal,
+      })
+      const headers: { [name: string]: string } = {}
+      response.headers.forEach((value, name) => {
+        headers[name] = value
+      })
+      const body = response.body
+      if (body === null) {
+        return {
+          status: response.status,
+          headers,
+          body: (async function* () {})(),
+        }
+      }
+      const reader = body.getReader()
+      const streamBody = (async function* () {
+        try {
+          while (true) {
+            if (signal.aborted) {
+              throw new DOMException("Aborted", "AbortError")
+            }
+            const { done, value } = await reader.read()
+            if (done) break
+            yield value
+          }
+        } finally {
+          reader.releaseLock()
+        }
+      })()
+      return {
+        status: response.status,
+        headers,
+        body: streamBody,
       }
     },
   }
