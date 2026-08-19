@@ -3,6 +3,8 @@
 
 import type { LanguageModelV3StreamPart } from "@ai-sdk/provider"
 
+import { convertEventToPart } from "./sse-convert"
+
 export type AnthropicSseEvent =
   | {
       readonly type: "message_start"
@@ -114,16 +116,25 @@ function parseEventType(event: string): AnthropicSseEvent["type"] | null {
   return validEvents[event] ?? null
 }
 
+export type SseParseState = {
+  readonly buffer: string
+  readonly event: string | null
+}
+
+export function createSseParseState(): SseParseState {
+  return { buffer: "", event: null }
+}
+
 export function parseAnthropicSse(
   chunk: Uint8Array,
-  buffer: string,
-): { readonly events: readonly SseParseResult[]; readonly buffer: string } {
+  state: SseParseState,
+): { readonly events: readonly SseParseResult[]; readonly state: SseParseState } {
   const text = new TextDecoder().decode(chunk)
-  const combined = buffer + text
+  const combined = state.buffer + text
   const lines = combined.split("\n")
   const newBuffer = lines.pop() ?? ""
   const events: SseParseResult[] = []
-  let currentEvent: string | undefined
+  let currentEvent: string | undefined = state.event ?? undefined
   let currentData: string | undefined
 
   for (const line of lines) {
@@ -176,86 +187,10 @@ export function parseAnthropicSse(
     }
   }
 
-  return { events, buffer: newBuffer }
-}
-
-function convertEventToPart(event: AnthropicSseEvent): SseParseResult | null {
-  switch (event.type) {
-    case "message_start": {
-      return { kind: "part", part: { type: "stream-start", warnings: [] } }
-    }
-    case "content_block_start": {
-      const block = event.content_block
-      if (block.type === "text") {
-        return { kind: "part", part: { type: "text-start", id: `text-${event.index}` } }
-      }
-      if (block.type === "tool_use" && block.id !== undefined && block.name !== undefined) {
-        return {
-          kind: "part",
-          part: {
-            type: "tool-input-start",
-            id: block.id,
-            toolName: block.name,
-            providerExecuted: false,
-            dynamic: false,
-          },
-        }
-      }
-      return null
-    }
-    case "content_block_delta": {
-      const delta = event.delta
-      if (delta.type === "text_delta" && delta.text !== undefined) {
-        return {
-          kind: "part",
-          part: { type: "text-delta", id: `text-${event.index}`, delta: delta.text },
-        }
-      }
-      if (delta.type === "input_json_delta" && delta.partial_json !== undefined) {
-        return {
-          kind: "part",
-          part: { type: "tool-input-delta", id: `tool-${event.index}`, delta: delta.partial_json },
-        }
-      }
-      return null
-    }
-    case "content_block_stop": {
-      // We don't know if it was text or tool_use, but we can emit both ends
-      // The caller will need to track which block type it was
-      return { kind: "part", part: { type: "text-end", id: `text-${event.index}` } }
-    }
-    case "message_delta": {
-      const stopReason = event.delta.stop_reason
-      if (stopReason !== null) {
-        return { kind: "finish", stopReason }
-      }
-      return null
-    }
-    case "message_stop": {
-      return { kind: "finish", stopReason: "end_turn" }
-    }
-    case "error": {
-      return { kind: "error", error: new Error(`Anthropic API error: ${event.error.message}`) }
-    }
+  return {
+    events,
+    state: { buffer: newBuffer, event: currentEvent ?? null },
   }
 }
 
-export function mapStopReason(
-  reason: "end_turn" | "max_tokens" | "stop_sequence" | "tool_use" | null,
-): {
-  unified: "stop" | "length" | "content-filter" | "tool-calls" | "error" | "other"
-  raw: string
-} {
-  switch (reason) {
-    case "end_turn":
-      return { unified: "stop", raw: "end_turn" }
-    case "max_tokens":
-      return { unified: "length", raw: "max_tokens" }
-    case "stop_sequence":
-      return { unified: "stop", raw: "stop_sequence" }
-    case "tool_use":
-      return { unified: "tool-calls", raw: "tool_use" }
-    default:
-      return { unified: "other", raw: "unknown" }
-  }
-}
+export { convertEventToPart, mapStopReason } from "./sse-convert"
