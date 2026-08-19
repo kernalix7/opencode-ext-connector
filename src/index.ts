@@ -9,9 +9,11 @@ import { define, type Plugin } from "./opencode/beta-api"
 import { createCatalogPublisher } from "./opencode/catalog-bridge"
 import { pickConnectorOptionsInput } from "./opencode/host-options"
 import { PLUGIN_ID, setupConnector } from "./opencode/plugin"
+import { bindProcessExit } from "./opencode/process-exit"
+import { scheduleCatalogReload } from "./opencode/reload"
 import { createClaudeTokenReader } from "./providers/claude/auth"
 import { createClaudeLanguageModel } from "./providers/claude/language-model"
-import { writeClaudeCredentialsFile } from "./providers/claude/writeback"
+import { writeClaudeCredentials } from "./providers/claude/writeback"
 import { readCommandCodeAccessToken } from "./providers/command-code/auth"
 import { createCommandCodeLanguageModel } from "./providers/command-code/language-model"
 import { resolveCursorAgent } from "./providers/cursor/auth"
@@ -46,7 +48,7 @@ export const plugin: Plugin = define({
       clock: systemClock,
       transport,
       ...(connectorOptions.writeBackCredentials
-        ? { writeBack: (credentials) => writeClaudeCredentialsFile(env, credentials) }
+        ? { writeBack: (credentials) => writeClaudeCredentials(env, credentials) }
         : {}),
     })
     const cursorPool = createCursorAgentPool({
@@ -55,12 +57,23 @@ export const plugin: Plugin = define({
       env,
     })
     const cursorSessions = new Map<string, string>()
+    const catalogReload = scheduleCatalogReload({
+      clock: systemClock,
+      intervalMs: connectorOptions.catalogReloadMs,
+      reload: () => context.catalog.reload(),
+    })
+    const stopProcessExit = bindProcessExit(async () => {
+      await catalogReload.dispose()
+      await cursorPool.dispose()
+    })
     await setupConnector({
       catalog: {
         transform: async (callback) => {
           const registration = await context.catalog.transform(callback)
           return {
             dispose: async (): Promise<void> => {
+              stopProcessExit()
+              await catalogReload.dispose()
               await cursorPool.dispose()
               await registration.dispose()
             },

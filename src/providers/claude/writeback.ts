@@ -1,12 +1,34 @@
-import { writeFile } from "node:fs/promises"
+import { execFile } from "node:child_process"
+import { mkdir, writeFile } from "node:fs/promises"
 import { homedir } from "node:os"
-import { join } from "node:path"
+import { dirname, join } from "node:path"
+import { promisify } from "node:util"
 
 import type { ClaudeCredentials } from "./credentials"
+
+const execFileAsync = promisify(execFile)
+const CLAUDE_KEYCHAIN_SERVICE = "Claude Code-credentials"
+const CLAUDE_KEYCHAIN_ACCOUNT = "Claude Code"
+
+export type ClaudeWriteBackHooks = {
+  readonly writeFile?: (path: string, body: string) => Promise<void>
+  readonly writeKeychain?: (args: readonly string[]) => Promise<void>
+  readonly platform?: string
+}
 
 export function claudeCredentialPath(env: Readonly<Record<string, string | undefined>>): string {
   const configDir = env["CLAUDE_CONFIG_DIR"] ?? join(homedir(), ".claude")
   return join(configDir, ".credentials.json")
+}
+
+export function claudeWindowsCredentialPaths(
+  env: Readonly<Record<string, string | undefined>>,
+): readonly string[] {
+  const appdata = env["APPDATA"]
+  if (appdata === undefined || appdata.length === 0) {
+    return []
+  }
+  return [join(appdata, "Claude", ".credentials.json")]
 }
 
 export function claudeCredentialsFileBody(credentials: ClaudeCredentials): string {
@@ -23,12 +45,55 @@ export function claudeCredentialsFileBody(credentials: ClaudeCredentials): strin
   )}\n`
 }
 
+export function claudeKeychainWriteArgs(
+  credentials: ClaudeCredentials,
+  account = CLAUDE_KEYCHAIN_ACCOUNT,
+): readonly string[] {
+  return [
+    "add-generic-password",
+    "-U",
+    "-s",
+    CLAUDE_KEYCHAIN_SERVICE,
+    "-a",
+    account,
+    "-w",
+    claudeCredentialsFileBody(credentials).trim(),
+  ]
+}
+
+async function defaultWriteFile(path: string, body: string): Promise<void> {
+  await mkdir(dirname(path), { recursive: true })
+  await writeFile(path, body, { encoding: "utf8", mode: 0o600 })
+}
+
+async function defaultWriteKeychain(args: readonly string[]): Promise<void> {
+  await execFileAsync("security", [...args], { timeout: 2_000 })
+}
+
+export async function writeClaudeCredentials(
+  env: Readonly<Record<string, string | undefined>>,
+  credentials: ClaudeCredentials,
+  hooks: ClaudeWriteBackHooks = {},
+): Promise<void> {
+  const write = hooks.writeFile ?? defaultWriteFile
+  const body = claudeCredentialsFileBody(credentials)
+  const paths = [claudeCredentialPath(env)]
+  const platform = hooks.platform ?? process.platform
+  if (platform === "win32") {
+    paths.push(...claudeWindowsCredentialPaths(env))
+  }
+  for (const path of paths) {
+    await write(path, body)
+  }
+  if (platform === "darwin") {
+    const writeKeychain = hooks.writeKeychain ?? defaultWriteKeychain
+    await writeKeychain(claudeKeychainWriteArgs(credentials))
+  }
+}
+
 export async function writeClaudeCredentialsFile(
   env: Readonly<Record<string, string | undefined>>,
   credentials: ClaudeCredentials,
 ): Promise<void> {
-  await writeFile(claudeCredentialPath(env), claudeCredentialsFileBody(credentials), {
-    encoding: "utf8",
-    mode: 0o600,
-  })
+  await writeClaudeCredentials(env, credentials)
 }
