@@ -46,15 +46,19 @@ export function parseCursorModelOutput(stdout: string): readonly AdapterModel[] 
   return parseModelIdList(ids)
 }
 
-export async function listCursorModels(
+export type CursorModelsRun = (
   agent: string,
+  args: readonly string[],
   signal: AbortSignal,
-): Promise<readonly AdapterModel[]> {
-  if (signal.aborted) {
-    throw new OperationCancelledError("cursor-list-models")
-  }
-  return await new Promise((resolve, reject) => {
-    const child = spawn(agent, ["models"], { signal, stdio: ["ignore", "pipe", "pipe"] })
+) => Promise<{ readonly code: number; readonly stdout: string }>
+
+function runCursorModelsCommand(
+  agent: string,
+  args: readonly string[],
+  signal: AbortSignal,
+): Promise<{ readonly code: number; readonly stdout: string }> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(agent, [...args], { signal, stdio: ["ignore", "pipe", "pipe"] })
     const chunks: Buffer[] = []
     child.stdout.on("data", (chunk: Buffer) => {
       chunks.push(chunk)
@@ -71,11 +75,29 @@ export async function listCursorModels(
         reject(new OperationCancelledError("cursor-list-models"))
         return
       }
-      if (code !== 0) {
-        resolve([])
-        return
-      }
-      resolve(parseCursorModelOutput(Buffer.concat(chunks).toString("utf8")))
+      resolve({ code: code ?? 1, stdout: Buffer.concat(chunks).toString("utf8") })
     })
   })
+}
+
+export async function listCursorModels(
+  agent: string,
+  signal: AbortSignal,
+  run: CursorModelsRun = runCursorModelsCommand,
+): Promise<readonly AdapterModel[]> {
+  if (signal.aborted) {
+    throw new OperationCancelledError("cursor-list-models")
+  }
+  const attempts = [["models"], ["--list-models"]]
+  for (const args of attempts) {
+    const result = await run(agent, args, signal)
+    if (result.code !== 0) {
+      continue
+    }
+    const models = parseCursorModelOutput(result.stdout)
+    if (models.length > 0) {
+      return models
+    }
+  }
+  return []
 }
