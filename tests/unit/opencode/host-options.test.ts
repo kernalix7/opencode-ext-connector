@@ -18,6 +18,7 @@ describe("pickConnectorOptionsInput", () => {
     expect(options).toEqual({
       snapshotTimeoutMs: 12_000,
       writeBackCredentials: true,
+      catalogReloadMs: 300_000,
       health: { initialBackoffMs: 2_000, maximumBackoffMs: 8_000 },
     })
   })
