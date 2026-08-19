@@ -9,15 +9,16 @@ import { define, type Plugin } from "./opencode/beta-api"
 import { createCatalogPublisher } from "./opencode/catalog-bridge"
 import { pickConnectorOptionsInput } from "./opencode/host-options"
 import { PLUGIN_ID, setupConnector } from "./opencode/plugin"
-import { readClaudeAccessToken } from "./providers/claude/auth"
+import { createClaudeTokenReader } from "./providers/claude/auth"
 import { createClaudeLanguageModel } from "./providers/claude/language-model"
 import { readCommandCodeAccessToken } from "./providers/command-code/auth"
 import { createCommandCodeLanguageModel } from "./providers/command-code/language-model"
 import { resolveCursorAgent } from "./providers/cursor/auth"
 import { spawnCursorPooledChild } from "./providers/cursor/child"
 import { createCursorLanguageModel } from "./providers/cursor/language-model"
-import { createCursorAgentPool } from "./providers/cursor/pool"
+import { buildCursorPoolKey, createCursorAgentPool } from "./providers/cursor/pool"
 import { runCursorAgentPrompt } from "./providers/cursor/runner"
+import { extractCursorSessionId } from "./providers/cursor/session"
 
 export const systemClock: Clock = {
   nowMs: (): number => Date.now(),
@@ -39,11 +40,17 @@ export const plugin: Plugin = define({
     const env = process.env
     const transport = createFetchHttpTransport()
     const connectorOptions = parseConnectorOptions(pickConnectorOptionsInput(context.options))
+    const readClaudeToken = createClaudeTokenReader({
+      env,
+      clock: systemClock,
+      transport,
+    })
     const cursorPool = createCursorAgentPool({
       clock: systemClock,
       spawn: spawnCursorPooledChild,
       env,
     })
+    const cursorSessions = new Map<string, string>()
     await setupConnector({
       catalog: {
         transform: async (callback) => {
@@ -68,7 +75,7 @@ export const plugin: Plugin = define({
           return createClaudeLanguageModel({
             modelId,
             transport,
-            readAccessToken: (signal) => readClaudeAccessToken(env, signal),
+            readAccessToken: readClaudeToken,
           })
         }
         if (providerID === "cursor") {
@@ -82,10 +89,13 @@ export const plugin: Plugin = define({
               if (agent === null) {
                 return
               }
+              const poolKey = buildCursorPoolKey(workspace, modelId)
+              const resume = cursorSessions.get(poolKey)
               const session = await cursorPool.acquire({
                 workspace,
                 model: modelId,
                 executable: agent,
+                ...(resume !== undefined ? { resume } : {}),
               })
               if (signal.aborted) {
                 session.child.cancel("aborted")
@@ -98,6 +108,10 @@ export const plugin: Plugin = define({
               session.child.writePrompt(prompt)
               try {
                 for await (const line of session.child.lines) {
+                  const sessionId = extractCursorSessionId(line)
+                  if (sessionId !== null) {
+                    cursorSessions.set(poolKey, sessionId)
+                  }
                   yield line
                 }
               } finally {
