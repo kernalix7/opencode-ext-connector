@@ -10,13 +10,14 @@ import type {
 import { AdapterError, OperationCancelledError } from "../../core/errors"
 import type { HttpTransport } from "../../core/http"
 import { parseProviderId } from "../../core/ids"
+import { openHttpBody } from "../../http/read-body"
+import { emitClaudeSseChunks } from "./emit-stream"
 import {
   buildRequestBody,
   emptyUsage,
   parseAssistantText,
   promptToAnthropicMessages,
 } from "./prompt"
-import { mapStopReason, parseAnthropicSse } from "./sse"
 
 export type ClaudeLanguageModelOptions = {
   readonly modelId: string
@@ -93,7 +94,8 @@ export function createClaudeLanguageModel(options: ClaudeLanguageModelOptions): 
       }
       const mapped = promptToAnthropicMessages(call.prompt)
       const requestBody = buildRequestBody(options, mapped, true)
-      const response = await options.transport.request(
+      const opened = await openHttpBody(
+        options.transport,
         {
           method: "POST",
           url: "https://api.anthropic.com/v1/messages",
@@ -107,71 +109,18 @@ export function createClaudeLanguageModel(options: ClaudeLanguageModelOptions): 
         },
         signal,
       )
-      if (response.status >= 400) {
+      if (opened.status >= 400) {
         throw new AdapterError({
           operation: "claude-http",
-          retryable: response.status >= 500,
+          retryable: opened.status >= 500,
           cause: null,
           providerId: provider,
         })
       }
-
-      const { events, buffer: remainingBuffer } = parseAnthropicSse(response.body, "")
-      const allEvents = [...events]
-      if (remainingBuffer.length > 0) {
-        const { events: trailingEvents } = parseAnthropicSse(
-          new TextEncoder().encode("\n"),
-          remainingBuffer,
-        )
-        allEvents.push(...trailingEvents)
-      }
-
-      let finishReason: {
-        unified: "stop" | "length" | "content-filter" | "tool-calls" | "error" | "other"
-        raw: string
-      } = {
-        unified: "stop",
-        raw: "end_turn",
-      }
-      let textBlockIndex = 0
-      let toolBlockIndex = 0
-
       const stream = new ReadableStream<LanguageModelV3StreamPart>({
-        start(controller) {
-          controller.enqueue({ type: "stream-start", warnings: [] })
+        async start(controller) {
           try {
-            for (const event of allEvents) {
-              if (event.kind === "part") {
-                const part = event.part
-                if (part.type === "text-start") {
-                  textBlockIndex += 1
-                  controller.enqueue({ ...part, id: `text-${textBlockIndex}` })
-                } else if (part.type === "text-delta") {
-                  controller.enqueue({ ...part, id: `text-${textBlockIndex}` })
-                } else if (part.type === "text-end") {
-                  controller.enqueue({ ...part, id: `text-${textBlockIndex}` })
-                } else if (part.type === "tool-input-start") {
-                  toolBlockIndex += 1
-                  controller.enqueue({ ...part, id: part.id })
-                } else if (part.type === "tool-input-delta") {
-                  controller.enqueue({ ...part, id: `tool-${toolBlockIndex}` })
-                } else if (part.type === "tool-input-end") {
-                  controller.enqueue({ ...part, id: `tool-${toolBlockIndex}` })
-                } else {
-                  controller.enqueue(part)
-                }
-              } else if (event.kind === "finish") {
-                finishReason = mapStopReason(event.stopReason)
-              } else if (event.kind === "error") {
-                controller.error(event.error)
-                return
-              }
-            }
-            controller.enqueue({
-              type: "finish",
-              finishReason,
-              usage: emptyUsage(),
-            })
+            await emitClaudeSseChunks(opened.chunks, controller)
           } catch (error) {
             controller.error(error)
           } finally {
@@ -179,7 +128,6 @@ export function createClaudeLanguageModel(options: ClaudeLanguageModelOptions): 
           }
         },
       })
-
       return { stream }
     },
   }
