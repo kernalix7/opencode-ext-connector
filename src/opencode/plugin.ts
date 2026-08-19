@@ -34,6 +34,7 @@ export type ConnectorSetupOptions = {
   readonly healthStore?: HealthStore
   readonly aisdk?: LanguageHost
   readonly createLanguage?: (providerID: string, modelId: string) => LanguageModelV3 | null
+  readonly snapshotTimeoutMs?: number
 }
 
 export async function setupConnector(options: ConnectorSetupOptions): Promise<Registration> {
@@ -53,6 +54,7 @@ export async function setupConnector(options: ConnectorSetupOptions): Promise<Re
       health: options.health ?? { initialBackoffMs: 1_000, maximumBackoffMs: 60_000 },
       store: options.healthStore ?? new Map(),
       signal: new AbortController().signal,
+      snapshotTimeoutMs: options.snapshotTimeoutMs ?? 30_000,
     })
   })
   if (options.aisdk !== undefined && options.createLanguage !== undefined) {

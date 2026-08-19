@@ -1,6 +1,7 @@
 import type { CatalogPublisher, ProviderAdapter } from "../core/adapter"
 import { refreshProviderCatalog } from "../core/adapter"
 import type { Clock } from "../core/clock"
+import { createDeadline } from "../core/deadline"
 import { ConnectorError } from "../core/errors"
 import {
   createInitialHealthState,
@@ -28,6 +29,7 @@ export async function refreshAdaptersWithHealth(options: {
   readonly health: HealthPolicy
   readonly store: HealthStore
   readonly signal: AbortSignal
+  readonly snapshotTimeoutMs?: number
 }): Promise<void> {
   const nowMs = options.clock.nowMs()
   for (const adapter of options.adapters) {
@@ -39,11 +41,16 @@ export async function refreshAdaptersWithHealth(options: {
       })
       continue
     }
+    const deadline = createDeadline({
+      clock: options.clock,
+      timeoutMs: options.snapshotTimeoutMs ?? 30_000,
+      parentSignal: options.signal,
+    })
     try {
       const snapshot = await refreshProviderCatalog({
         adapter,
         publisher: options.publisher,
-        signal: options.signal,
+        signal: deadline.signal,
       })
       const status = snapshot.status === "ready" ? "ready" : snapshot.status
       options.store.set(
@@ -61,6 +68,8 @@ export async function refreshAdaptersWithHealth(options: {
         retryable,
         message: errorMessage(error),
       })
+    } finally {
+      await deadline.dispose()
     }
   }
 }
