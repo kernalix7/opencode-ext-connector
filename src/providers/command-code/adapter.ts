@@ -6,12 +6,13 @@ import type { AdapterModel, ProviderSnapshot } from "../../core/models"
 
 export type CommandCodeAdapterOptions = {
   readonly readAccessToken: (signal: AbortSignal) => Promise<string | null>
-  readonly models: readonly AdapterModel[]
+  readonly listModels: (token: string, signal: AbortSignal) => Promise<readonly AdapterModel[]>
 }
 
 export function createCommandCodeAdapter(options: CommandCodeAdapterOptions): ProviderAdapter {
   const providerId = parseProviderId("command-code")
   const disposal = createAsyncDisposable(() => undefined)
+  let lastModels: readonly AdapterModel[] | null = null
   return {
     providerId,
     snapshot: async (signal: AbortSignal): Promise<ProviderSnapshot> => {
@@ -22,7 +23,20 @@ export function createCommandCodeAdapter(options: CommandCodeAdapterOptions): Pr
       if (token === null) {
         return { status: "unavailable", providerId, reason: "invalid-data" }
       }
-      return { status: "ready", providerId, models: options.models }
+      try {
+        const models = await options.listModels(token, signal)
+        if (models.length === 0) {
+          return lastModels === null
+            ? { status: "unavailable", providerId, reason: "invalid-data" }
+            : { status: "stale", providerId, models: lastModels, reason: "invalid-data" }
+        }
+        lastModels = models
+        return { status: "ready", providerId, models }
+      } catch {
+        return lastModels === null
+          ? { status: "unavailable", providerId, reason: "transport-error" }
+          : { status: "stale", providerId, models: lastModels, reason: "transport-error" }
+      }
     },
     dispose: disposal.dispose,
     [Symbol.asyncDispose]: disposal[Symbol.asyncDispose],

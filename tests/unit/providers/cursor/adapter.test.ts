@@ -8,7 +8,7 @@ describe("createCursorAdapter", () => {
     // Given
     const adapter = createCursorAdapter({
       resolveAgent: async () => "/usr/bin/cursor-agent",
-      models: [{ id: parseModelId("auto") }],
+      listModels: async () => [{ id: parseModelId("auto") }],
     })
     // When
     const snapshot = await adapter.snapshot(new AbortController().signal)
@@ -24,7 +24,7 @@ describe("createCursorAdapter", () => {
     // Given
     const adapter = createCursorAdapter({
       resolveAgent: async () => null,
-      models: [{ id: parseModelId("auto") }],
+      listModels: async () => [{ id: parseModelId("auto") }],
     })
     // When
     const snapshot = await adapter.snapshot(new AbortController().signal)
