@@ -5,40 +5,13 @@ import type { LanguageModelV3, LanguageModelV3CallOptions } from "@ai-sdk/provid
 
 import { AdapterError, OperationCancelledError } from "../../core/errors"
 import { parseProviderId } from "../../core/ids"
+import { cursorPromptText } from "./prompt"
 import { cursorToolParts } from "./tool-stream"
 
 export type CursorLanguageModelOptions = {
   readonly modelId: string
   readonly runPrompt: (prompt: string, signal: AbortSignal) => Promise<string | null>
   readonly streamNdjson?: (prompt: string, signal: AbortSignal) => AsyncIterable<string>
-}
-
-function textFromContentParts(parts: readonly { readonly type: string }[]): string {
-  const texts: string[] = []
-  for (const part of parts) {
-    if (part.type === "text" && "text" in part && typeof part.text === "string") {
-      texts.push(part.text)
-    }
-  }
-  return texts.join("")
-}
-
-function promptText(prompt: LanguageModelV3CallOptions["prompt"]): string {
-  const parts: string[] = []
-  for (const message of prompt) {
-    switch (message.role) {
-      case "system":
-        parts.push(message.content)
-        break
-      case "user":
-      case "assistant":
-        parts.push(textFromContentParts(message.content))
-        break
-      case "tool":
-        break
-    }
-  }
-  return parts.join("\n")
 }
 
 function emptyUsage(): {
@@ -77,7 +50,7 @@ export function createCursorLanguageModel(options: CursorLanguageModelOptions): 
       if (signal.aborted) {
         throw new OperationCancelledError("cursor-generate")
       }
-      const text = await options.runPrompt(promptText(call.prompt), signal)
+      const text = await options.runPrompt(cursorPromptText(call.prompt), signal)
       if (text === null) {
         throw new AdapterError({
           operation: "cursor-agent-unavailable",
@@ -98,7 +71,7 @@ export function createCursorLanguageModel(options: CursorLanguageModelOptions): 
       if (signal.aborted) {
         throw new OperationCancelledError("cursor-stream")
       }
-      const prompt = promptText(call.prompt)
+      const prompt = cursorPromptText(call.prompt)
 
       const streamNdjson = options.streamNdjson
       if (streamNdjson !== undefined) {
