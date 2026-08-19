@@ -8,7 +8,7 @@ describe("createCommandCodeAdapter", () => {
     // Given
     const adapter = createCommandCodeAdapter({
       readAccessToken: async () => "cc-token",
-      models: [{ id: parseModelId("default") }],
+      listModels: async () => [{ id: parseModelId("default") }],
     })
     // When
     const snapshot = await adapter.snapshot(new AbortController().signal)
@@ -24,7 +24,7 @@ describe("createCommandCodeAdapter", () => {
     // Given
     const adapter = createCommandCodeAdapter({
       readAccessToken: async () => null,
-      models: [{ id: parseModelId("default") }],
+      listModels: async () => [{ id: parseModelId("default") }],
     })
     // When
     const snapshot = await adapter.snapshot(new AbortController().signal)

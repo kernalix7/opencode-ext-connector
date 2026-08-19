@@ -8,7 +8,7 @@ describe("createClaudeAdapter", () => {
     // Given
     const adapter = createClaudeAdapter({
       readAccessToken: async () => "token",
-      models: [{ id: parseModelId("claude-sonnet-4-6") }],
+      listModels: async () => [{ id: parseModelId("claude-sonnet-4-6") }],
     })
     // When
     const snapshot = await adapter.snapshot(new AbortController().signal)
@@ -24,7 +24,7 @@ describe("createClaudeAdapter", () => {
     // Given
     const adapter = createClaudeAdapter({
       readAccessToken: async () => null,
-      models: [{ id: parseModelId("claude-sonnet-4-6") }],
+      listModels: async () => [{ id: parseModelId("claude-sonnet-4-6") }],
     })
     // When
     const snapshot = await adapter.snapshot(new AbortController().signal)
@@ -33,6 +33,31 @@ describe("createClaudeAdapter", () => {
       status: "unavailable",
       providerId: parseProviderId("claude"),
       reason: "invalid-data",
+    })
+  })
+
+  it("keeps last models as stale when a later list fails", async () => {
+    // Given
+    let calls = 0
+    const adapter = createClaudeAdapter({
+      readAccessToken: async () => "token",
+      listModels: async () => {
+        calls += 1
+        if (calls === 1) {
+          return [{ id: parseModelId("claude-sonnet-4-6") }]
+        }
+        throw new Error("network")
+      },
+    })
+    await adapter.snapshot(new AbortController().signal)
+    // When
+    const snapshot = await adapter.snapshot(new AbortController().signal)
+    // Then
+    expect(snapshot).toEqual({
+      status: "stale",
+      providerId: parseProviderId("claude"),
+      models: [{ id: parseModelId("claude-sonnet-4-6") }],
+      reason: "transport-error",
     })
   })
 })

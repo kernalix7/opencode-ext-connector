@@ -6,12 +6,13 @@ import type { AdapterModel, ProviderSnapshot } from "../../core/models"
 
 export type CursorAdapterOptions = {
   readonly resolveAgent: (signal: AbortSignal) => Promise<string | null>
-  readonly models: readonly AdapterModel[]
+  readonly listModels: (agent: string, signal: AbortSignal) => Promise<readonly AdapterModel[]>
 }
 
 export function createCursorAdapter(options: CursorAdapterOptions): ProviderAdapter {
   const providerId = parseProviderId("cursor")
   const disposal = createAsyncDisposable(() => undefined)
+  let lastModels: readonly AdapterModel[] | null = null
   return {
     providerId,
     snapshot: async (signal: AbortSignal): Promise<ProviderSnapshot> => {
@@ -22,7 +23,20 @@ export function createCursorAdapter(options: CursorAdapterOptions): ProviderAdap
       if (agent === null) {
         return { status: "unavailable", providerId, reason: "process-error" }
       }
-      return { status: "ready", providerId, models: options.models }
+      try {
+        const models = await options.listModels(agent, signal)
+        if (models.length === 0) {
+          return lastModels === null
+            ? { status: "unavailable", providerId, reason: "invalid-data" }
+            : { status: "stale", providerId, models: lastModels, reason: "invalid-data" }
+        }
+        lastModels = models
+        return { status: "ready", providerId, models }
+      } catch {
+        return lastModels === null
+          ? { status: "unavailable", providerId, reason: "process-error" }
+          : { status: "stale", providerId, models: lastModels, reason: "process-error" }
+      }
     },
     dispose: disposal.dispose,
     [Symbol.asyncDispose]: disposal[Symbol.asyncDispose],

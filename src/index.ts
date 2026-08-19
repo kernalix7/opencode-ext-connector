@@ -11,6 +11,7 @@ import { pickConnectorOptionsInput } from "./opencode/host-options"
 import { PLUGIN_ID, setupConnector } from "./opencode/plugin"
 import { createClaudeTokenReader } from "./providers/claude/auth"
 import { createClaudeLanguageModel } from "./providers/claude/language-model"
+import { writeClaudeCredentialsFile } from "./providers/claude/writeback"
 import { readCommandCodeAccessToken } from "./providers/command-code/auth"
 import { createCommandCodeLanguageModel } from "./providers/command-code/language-model"
 import { resolveCursorAgent } from "./providers/cursor/auth"
@@ -44,6 +45,9 @@ export const plugin: Plugin = define({
       env,
       clock: systemClock,
       transport,
+      ...(connectorOptions.writeBackCredentials
+        ? { writeBack: (credentials) => writeClaudeCredentialsFile(env, credentials) }
+        : {}),
     })
     const cursorPool = createCursorAgentPool({
       clock: systemClock,
@@ -63,7 +67,7 @@ export const plugin: Plugin = define({
           }
         },
       },
-      adapters: createDefaultAdapters(env),
+      adapters: createDefaultAdapters(env, transport),
       logger: createConsoleLogger(systemClock),
       createPublisher: createCatalogPublisher,
       clock: systemClock,
