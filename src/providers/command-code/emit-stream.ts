@@ -10,25 +10,6 @@ export async function emitCommandCodeChunks(
   chunks: AsyncIterable<Uint8Array>,
   controller: ReadableStreamDefaultController<LanguageModelV3StreamPart>,
 ): Promise<void> {
-  const pieces: Uint8Array[] = []
-  let total = 0
-  for await (const chunk of chunks) {
-    pieces.push(chunk)
-    total += chunk.length
-  }
-  const merged = new Uint8Array(total)
-  let offset = 0
-  for (const piece of pieces) {
-    merged.set(piece, offset)
-    offset += piece.length
-  }
-  emitCommandCodeNdjson(new TextDecoder().decode(merged), controller)
-}
-
-export function emitCommandCodeNdjson(
-  text: string,
-  controller: ReadableStreamDefaultController<LanguageModelV3StreamPart>,
-): void {
   const parser = createNdjsonStreamParser()
   controller.enqueue({ type: "stream-start", warnings: [] })
   let textStarted = false
@@ -39,20 +20,21 @@ export function emitCommandCodeNdjson(
     }
     controller.enqueue({ type: "text-delta", id: delta.id, delta: delta.delta })
   }
-  for (const line of text.split("\n")) {
+  let buffer = ""
+  const consumeLine = (line: string): void => {
     const trimmed = line.trim()
     if (trimmed.length === 0 || trimmed === "[DONE]") {
-      continue
+      return
     }
     const payload = trimmed.startsWith("data:") ? trimmed.slice(5).trim() : trimmed
     let parsed: unknown
     try {
       parsed = JSON.parse(payload)
     } catch {
-      continue
+      return
     }
     if (typeof parsed !== "object" || parsed === null) {
-      continue
+      return
     }
     for (const part of commandCodeToolParts(parsed)) {
       controller.enqueue(part)
@@ -60,6 +42,17 @@ export function emitCommandCodeNdjson(
     for (const delta of parser.parse(new TextEncoder().encode(`${payload}\n`))) {
       emitText(delta)
     }
+  }
+  for await (const chunk of chunks) {
+    buffer += new TextDecoder().decode(chunk)
+    const lines = buffer.split("\n")
+    buffer = lines.pop() ?? ""
+    for (const line of lines) {
+      consumeLine(line)
+    }
+  }
+  if (buffer.length > 0) {
+    consumeLine(buffer)
   }
   for (const delta of parser.flush()) {
     emitText(delta)
