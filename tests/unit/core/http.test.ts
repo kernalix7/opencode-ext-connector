@@ -58,4 +58,70 @@ describe("FakeHttpTransport", () => {
     // Then
     await expect(promise).rejects.toBeInstanceOf(OperationCancelledError)
   })
+
+  describe("stream()", () => {
+    it("yields queued response body as chunks", async () => {
+      // Given
+      const transport = new FakeHttpTransport()
+      const chunkedResponse: HttpResponse = {
+        status: 200,
+        headers: { "content-type": "text/event-stream" },
+        body: new Uint8Array([1, 2, 3, 4]),
+      }
+      transport.enqueueChunkedResponse(chunkedResponse)
+      // When
+      const result = await transport.stream(request, new AbortController().signal)
+      const chunks: Uint8Array[] = []
+      for await (const chunk of result.body) {
+        chunks.push(chunk)
+      }
+      // Then
+      expect(chunks.length).toBeGreaterThan(0)
+      const concatenated = new Uint8Array(chunks.reduce((sum, c) => sum + c.length, 0))
+      let offset = 0
+      for (const chunk of chunks) {
+        concatenated.set(chunk, offset)
+        offset += chunk.length
+      }
+      expect(Array.from(concatenated)).toEqual(Array.from(chunkedResponse.body))
+      expect(result.status).toBe(chunkedResponse.status)
+      expect(result.headers).toEqual(chunkedResponse.headers)
+    })
+
+    it("rejects pre-aborted stream without recording", async () => {
+      // Given
+      const transport = new FakeHttpTransport()
+      const controller = new AbortController()
+      controller.abort()
+      // When
+      const promise = transport.stream(request, controller.signal)
+      // Then
+      await expect(promise).rejects.toBeInstanceOf(OperationCancelledError)
+      expect(transport.requests).toEqual([])
+    })
+
+    it("cancels ongoing stream", async () => {
+      // Given
+      const transport = new FakeHttpTransport()
+      const chunkedResponse: HttpResponse = {
+        status: 200,
+        headers: { "content-type": "text/event-stream" },
+        body: new Uint8Array([1, 2, 3, 4]),
+      }
+      transport.enqueueChunkedResponse(chunkedResponse)
+      const controller = new AbortController()
+      const streamResult = await transport.stream(request, controller.signal)
+      // When
+      controller.abort()
+      const chunks: Uint8Array[] = []
+      // Then
+      await expect(
+        (async () => {
+          for await (const chunk of streamResult.body) {
+            chunks.push(chunk)
+          }
+        })(),
+      ).rejects.toBeInstanceOf(OperationCancelledError)
+    })
+  })
 })

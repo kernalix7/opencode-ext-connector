@@ -3,7 +3,12 @@ import {
   InvalidArgumentError,
   OperationCancelledError,
 } from "../../src/core/errors"
-import type { HttpRequest, HttpResponse, HttpTransport } from "../../src/core/http"
+import type {
+  HttpRequest,
+  HttpResponse,
+  HttpStreamResponse,
+  HttpTransport,
+} from "../../src/core/http"
 
 export interface PendingHttpResponse {
   resolve(response: HttpResponse): void
@@ -12,6 +17,7 @@ export interface PendingHttpResponse {
 
 type HttpScript =
   | { readonly kind: "response"; readonly response: HttpResponse }
+  | { readonly kind: "chunked-response"; readonly response: HttpResponse }
   | { readonly kind: "error"; readonly error: Error }
   | { readonly kind: "pending"; readonly promise: Promise<HttpResponse> }
 
@@ -66,6 +72,12 @@ export class FakeHttpTransport implements HttpTransport {
     }
     this.scripts.push({ kind: "response", response: cloneResponse(response) })
   }
+  public enqueueChunkedResponse(response: HttpResponse): void {
+    if (!Number.isInteger(response.status) || response.status < 100 || response.status > 599) {
+      throw new InvalidArgumentError("response.status")
+    }
+    this.scripts.push({ kind: "chunked-response", response: cloneResponse(response) })
+  }
   public enqueueError(error: Error): void {
     this.scripts.push({ kind: "error", error })
   }
@@ -89,11 +101,66 @@ export class FakeHttpTransport implements HttpTransport {
     this.requests.push(cloneRequest(request))
     switch (script.kind) {
       case "response":
+      case "chunked-response":
         return cloneResponse(script.response)
       case "error":
         throw script.error
       case "pending":
         return awaitWithSignal(script.promise, signal)
+    }
+  }
+
+  public async stream(request: HttpRequest, signal: AbortSignal): Promise<HttpStreamResponse> {
+    if (signal.aborted) {
+      throw new OperationCancelledError("http-stream")
+    }
+    const script = this.scripts.shift()
+    if (script === undefined) {
+      throw new HttpTransportError({
+        operation: "unexpected-stream",
+        retryable: false,
+        cause: null,
+      })
+    }
+    this.requests.push(cloneRequest(request))
+    switch (script.kind) {
+      case "response": {
+        const response = cloneResponse(script.response)
+        return {
+          status: response.status,
+          headers: response.headers,
+          body: (async function* () {
+            if (signal.aborted) {
+              throw new OperationCancelledError("http-stream")
+            }
+            yield response.body
+          })(),
+        }
+      }
+      case "chunked-response": {
+        const response = cloneResponse(script.response)
+        const body = (async function* () {
+          for (const byte of response.body) {
+            if (signal.aborted) {
+              throw new OperationCancelledError("http-stream")
+            }
+            yield new Uint8Array([byte])
+          }
+        })()
+        return {
+          status: response.status,
+          headers: response.headers,
+          body,
+        }
+      }
+      case "error":
+        throw script.error
+      default:
+        throw new HttpTransportError({
+          operation: "unexpected-stream-script",
+          retryable: false,
+          cause: null,
+        })
     }
   }
 }
