@@ -81,13 +81,14 @@ OpenCode passes the object `options` field through as `ctx.options`.
 
 | Option | Default | Meaning |
 |---|---|---|
-| `writeBackCredentials` | `true` | After Claude OAuth refresh, write tokens to Claude files, Keychain (macOS), and OpenCode `auth.json` |
+| `writeBackCredentials` | `false` | After Claude OAuth refresh, write tokens to Claude files, Keychain (macOS), and OpenCode `auth.json` |
 | `catalogReloadMs` | `300000` | Re-run catalog snapshots on this interval; `0` disables |
 | `snapshotTimeoutMs` | `30000` | Per-provider snapshot deadline |
 | `health.initialBackoffMs` | `1000` | Health backoff after a failed snapshot |
 | `health.maximumBackoffMs` | `60000` | Health backoff cap |
 
-Disable writeback:
+Writeback is off by default so this plugin does not mutate credential stores
+unless asked. Enable it explicitly:
 
 ```jsonc
 {
@@ -95,11 +96,15 @@ Disable writeback:
   "plugins": [
     {
       "package": "file:///absolute/path/to/00G_opencode-ext-connector",
-      "options": { "writeBackCredentials": false }
+      "options": { "writeBackCredentials": true }
     }
   ]
 }
 ```
+
+With writeback off, refreshed Claude tokens stay in memory only. A stored
+refresh token that rotates can then stop working on the next process start —
+set `writeBackCredentials: true` if you want the files updated too.
 
 ## What it does
 
