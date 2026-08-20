@@ -58,20 +58,26 @@ bun install
 bun run build
 ```
 
-In `opencode.json` / `opencode.jsonc`:
+In `opencode.json` / `opencode.jsonc` (OpenCode v2 `plugins` field):
 
-```json
+```jsonc
 {
-  "plugin": ["file:///absolute/path/to/00G_opencode-ext-connector"]
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": [
+    "file:///absolute/path/to/00G_opencode-ext-connector"
+  ]
 }
 ```
+
+Older hosts may still use `"plugin"` instead of `"plugins"`. Absolute paths
+and `file://` URLs are supported.
 
 Provider ids: `claude`, `cursor`, `command-code`. Model ids come from live
 catalogs (`/v1/models`, `cursor-agent models`, Command Code `/provider/v1/models`).
 
 ## Options
 
-Plugin options (under the plugin entry / `context.options`):
+OpenCode passes the object `options` field through as `ctx.options`.
 
 | Option | Default | Meaning |
 |---|---|---|
@@ -83,19 +89,17 @@ Plugin options (under the plugin entry / `context.options`):
 
 Disable writeback:
 
-```json
+```jsonc
 {
-  "plugin": [
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": [
     {
-      "path": "file:///absolute/path/to/00G_opencode-ext-connector",
+      "package": "file:///absolute/path/to/00G_opencode-ext-connector",
       "options": { "writeBackCredentials": false }
     }
   ]
 }
 ```
-
-Exact plugin option nesting follows your OpenCode version. If a path-only
-string does not accept options, set them in the host plugin config object.
 
 ## What it does
 
