@@ -58,6 +58,26 @@ describe("connector logger", () => {
     ])
   })
 
+  it("redacts OpenCode oauth token field names", () => {
+    // Given
+    const sink = new MemoryLogSink()
+    const logger = createConnectorLogger(new FakeClock(), sink)
+    // When
+    logger.log("warn", "provider.auth", {
+      access: "at",
+      refresh: "rt",
+      expires: 9,
+      nested: { access_token: "n" },
+    })
+    // Then
+    expect(sink.records.at(0)?.fields).toEqual({
+      access: "[REDACTED]",
+      refresh: "[REDACTED]",
+      expires: "[REDACTED]",
+      nested: { access_token: "[REDACTED]" },
+    })
+  })
+
   it("propagates sink failures", () => {
     // Given
     const failure = new TypeError("sink")

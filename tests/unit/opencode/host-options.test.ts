@@ -17,7 +17,7 @@ describe("pickConnectorOptionsInput", () => {
     // Then
     expect(options).toEqual({
       snapshotTimeoutMs: 12_000,
-      writeBackCredentials: true,
+      writeBackCredentials: false,
       catalogReloadMs: 300_000,
       health: { initialBackoffMs: 2_000, maximumBackoffMs: 8_000 },
     })
@@ -31,15 +31,15 @@ describe("pickConnectorOptionsInput", () => {
     // Then
     expect(options.snapshotTimeoutMs).toBe(30_000)
     expect(options.health.initialBackoffMs).toBe(1_000)
-    expect(options.writeBackCredentials).toBe(true)
+    expect(options.writeBackCredentials).toBe(false)
   })
 
-  it("honors writeBackCredentials false from the host", () => {
+  it("honors writeBackCredentials true from the host", () => {
     // Given / When
     const options = parseConnectorOptions(
-      pickConnectorOptionsInput({ writeBackCredentials: false }),
+      pickConnectorOptionsInput({ writeBackCredentials: true }),
     )
     // Then
-    expect(options.writeBackCredentials).toBe(false)
+    expect(options.writeBackCredentials).toBe(true)
   })
 })
