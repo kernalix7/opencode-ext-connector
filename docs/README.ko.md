@@ -2,7 +2,9 @@
 
 [English](../README.md)
 
-OpenCode와 외부 제공자를 연동하기 위한 독립적 커넥터 프로젝트입니다.
+이미 로그인한 벤더 CLI의 **Claude**, **Cursor**, **Command Code**를 OpenCode에
+노출하는 독립 플러그인입니다. `opencode.json`에 항목 하나. 새 OAuth를 만들지
+않습니다.
 
 ## 면책 조항
 
@@ -19,6 +21,80 @@ OpenCode와 외부 제공자를 연동하기 위한 독립적 커넥터 프로�
 본 소프트웨어는 "있는 그대로" 제공되며, 어떠한 형태의 보증도 하지 않습니다. 관련 법률이 허용하는 최대 범위 내에서, 저작자 및 기여자는 본 소프트웨어의 사용 또는 사용 불능으로 인해 발생하는 어떠한 청구, 손해, 손실, 계정 조치, 또는 기타 결과에 대해서도 책임지지 않습니다. 본 소프트웨어는 전적으로 사용자의 책임 하에 사용하십시오.
 
 [LICENSE](../LICENSE)의 BSD 3-Clause 라이선스가 본 소프트웨어의 복사, 수정, 배포를 규율합니다. 본 면책 조항이 라이선스와 충돌하는 경우, 라이선스가 우선합니다.
+
+## 요구 사항
+
+- [Bun](https://bun.sh) 1.3.14 이상
+- OpenCode 플러그인 v2/promise (`@opencode-ai/plugin@1.18.18`)
+- 이미 로그인된 벤더 CLI:
+  - Claude Code 자격 증명 (`~/.claude/.credentials.json` 및/또는 macOS Keychain)
+  - `PATH`의 `cursor-agent`
+  - Command Code API 키 (`COMMAND_CODE_API_KEY` 또는 `~/.commandcode/auth.json`)
+
+## 설치
+
+```bash
+bun install
+bun run build
+```
+
+`opencode.json` / `opencode.jsonc`:
+
+```json
+{
+  "plugin": ["file:///absolute/path/to/00G_opencode-ext-connector"]
+}
+```
+
+프로바이더 id: `claude`, `cursor`, `command-code`. 모델 id는 라이브 카탈로그에서
+가져옵니다.
+
+## 옵션
+
+| 옵션 | 기본값 | 의미 |
+|---|---|---|
+| `writeBackCredentials` | `true` | Claude OAuth 갱신 후 파일, Keychain(macOS), OpenCode `auth.json`에 기록 |
+| `catalogReloadMs` | `300000` | 카탈로그 스냅샷 주기. `0`이면 끔 |
+| `snapshotTimeoutMs` | `30000` | 프로바이더별 스냅샷 기한 |
+| `health.initialBackoffMs` | `1000` | 스냅샷 실패 백오프 |
+| `health.maximumBackoffMs` | `60000` | 백오프 상한 |
+
+writeback 끄기:
+
+```json
+{
+  "plugin": [
+    {
+      "path": "file:///absolute/path/to/00G_opencode-ext-connector",
+      "options": { "writeBackCredentials": false }
+    }
+  ]
+}
+```
+
+옵션 객체 중첩은 OpenCode 버전에 따릅니다.
+
+## 동작
+
+- 기존 CLI 로그인을 재사용합니다. 새 OAuth를 발급하지 않습니다.
+- Claude HTTP를 공식 CLI처럼 위장하고 Anthropic SSE를 스트림합니다.
+- `cursor-agent --print --output-format stream-json` 프로세스 풀, tool-call
+  파트, `--resume`을 사용합니다.
+- Command Code `/alpha/generate`에 CLI 지문 헤더를 붙이고 NDJSON 텍스트/툴
+  이벤트를 스트림합니다.
+- 한 프로바이더가 실패해도 나머지 카탈로그는 유지합니다.
+
+## 개발
+
+```bash
+bun run check
+bun test
+bun run verify:package
+```
+
+## 고지
+
+파생 업스트림은 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)에 있습니다.
 
 ## 라이선스
 
