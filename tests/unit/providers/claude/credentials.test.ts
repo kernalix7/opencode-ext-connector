@@ -26,4 +26,10 @@ describe("parseClaudeCredentials", () => {
     // Given / When / Then
     expect(parseClaudeCredentials({ refreshToken: "x" })).toBeNull()
   })
+
+  it("rejects incomplete OAuth records", () => {
+    // Given / When / Then
+    expect(parseClaudeCredentials({ accessToken: "access" })).toBeNull()
+    expect(parseClaudeCredentials({ accessToken: "access", refreshToken: "refresh" })).toBeNull()
+  })
 })

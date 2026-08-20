@@ -15,8 +15,10 @@ export function createFetchHttpTransport(): HttpTransport {
       })
       return {
         status: response.status,
+        statusText: response.statusText,
         headers,
         body: new Uint8Array(await response.arrayBuffer()),
+        bodyPresent: response.body !== null,
       }
     },
     stream: async (request: HttpRequest, signal: AbortSignal): Promise<HttpStreamResponse> => {
@@ -34,29 +36,40 @@ export function createFetchHttpTransport(): HttpTransport {
       if (body === null) {
         return {
           status: response.status,
+          statusText: response.statusText,
           headers,
           body: (async function* () {})(),
+          bodyPresent: false,
         }
       }
       const reader = body.getReader()
       const streamBody = (async function* () {
+        let completed = false
         try {
           while (true) {
             if (signal.aborted) {
               throw new DOMException("Aborted", "AbortError")
             }
             const { done, value } = await reader.read()
-            if (done) break
+            if (done) {
+              completed = true
+              break
+            }
             yield value
           }
         } finally {
+          if (!completed) {
+            await reader.cancel()
+          }
           reader.releaseLock()
         }
       })()
       return {
         status: response.status,
+        statusText: response.statusText,
         headers,
         body: streamBody,
+        bodyPresent: true,
       }
     },
   }

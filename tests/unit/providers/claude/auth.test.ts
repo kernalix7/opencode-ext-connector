@@ -5,6 +5,7 @@ import { join } from "node:path"
 
 import { OperationCancelledError } from "../../../../src/core/errors"
 import { readClaudeAccessToken } from "../../../../src/providers/claude/auth"
+import { parseClaudeCliVersion } from "../../../../src/providers/claude/cli-version"
 
 function createSignal(aborted = false): AbortSignal {
   const controller = new AbortController()
@@ -12,7 +13,21 @@ function createSignal(aborted = false): AbortSignal {
   return controller.signal
 }
 
+function credentialJson(accessToken: string, wrapped = true): string {
+  const credentials = {
+    accessToken,
+    refreshToken: "refresh-token",
+    expiresAt: 1_900_000_000_000,
+  }
+  return JSON.stringify(wrapped ? { claudeAiOauth: credentials } : credentials)
+}
+
 describe("readClaudeAccessToken", () => {
+  it("parses installed Claude CLI version output", () => {
+    // Given / When / Then
+    expect(parseClaudeCliVersion("2.1.217 (Claude Code)")).toBe("2.1.217")
+  })
+
   it("returns keychain token when injected readKeychain succeeds — file not read", async () => {
     // Given
     const keychainToken = "kc-token"
@@ -22,7 +37,7 @@ describe("readClaudeAccessToken", () => {
     }
     const lookup = {
       readKeychain: async (_service: string, _signal: AbortSignal): Promise<string | null> => {
-        return JSON.stringify({ claudeAiOauth: { accessToken: keychainToken } })
+        return credentialJson(keychainToken)
       },
     }
     // When
@@ -36,7 +51,7 @@ describe("readClaudeAccessToken", () => {
     // Given
     const tempDir = await mkdtemp(join(tmpdir(), "claude-test-"))
     const credentialPath = join(tempDir, ".credentials.json")
-    await writeFile(credentialPath, JSON.stringify({ accessToken: "file-token" }), "utf8")
+    await writeFile(credentialPath, credentialJson("file-token", false), "utf8")
     const env: Record<string, string | undefined> = {
       CLAUDE_CONFIG_DIR: tempDir,
     }
@@ -87,7 +102,7 @@ describe("readClaudeAccessToken", () => {
     const env: Record<string, string | undefined> = {}
     const lookup = {
       readKeychain: async (_service: string, _signal: AbortSignal): Promise<string | null> => {
-        return JSON.stringify({ accessToken: plainToken })
+        return credentialJson(plainToken, false)
       },
     }
     // When
@@ -103,7 +118,7 @@ describe("readClaudeAccessToken", () => {
     const lookup = {
       readKeychain: async (_service: string, _signal: AbortSignal): Promise<string | null> => {
         securityCalled = true
-        return JSON.stringify({ claudeAiOauth: { accessToken: "injected" } })
+        return credentialJson("injected")
       },
     }
     // When
@@ -116,7 +131,7 @@ describe("readClaudeAccessToken", () => {
     // Given
     const tempDir = await mkdtemp(join(tmpdir(), "claude-test-"))
     const credentialPath = join(tempDir, ".credentials.json")
-    await writeFile(credentialPath, JSON.stringify({ accessToken: "compat-token" }), "utf8")
+    await writeFile(credentialPath, credentialJson("compat-token", false), "utf8")
     const env: Record<string, string | undefined> = {
       CLAUDE_CONFIG_DIR: tempDir,
     }

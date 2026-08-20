@@ -86,11 +86,12 @@ describe("createCursorAgentPool", () => {
       "/ws",
       "--model",
       "auto",
+      "--force",
     ])
     expect(snap.lastSpawnCwd).toBe("/ws")
   })
 
-  it("acquire reuses existing child for same key", async () => {
+  it("acquire replaces a completed one-shot child for the same key", async () => {
     // Given
     const harness = createHarness()
     const pool = createCursorAgentPool({ clock: harness.clock, spawn: harness.spawn })
@@ -102,8 +103,9 @@ describe("createCursorAgentPool", () => {
       executable: "cursor-agent",
     })
     // Then
-    expect(result.reused).toBe(true)
-    expect(harness.snapshot().spawnCount).toBe(1)
+    expect(result.reused).toBe(false)
+    expect(harness.snapshot().spawnCount).toBe(2)
+    expect(harness.snapshot().killCount).toBe(1)
   })
 
   it("acquire spawns new child for different model", async () => {
@@ -119,6 +121,27 @@ describe("createCursorAgentPool", () => {
     })
     // Then
     expect(result.reused).toBe(false)
+    expect(harness.snapshot().spawnCount).toBe(2)
+  })
+
+  it("isolates concurrent conversations with different session keys", async () => {
+    // Given
+    const harness = createHarness()
+    const pool = createCursorAgentPool({ clock: harness.clock, spawn: harness.spawn })
+    await pool.acquire({
+      workspace: "/ws",
+      model: "auto",
+      executable: "cursor-agent",
+      sessionKey: "title-request",
+    })
+    // When
+    await pool.acquire({
+      workspace: "/ws",
+      model: "auto",
+      executable: "cursor-agent",
+      sessionKey: "chat-request",
+    })
+    // Then
     expect(harness.snapshot().spawnCount).toBe(2)
   })
 
@@ -145,6 +168,7 @@ describe("createCursorAgentPool", () => {
       "auto",
       "--resume",
       "session-123",
+      "--force",
     ])
   })
 
@@ -195,7 +219,7 @@ describe("createCursorAgentPool", () => {
     expect(harness.snapshot().spawnCount).toBe(2)
   })
 
-  it("idle eviction: before idleMs, acquire reuses", async () => {
+  it("replaces one-shot children even before idle eviction", async () => {
     // Given
     const idleMs = 15 * 60 * 1000
     const harness = createHarness()
@@ -213,8 +237,8 @@ describe("createCursorAgentPool", () => {
       executable: "cursor-agent",
     })
     // Then
-    expect(result.reused).toBe(true)
-    expect(harness.snapshot().spawnCount).toBe(1)
+    expect(result.reused).toBe(false)
+    expect(harness.snapshot().spawnCount).toBe(2)
   })
 
   it("cancel writes control payload to child", async () => {

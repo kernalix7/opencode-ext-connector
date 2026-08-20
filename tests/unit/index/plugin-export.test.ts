@@ -1,11 +1,17 @@
 import { describe, expect, it } from "bun:test"
-import { plugin } from "../../../src/index"
-import { PLUGIN_ID } from "../../../src/opencode/plugin"
+
+import pluginModule, {
+  commandCodeAuthServer,
+  connectorServer,
+  cursorAuthServer,
+} from "../../../src/index"
 
 describe("plugin export", () => {
-  it("exposes the connector id and setup", () => {
+  it("exports only callable v1 hooks from the package root", () => {
     // Given / When / Then
-    expect(plugin.id).toBe(PLUGIN_ID)
-    expect(typeof plugin.setup).toBe("function")
+    expect(pluginModule).toBe(connectorServer)
+    expect(typeof connectorServer).toBe("function")
+    expect(typeof cursorAuthServer).toBe("function")
+    expect(typeof commandCodeAuthServer).toBe("function")
   })
 })

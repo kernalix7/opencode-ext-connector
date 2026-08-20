@@ -12,7 +12,7 @@ import {
   claudeAccessNeedsRefresh,
   parseClaudeCredentials,
 } from "./credentials"
-import { refreshClaudeAccessToken } from "./refresh"
+import { refreshClaudeAccessTokenResult } from "./refresh"
 
 const execFileAsync = promisify(execFile)
 const CLAUDE_KEYCHAIN_SERVICE = "Claude Code-credentials"
@@ -29,19 +29,45 @@ function credentialsFromRaw(raw: string): ClaudeCredentials | null {
   }
 }
 
-async function defaultReadKeychain(_service: string, signal: AbortSignal): Promise<string | null> {
+function keychainFailure(error: unknown): Error | null {
+  if (typeof error !== "object" || error === null) {
+    return new Error("Failed to read Claude Code credentials from macOS Keychain.", {
+      cause: error,
+    })
+  }
+  const status = "status" in error ? error.status : undefined
+  const code = "code" in error ? error.code : undefined
+  const killed = "killed" in error ? error.killed : undefined
+  if (killed === true || code === "ETIMEDOUT") {
+    return new Error("Claude Code Keychain read timed out.", { cause: error })
+  }
+  if (status === 36) {
+    return new Error("macOS Keychain is locked.", { cause: error })
+  }
+  if (status === 128) {
+    return new Error("macOS Keychain access was denied.", { cause: error })
+  }
+  return status === 44
+    ? null
+    : new Error("Failed to read Claude Code credentials.", { cause: error })
+}
+
+async function defaultReadKeychain(service: string, signal: AbortSignal): Promise<string | null> {
   if (process.platform !== "darwin") {
     return null
   }
   try {
-    const result = await execFileAsync(
-      "security",
-      ["find-generic-password", "-s", CLAUDE_KEYCHAIN_SERVICE, "-w"],
-      { timeout: 2_000, signal },
-    )
+    const result = await execFileAsync("security", ["find-generic-password", "-s", service, "-w"], {
+      timeout: 2_000,
+      signal,
+    })
     const text = result.stdout.trim()
     return text.length > 0 ? text : null
-  } catch {
+  } catch (error) {
+    const failure = keychainFailure(error)
+    if (failure !== null) {
+      throw failure
+    }
     return null
   }
 }
@@ -90,17 +116,84 @@ export async function readClaudeCredentials(
   }
 }
 
-export function createClaudeTokenReader(options: {
+type ClaudeTokenOptions = {
   readonly env: Readonly<Record<string, string | undefined>>
   readonly clock: Clock
   readonly transport: HttpTransport
   readonly lookup?: ClaudeAuthLookup
   readonly writeBack?: (credentials: ClaudeCredentials) => Promise<void>
-}): (signal: AbortSignal) => Promise<string | null> {
+}
+
+export type ClaudeTokenManager = {
+  readonly readAccessToken: (signal: AbortSignal) => Promise<string | null>
+  readonly forceRefreshAccessToken: (signal: AbortSignal) => Promise<string | null>
+}
+
+export function createClaudeTokenManager(options: ClaudeTokenOptions): ClaudeTokenManager {
   let cached: ClaudeCredentials | null = null
-  return async (signal: AbortSignal): Promise<string | null> => {
-    if (cached === null) {
-      cached = await readClaudeCredentials(options.env, signal, options.lookup ?? {})
+  let refreshing: Promise<string | null> | null = null
+  let refreshRetryAtMs = 0
+  let consecutiveRefreshFailures = 0
+  const persist = async (credentials: ClaudeCredentials): Promise<void> => {
+    cached = credentials
+    if (options.writeBack !== undefined) {
+      await options.writeBack(credentials)
+    }
+  }
+  const refresh = async (
+    credentials: ClaudeCredentials,
+    signal: AbortSignal,
+  ): Promise<string | null> => {
+    if (credentials.refreshToken === null) {
+      return credentials.accessToken
+    }
+    if (options.clock.nowMs() < refreshRetryAtMs) {
+      return null
+    }
+    if (refreshing !== null) {
+      return refreshing
+    }
+    const operation = (async (): Promise<string | null> => {
+      const result = await refreshClaudeAccessTokenResult({
+        transport: options.transport,
+        clock: options.clock,
+        refreshToken: credentials.refreshToken ?? "",
+        signal,
+      })
+      if (!result.ok) {
+        if (result.kind === "transient") {
+          consecutiveRefreshFailures += 1
+          const scheduled = Math.min(
+            60_000,
+            15_000 * 2 ** Math.max(0, consecutiveRefreshFailures - 1),
+          )
+          refreshRetryAtMs =
+            options.clock.nowMs() + Math.min(60_000, result.retryAfterMs ?? scheduled)
+        } else {
+          consecutiveRefreshFailures = 0
+          refreshRetryAtMs = 0
+        }
+        return null
+      }
+      const refreshed = result.credentials
+      consecutiveRefreshFailures = 0
+      refreshRetryAtMs = 0
+      await persist(refreshed)
+      return refreshed.accessToken
+    })()
+    refreshing = operation
+    try {
+      return await operation
+    } finally {
+      if (refreshing === operation) {
+        refreshing = null
+      }
+    }
+  }
+  const readAccessToken = async (signal: AbortSignal): Promise<string | null> => {
+    const latest = await readClaudeCredentials(options.env, signal, options.lookup ?? {})
+    if (latest !== null && latest.accessToken !== cached?.accessToken) {
+      cached = latest
     }
     if (cached === null) {
       return null
@@ -108,19 +201,30 @@ export function createClaudeTokenReader(options: {
     if (!claudeAccessNeedsRefresh(cached, options.clock.nowMs()) || cached.refreshToken === null) {
       return cached.accessToken
     }
-    const refreshed = await refreshClaudeAccessToken({
-      transport: options.transport,
-      clock: options.clock,
-      refreshToken: cached.refreshToken,
-      signal,
-    })
-    if (refreshed === null) {
+    const refreshedToken = await refresh(cached, signal)
+    if (refreshedToken === null) {
       return cached.accessToken
     }
-    cached = refreshed
-    if (options.writeBack !== undefined) {
-      await options.writeBack(refreshed)
-    }
-    return cached.accessToken
+    return refreshedToken
   }
+  const forceRefreshAccessToken = async (signal: AbortSignal): Promise<string | null> => {
+    const latest = await readClaudeCredentials(options.env, signal, options.lookup ?? {})
+    if (latest !== null && latest.accessToken !== cached?.accessToken) {
+      cached = latest
+      return latest.accessToken
+    }
+    const source = latest ?? cached
+    if (source === null) {
+      return null
+    }
+    return refresh(source, signal)
+  }
+  return { readAccessToken, forceRefreshAccessToken }
+}
+
+export function createClaudeTokenReader(
+  options: ClaudeTokenOptions,
+): (signal: AbortSignal) => Promise<string | null> {
+  const manager = createClaudeTokenManager(options)
+  return manager.readAccessToken
 }

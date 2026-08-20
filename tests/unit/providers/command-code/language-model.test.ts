@@ -13,8 +13,10 @@ describe("createCommandCodeLanguageModel", () => {
       headers: {},
       body: new TextEncoder().encode(
         [
+          '{"type":"start"}',
           '{"type":"text-delta","text":"hello"}',
-          '{"type":"text-delta","data":{"text":" world"}}',
+          '{"type":"text-delta","delta":" world"}',
+          '{"type":"finish-step","finishReason":"stop","usage":{}}',
         ].join("\n"),
       ),
     })
@@ -30,7 +32,7 @@ describe("createCommandCodeLanguageModel", () => {
     // Then
     const request = transport.requests.at(0)
     expect(request?.url).toBe("https://api.commandcode.ai/alpha/generate")
-    expect(request?.headers["user-agent"]?.startsWith("commandcode-cli/")).toBe(true)
+    expect(request?.headers["x-command-code-version"]).toBeDefined()
     expect(result.content).toEqual([{ type: "text", text: "hello world" }])
   })
 

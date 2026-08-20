@@ -4,6 +4,7 @@ import {
   claudeCredentialsFileBody,
   claudeKeychainWriteArgs,
   claudeWindowsCredentialPaths,
+  updateClaudeCredentialBlob,
   writeClaudeCredentials,
 } from "../../../../src/providers/claude/writeback"
 
@@ -47,6 +48,35 @@ describe("claudeCredentialsFileBody", () => {
       "-w",
       claudeCredentialsFileBody(credentials).trim(),
     ])
+  })
+
+  it("preserves source fields and rejects stale compare-and-swap writes", () => {
+    // Given
+    const raw = JSON.stringify({
+      claudeAiOauth: {
+        accessToken: "old",
+        refreshToken: "old-refresh",
+        expiresAt: 1,
+        subscriptionType: "max",
+      },
+      mcpOAuth: { server: "kept" },
+    })
+    const credentials = {
+      accessToken: "new",
+      refreshToken: "new-refresh",
+      expiresAtMs: 2,
+    }
+    // When
+    const updated = updateClaudeCredentialBlob(raw, credentials, "old")
+    const stale = updateClaudeCredentialBlob(raw, credentials, "other-account")
+    // Then
+    expect(updated).not.toBeNull()
+    if (updated !== null) {
+      const parsed = JSON.parse(updated)
+      expect(parsed.claudeAiOauth.subscriptionType).toBe("max")
+      expect(parsed.mcpOAuth).toEqual({ server: "kept" })
+    }
+    expect(stale).toBeNull()
   })
 
   it("writes file, windows extra path, and keychain via hooks", async () => {

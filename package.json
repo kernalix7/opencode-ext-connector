@@ -11,6 +11,18 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./command-code": {
+      "types": "./dist/sdk/command-code.d.ts",
+      "import": "./dist/sdk/command-code.js"
+    },
+    "./cursor": {
+      "types": "./dist/sdk/cursor.d.ts",
+      "import": "./dist/sdk/cursor.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js"
     }
   },
   "files": [

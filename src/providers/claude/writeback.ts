@@ -17,6 +17,8 @@ export type ClaudeWriteBackHooks = {
   readonly writeKeychain?: (args: readonly string[]) => Promise<void>
   readonly readKeychainDump?: () => Promise<string | null>
   readonly platform?: string
+  readonly expectedPriorAccessToken?: string
+  readonly source?: "file" | "keychain"
 }
 
 export function claudeCredentialPath(env: Readonly<Record<string, string | undefined>>): string {
@@ -46,6 +48,34 @@ export function claudeCredentialsFileBody(credentials: ClaudeCredentials): strin
     null,
     2,
   )}\n`
+}
+
+export function updateClaudeCredentialBlob(
+  raw: string,
+  credentials: ClaudeCredentials,
+  expectedPriorAccessToken?: string,
+): string | null {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return null
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    return null
+  }
+  const wrapped = "claudeAiOauth" in parsed ? Reflect.get(parsed, "claudeAiOauth") : parsed
+  if (typeof wrapped !== "object" || wrapped === null || Array.isArray(wrapped)) {
+    return null
+  }
+  const current = "accessToken" in wrapped ? Reflect.get(wrapped, "accessToken") : undefined
+  if (expectedPriorAccessToken !== undefined && current !== expectedPriorAccessToken) {
+    return null
+  }
+  Reflect.set(wrapped, "accessToken", credentials.accessToken)
+  Reflect.set(wrapped, "refreshToken", credentials.refreshToken)
+  Reflect.set(wrapped, "expiresAt", credentials.expiresAtMs)
+  return `${JSON.stringify(parsed, null, 2)}\n`
 }
 
 export function claudeKeychainWriteArgs(
@@ -116,10 +146,19 @@ export async function writeClaudeCredentials(
   if (platform === "win32") {
     paths.push(...claudeWindowsCredentialPaths(env))
   }
-  for (const path of paths) {
-    await write(path, body)
-  }
   const readExisting = hooks.readFile ?? defaultReadFile
+  if (hooks.source !== "keychain") {
+    for (const path of paths) {
+      const existing = await readExisting(path)
+      const next =
+        existing === null
+          ? body
+          : updateClaudeCredentialBlob(existing, credentials, hooks.expectedPriorAccessToken)
+      if (next !== null) {
+        await write(path, next)
+      }
+    }
+  }
   for (const path of opencodeAuthJsonPaths(env, platform)) {
     const raw = await readExisting(path)
     let existing: unknown = {}
@@ -132,7 +171,7 @@ export async function writeClaudeCredentials(
     }
     await write(path, mergeOpencodeAuthJson(existing, credentials))
   }
-  if (platform === "darwin") {
+  if (platform === "darwin" && hooks.source !== "file") {
     const writeKeychain = hooks.writeKeychain ?? defaultWriteKeychain
     const account = await resolveKeychainAccount(hooks.readKeychainDump ?? defaultReadKeychainDump)
     await writeKeychain(claudeKeychainWriteArgs(credentials, account))

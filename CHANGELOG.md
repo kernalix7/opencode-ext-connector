@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0
+## 0.1.0 - 2026-08-20
 
 - OpenCode plugin exposing Claude, Cursor, and Command Code from existing CLI logins
 - Live model catalogs (Anthropic `/v1/models`, `cursor-agent models`, Command Code `/provider/v1/models`)

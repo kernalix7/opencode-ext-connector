@@ -4,12 +4,14 @@ import { createCommandCodeLanguageModel } from "../../../../src/providers/comman
 import { FakeHttpTransport } from "../../../support/http"
 
 describe("createCommandCodeLanguageModel doStream", () => {
-  it("parses NDJSON incrementally: emits deltas for text-delta with text and data.text variants", async () => {
+  it("parses upstream NDJSON text and delta fields incrementally", async () => {
     // Given
     const transport = new FakeHttpTransport()
     const ndjsonBody = [
+      '{"type":"start"}',
       '{"type":"text-delta","text":"a"}',
-      '{"type":"text-delta","data":{"text":"b"}}',
+      '{"type":"text-delta","delta":"b"}',
+      '{"type":"finish-step","finishReason":"stop","usage":{}}',
       "[DONE]",
     ].join("\n")
     transport.enqueueResponse({
@@ -43,9 +45,11 @@ describe("createCommandCodeLanguageModel doStream", () => {
     const transport = new FakeHttpTransport()
     const ndjsonBody = [
       "",
+      '{"type":"start"}',
       '{"type":"text-delta","text":"first"}',
       "",
-      '{"type":"text-delta","data":{"text":"second"}}',
+      '{"type":"text-delta","delta":"second"}',
+      '{"type":"finish-step","finishReason":"stop","usage":{}}',
       "[DONE]",
       "",
     ].join("\n")
@@ -75,14 +79,45 @@ describe("createCommandCodeLanguageModel doStream", () => {
     expect(textDeltas.map((d) => d.delta)).toEqual(["first", "second"])
   })
 
-  it("emits tool-input and tool-call parts for tool-call NDJSON", async () => {
+  it("preserves UTF-8 characters split across transport chunks", async () => {
+    // Given
+    const transport = new FakeHttpTransport()
+    transport.enqueueChunkedResponse({
+      status: 200,
+      headers: {},
+      body: new TextEncoder().encode('{"type":"text-delta","text":"한글"}\n'),
+    })
+    const model = createCommandCodeLanguageModel({
+      modelId: "default",
+      transport,
+      readAccessToken: async () => "cc-token",
+    })
+    // When
+    const { stream } = await model.doStream({
+      prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+    })
+    const deltas: string[] = []
+    for await (const part of stream) {
+      if (part.type === "text-delta") {
+        deltas.push(part.delta)
+      }
+    }
+    // Then
+    expect(deltas).toEqual(["한글"])
+  })
+
+  it("emits the upstream tool-call and finish parts", async () => {
     // Given
     const transport = new FakeHttpTransport()
     transport.enqueueResponse({
       status: 200,
       headers: {},
       body: new TextEncoder().encode(
-        '{"type":"tool-call","data":{"toolCallId":"t1","toolName":"Read","input":{"path":"a.ts"}}}\n',
+        [
+          '{"type":"start"}',
+          '{"type":"tool-call","toolCallId":"t1","toolName":"Read","input":{"path":"a.ts"}}',
+          '{"type":"finish-step","finishReason":"tool-calls","usage":{}}',
+        ].join("\n"),
       ),
     })
     const model = createCommandCodeLanguageModel({
@@ -101,6 +136,6 @@ describe("createCommandCodeLanguageModel doStream", () => {
       }
     }
     // Then
-    expect(types).toEqual(["stream-start", "tool-input-end", "tool-call", "finish"])
+    expect(types).toEqual(["stream-start", "tool-call", "finish"])
   })
 })
