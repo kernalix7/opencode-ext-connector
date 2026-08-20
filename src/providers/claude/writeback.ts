@@ -50,7 +50,7 @@ export function claudeCredentialsFileBody(credentials: ClaudeCredentials): strin
 
 export function claudeKeychainWriteArgs(
   credentials: ClaudeCredentials,
-  account = CLAUDE_KEYCHAIN_ACCOUNT,
+  account: string = CLAUDE_KEYCHAIN_ACCOUNT,
 ): readonly string[] {
   return [
     "add-generic-password",
