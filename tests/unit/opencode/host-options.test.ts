@@ -36,9 +36,7 @@ describe("pickConnectorOptionsInput", () => {
 
   it("honors writeBackCredentials true from the host", () => {
     // Given / When
-    const options = parseConnectorOptions(
-      pickConnectorOptionsInput({ writeBackCredentials: true }),
-    )
+    const options = parseConnectorOptions(pickConnectorOptionsInput({ writeBackCredentials: true }))
     // Then
     expect(options.writeBackCredentials).toBe(true)
   })
