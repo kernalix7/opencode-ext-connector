@@ -58,26 +58,25 @@ bun install
 bun run build
 ```
 
-In `opencode.json` / `opencode.jsonc` (OpenCode v2 `plugins` field):
+In `opencode.json` / `opencode.jsonc` (official `plugin` field):
 
 ```jsonc
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugins": [
+  "plugin": [
     "file:///absolute/path/to/00G_opencode-ext-connector"
   ]
 }
 ```
 
-Older hosts may still use `"plugin"` instead of `"plugins"`. Absolute paths
-and `file://` URLs are supported.
+Absolute paths and `file://` URLs are supported.
 
 Provider ids: `claude`, `cursor`, `command-code`. Model ids come from live
 catalogs (`/v1/models`, `cursor-agent models`, Command Code `/provider/v1/models`).
 
 ## Options
 
-OpenCode passes the object `options` field through as `ctx.options`.
+OpenCode passes plugin options as the second item of a two-element tuple.
 
 | Option | Default | Meaning |
 |---|---|---|
@@ -93,11 +92,11 @@ unless asked. Enable it explicitly:
 ```jsonc
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugins": [
-    {
-      "package": "file:///absolute/path/to/00G_opencode-ext-connector",
-      "options": { "writeBackCredentials": true }
-    }
+  "plugin": [
+    [
+      "file:///absolute/path/to/00G_opencode-ext-connector",
+      { "writeBackCredentials": true }
+    ]
   ]
 }
 ```

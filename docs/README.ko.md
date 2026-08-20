@@ -38,26 +38,25 @@ bun install
 bun run build
 ```
 
-`opencode.json` / `opencode.jsonc` (OpenCode v2 필드 `plugins`):
+`opencode.json` / `opencode.jsonc` (공식 필드 `plugin`):
 
 ```jsonc
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugins": [
+  "plugin": [
     "file:///absolute/path/to/00G_opencode-ext-connector"
   ]
 }
 ```
 
-구버전 호스트는 `"plugin"`을 쓸 수 있습니다. 절대 경로와 `file://` URL을
-지원합니다.
+절대 경로와 `file://` URL을 지원합니다.
 
 프로바이더 id: `claude`, `cursor`, `command-code`. 모델 id는 라이브 카탈로그에서
 가져옵니다.
 
 ## 옵션
 
-OpenCode는 객체 항목의 `options`를 `ctx.options`로 그대로 넘깁니다.
+OpenCode는 플러그인 옵션을 `[패키지, options]` 튜플의 두 번째 항목으로 넘깁니다.
 
 | 옵션 | 기본값 | 의미 |
 |---|---|---|
@@ -72,11 +71,11 @@ writeback는 기본으로 꺼져 있습니다. 명시적으로 켜십시오:
 ```jsonc
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugins": [
-    {
-      "package": "file:///absolute/path/to/00G_opencode-ext-connector",
-      "options": { "writeBackCredentials": true }
-    }
+  "plugin": [
+    [
+      "file:///absolute/path/to/00G_opencode-ext-connector",
+      { "writeBackCredentials": true }
+    ]
   ]
 }
 ```
