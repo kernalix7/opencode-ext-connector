@@ -17,6 +17,8 @@
     "dist",
     "LICENSE",
     "README.md",
+    "docs/README.ko.md",
+    "CHANGELOG.md",
     "THIRD_PARTY_NOTICES.md"
   ],
   "scripts": {
