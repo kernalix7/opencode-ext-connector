@@ -28,8 +28,10 @@ function cloneHeaders(headers: Readonly<Record<string, string>>): Readonly<Recor
 function cloneResponse(response: HttpResponse): HttpResponse {
   return {
     status: response.status,
+    ...(response.statusText === undefined ? {} : { statusText: response.statusText }),
     headers: cloneHeaders(response.headers),
     body: new Uint8Array(response.body),
+    ...(response.bodyPresent === undefined ? {} : { bodyPresent: response.bodyPresent }),
   }
 }
 
@@ -128,6 +130,7 @@ export class FakeHttpTransport implements HttpTransport {
         const response = cloneResponse(script.response)
         return {
           status: response.status,
+          ...(response.statusText === undefined ? {} : { statusText: response.statusText }),
           headers: response.headers,
           body: (async function* () {
             if (signal.aborted) {
@@ -135,6 +138,7 @@ export class FakeHttpTransport implements HttpTransport {
             }
             yield response.body
           })(),
+          ...(response.bodyPresent === undefined ? {} : { bodyPresent: response.bodyPresent }),
         }
       }
       case "chunked-response": {
@@ -149,8 +153,10 @@ export class FakeHttpTransport implements HttpTransport {
         })()
         return {
           status: response.status,
+          ...(response.statusText === undefined ? {} : { statusText: response.statusText }),
           headers: response.headers,
           body,
+          ...(response.bodyPresent === undefined ? {} : { bodyPresent: response.bodyPresent }),
         }
       }
       case "error":

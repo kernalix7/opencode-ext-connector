@@ -17,6 +17,17 @@ function tokenFromUnknown(value: unknown): string | null {
       return token
     }
   }
+  const commandCode = Reflect.get(value, "commandcode")
+  if (typeof commandCode === "string" && commandCode.length > 0) {
+    return commandCode
+  }
+  if (typeof commandCode === "object" && commandCode !== null) {
+    const type = Reflect.get(commandCode, "type")
+    const access = Reflect.get(commandCode, "access")
+    if (type === "oauth" && typeof access === "string" && access.length > 0) {
+      return access
+    }
+  }
   return null
 }
 
@@ -32,6 +43,7 @@ export function commandCodeCredentialPaths(
   const paths = [
     join(homeDir, ".commandcode", "auth.json"),
     join(homeDir, ".commandcode", "cli-config.json"),
+    join(homeDir, ".pi", "agent", "auth.json"),
     join(homeDir, ".config", "commandcode", "auth.json"),
     join(homeDir, ".config", "commandcode", "cli-config.json"),
     join(homeDir, ".config", "command-code", "auth.json"),

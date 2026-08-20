@@ -74,17 +74,17 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-## thaolaptrinh/commandcode-api-proxy
+## brent-weatherall/opencode-commandcode-provider
 
-- Repository: https://github.com/thaolaptrinh/commandcode-api-proxy
-- Commit: `f4b3390e2f18a42bc164a1a94a4d796e20d19700`
+- Repository: https://github.com/brent-weatherall/opencode-commandcode-provider
+- Commit: `6cf3f22d4aae469db3723e589291c736285373c1`
 - License: MIT
-- Copyright: Copyright (c) 2026 thaolaptrinh
+- Copyright: Copyright (c) 2026 Brent Weatherall
 
 ```
 MIT License
 
-Copyright (c) 2026 thaolaptrinh
+Copyright (c) 2026 Brent Weatherall
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -104,10 +104,3 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
-
-## brent-weatherall/opencode-commandcode-provider
-
-- Repository: https://github.com/brent-weatherall/opencode-commandcode-provider
-- License: MIT
-
-Consult that repository's LICENSE file when copying any of its files. Include the original copyright notice in this document at that time.

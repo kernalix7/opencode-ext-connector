@@ -15,6 +15,14 @@ export type RefreshClaudeOptions = {
   readonly signal: AbortSignal
 }
 
+export type ClaudeRefreshResult =
+  | { readonly ok: true; readonly credentials: ClaudeCredentials }
+  | {
+      readonly ok: false
+      readonly kind: "transient" | "terminal"
+      readonly retryAfterMs: number | null
+    }
+
 function stringField(value: object, key: string): string | null {
   if (!(key in value)) {
     return null
@@ -31,9 +39,14 @@ function numberField(value: object, key: string): number | null {
   return typeof field === "number" && Number.isFinite(field) ? field : null
 }
 
-export async function refreshClaudeAccessToken(
+function retryAfterMs(headers: Readonly<Record<string, string>>): number | null {
+  const seconds = Number.parseInt(headers["retry-after"] ?? "", 10)
+  return Number.isFinite(seconds) && seconds > 0 ? seconds * 1_000 : null
+}
+
+export async function refreshClaudeAccessTokenResult(
   options: RefreshClaudeOptions,
-): Promise<ClaudeCredentials | null> {
+): Promise<ClaudeRefreshResult> {
   const body = new TextEncoder().encode(
     new URLSearchParams({
       grant_type: "refresh_token",
@@ -50,21 +63,36 @@ export async function refreshClaudeAccessToken(
     },
     options.signal,
   )
-  if (response.status >= 400) {
-    return null
-  }
   let parsed: unknown
   try {
     parsed = JSON.parse(new TextDecoder().decode(response.body))
   } catch {
-    return null
+    return {
+      ok: false,
+      kind: "transient",
+      retryAfterMs: retryAfterMs(response.headers),
+    }
   }
   if (typeof parsed !== "object" || parsed === null) {
-    return null
+    return { ok: false, kind: "transient", retryAfterMs: null }
+  }
+  if (response.status < 200 || response.status >= 300) {
+    const oauthError = stringField(parsed, "error")
+    const terminal = new Set([
+      "invalid_grant",
+      "invalid_client",
+      "unauthorized_client",
+      "unsupported_grant_type",
+    ])
+    return {
+      ok: false,
+      kind: oauthError !== null && terminal.has(oauthError) ? "terminal" : "transient",
+      retryAfterMs: retryAfterMs(response.headers),
+    }
   }
   const accessToken = stringField(parsed, "access_token")
   if (accessToken === null) {
-    return null
+    return { ok: false, kind: "transient", retryAfterMs: null }
   }
   const nowMs = options.clock.nowMs()
   const expiresAt = numberField(parsed, "expires_at")
@@ -74,8 +102,18 @@ export async function refreshClaudeAccessToken(
       ? Math.trunc(expiresAt)
       : Math.trunc(nowMs + (expiresIn ?? 36_000) * 1000)
   return {
-    accessToken,
-    refreshToken: stringField(parsed, "refresh_token") ?? options.refreshToken,
-    expiresAtMs,
+    ok: true,
+    credentials: {
+      accessToken,
+      refreshToken: stringField(parsed, "refresh_token") ?? options.refreshToken,
+      expiresAtMs,
+    },
   }
+}
+
+export async function refreshClaudeAccessToken(
+  options: RefreshClaudeOptions,
+): Promise<ClaudeCredentials | null> {
+  const result = await refreshClaudeAccessTokenResult(options)
+  return result.ok ? result.credentials : null
 }

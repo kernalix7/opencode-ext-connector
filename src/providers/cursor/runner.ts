@@ -34,6 +34,7 @@ export async function runCursorAgentPrompt(
         cwd,
         "--model",
         model,
+        ...(env["CURSOR_ACP_FORCE"] === "false" ? [] : ["--force"]),
       ],
       {
         signal,

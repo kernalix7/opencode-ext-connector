@@ -11,14 +11,18 @@ export type HttpRequest = {
 
 export type HttpResponse = {
   readonly status: number
+  readonly statusText?: string
   readonly headers: HttpHeaders
   readonly body: Uint8Array
+  readonly bodyPresent?: boolean
 }
 
 export type HttpStreamResponse = {
   readonly status: number
+  readonly statusText?: string
   readonly headers: HttpHeaders
   readonly body: AsyncIterable<Uint8Array>
+  readonly bodyPresent?: boolean
 }
 
 export interface HttpTransport {

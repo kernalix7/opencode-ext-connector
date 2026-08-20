@@ -1,9 +1,10 @@
-// Derived from thaolaptrinh/commandcode-api-proxy@f4b3390e2f18a42bc164a1a94a4d796e20d19700.
+// Derived from brent-weatherall/opencode-commandcode-provider src/model.ts.
 // Licensed under MIT. See THIRD_PARTY_NOTICES.md.
 
 import type {
   LanguageModelV3,
   LanguageModelV3CallOptions,
+  LanguageModelV3Content,
   LanguageModelV3FinishReason,
   LanguageModelV3StreamPart,
   LanguageModelV3StreamResult,
@@ -13,50 +14,24 @@ import type {
 import { AdapterError, OperationCancelledError } from "../../core/errors"
 import type { HttpTransport } from "../../core/http"
 import { parseProviderId } from "../../core/ids"
-import { openHttpBody } from "../../http/read-body"
+import { type HttpBodyStream, openHttpBody } from "../../http/read-body"
+import { readCommandCodeCliVersion } from "./cli-version"
 import { emitCommandCodeChunks } from "./emit-stream"
-import { parseNdjsonStream } from "./ndjson"
 import { type BuildBodyOptions, type BuildHeadersOptions, buildBody, buildHeaders } from "./request"
-
-const CLI_VERSION = "0.1.0"
+import {
+  commandCodeHttpError,
+  createCommandCodeRequestLifecycle,
+  readCommandCodeErrorBody,
+} from "./request-lifecycle"
 
 export type CommandCodeLanguageModelOptions = {
   readonly modelId: string
   readonly transport: HttpTransport
   readonly readAccessToken: (signal: AbortSignal) => Promise<string | null>
-}
-
-function textFromContentParts(parts: readonly { readonly type: string }[]): string {
-  const texts: string[] = []
-  for (const part of parts) {
-    if (part.type === "text" && "text" in part && typeof part.text === "string") {
-      texts.push(part.text)
-    }
-  }
-  return texts.join("")
-}
-
-function promptMessages(
-  prompt: LanguageModelV3CallOptions["prompt"],
-): readonly { readonly role: string; readonly content: string }[] {
-  const messages: { role: string; content: string }[] = []
-  for (const message of prompt) {
-    switch (message.role) {
-      case "system":
-        messages.push({ role: "system", content: message.content })
-        break
-      case "user":
-      case "assistant":
-        messages.push({
-          role: message.role,
-          content: textFromContentParts(message.content),
-        })
-        break
-      case "tool":
-        break
-    }
-  }
-  return messages
+  readonly readCliVersion?: () => string | null
+  readonly baseURL?: string
+  readonly headers?: Readonly<Record<string, string>>
+  readonly timeoutMs?: number
 }
 
 function buildRequestOptions(
@@ -64,18 +39,35 @@ function buildRequestOptions(
   call: LanguageModelV3CallOptions,
   token: string,
 ): { readonly url: string; readonly headers: Record<string, string>; readonly body: Uint8Array } {
-  const messages = promptMessages(call.prompt)
   const bodyOptions: BuildBodyOptions = {
     modelId: options.modelId,
-    messages,
+    call,
+  }
+  const cliVersion =
+    options.readCliVersion === undefined ? readCommandCodeCliVersion() : options.readCliVersion()
+  if (cliVersion === null) {
+    throw new AdapterError({
+      operation: "command-code-cli-version",
+      retryable: false,
+      cause: null,
+      providerId: parseProviderId("command-code"),
+    })
   }
   const headerOptions: BuildHeadersOptions = {
     token,
-    cliVersion: CLI_VERSION,
+    cliVersion,
   }
   return {
-    url: "https://api.commandcode.ai/alpha/generate",
-    headers: buildHeaders(headerOptions),
+    url: `${(options.baseURL ?? "https://api.commandcode.ai").replace(/\/+$/, "")}/alpha/generate`,
+    headers: {
+      ...buildHeaders(headerOptions),
+      ...options.headers,
+      ...Object.fromEntries(
+        Object.entries(call.headers ?? {}).filter(
+          (entry): entry is [string, string] => entry[1] !== undefined,
+        ),
+      ),
+    },
     body: new TextEncoder().encode(JSON.stringify(buildBody(bodyOptions))),
   }
 }
@@ -96,6 +88,82 @@ function createFinishReason(): LanguageModelV3FinishReason {
   return { unified: "stop", raw: "stop" }
 }
 
+async function streamCommandCode(
+  options: CommandCodeLanguageModelOptions,
+  call: LanguageModelV3CallOptions,
+): Promise<LanguageModelV3StreamResult> {
+  if (call.abortSignal?.aborted === true) {
+    throw new OperationCancelledError("command-code-stream")
+  }
+  const lifecycle = createCommandCodeRequestLifecycle(
+    call.abortSignal,
+    options.timeoutMs ?? 5 * 60 * 1_000,
+  )
+  const token = await options.readAccessToken(lifecycle.signal)
+  if (token === null) {
+    lifecycle.dispose()
+    throw new AdapterError({
+      operation: "command-code-missing-credentials",
+      retryable: false,
+      cause: null,
+      providerId: parseProviderId("command-code"),
+    })
+  }
+  const requestOptions = buildRequestOptions(options, call, token)
+  let opened: HttpBodyStream
+  try {
+    opened = await openHttpBody(
+      options.transport,
+      {
+        method: "POST",
+        url: requestOptions.url,
+        headers: requestOptions.headers,
+        body: requestOptions.body,
+      },
+      lifecycle.signal,
+    )
+  } catch (error) {
+    lifecycle.dispose()
+    throw error
+  }
+  if (opened.status < 200 || opened.status >= 300) {
+    const errorBody = await readCommandCodeErrorBody(opened.chunks)
+    lifecycle.dispose()
+    throw commandCodeHttpError(opened.status, opened.statusText, errorBody, options.modelId)
+  }
+  if (!opened.bodyPresent) {
+    lifecycle.dispose()
+    throw new Error(`Command Code API returned no body [model=${options.modelId}]`)
+  }
+  let cancelled = false
+  const stream = new ReadableStream<LanguageModelV3StreamPart>({
+    async start(controller): Promise<void> {
+      try {
+        await emitCommandCodeChunks(opened.chunks, controller)
+      } catch (error) {
+        if (!cancelled) {
+          controller.enqueue({ type: "error", error })
+        }
+      } finally {
+        lifecycle.dispose()
+        if (!cancelled) {
+          controller.close()
+        }
+      }
+    },
+    cancel(): void {
+      cancelled = true
+      lifecycle.abort()
+      lifecycle.dispose()
+    },
+  })
+  return {
+    stream,
+    request: { body: new TextDecoder().decode(requestOptions.body) },
+    response: { headers: opened.headers },
+  }
+}
+
 export function createCommandCodeLanguageModel(
   options: CommandCodeLanguageModelOptions,
 ): LanguageModelV3 {
@@ -106,91 +174,58 @@ export function createCommandCodeLanguageModel(
     modelId: options.modelId,
     supportedUrls: {},
     doGenerate: async (call: LanguageModelV3CallOptions) => {
-      const signal = call.abortSignal ?? new AbortController().signal
-      if (signal.aborted) {
-        throw new OperationCancelledError("command-code-generate")
+      const { stream } = await streamCommandCode(options, call)
+      const content: LanguageModelV3Content[] = []
+      const text: string[] = []
+      const reasoning: string[] = []
+      let finish = createFinishReason()
+      let usage = createUsage()
+      const reader = stream.getReader()
+      try {
+        for (;;) {
+          const next = await reader.read()
+          if (next.done) {
+            break
+          }
+          const part = next.value
+          switch (part.type) {
+            case "text-delta":
+              text.push(part.delta)
+              break
+            case "reasoning-delta":
+              reasoning.push(part.delta)
+              break
+            case "tool-call":
+              content.push({
+                type: "tool-call",
+                toolCallId: part.toolCallId,
+                toolName: part.toolName,
+                input: part.input,
+              })
+              break
+            case "finish":
+              finish = part.finishReason
+              usage = part.usage
+              break
+            case "error":
+              throw part.error
+          }
+        }
+      } finally {
+        reader.releaseLock()
+        await stream.cancel()
       }
-      const token = await options.readAccessToken(signal)
-      if (token === null) {
-        throw new AdapterError({
-          operation: "command-code-missing-credentials",
-          retryable: false,
-          cause: null,
-          providerId: provider,
-        })
+      const textValue = text.join("")
+      if (textValue.length > 0) {
+        content.unshift({ type: "text", text: textValue })
       }
-      const requestOptions = buildRequestOptions(options, call, token)
-      const response = await options.transport.request(
-        {
-          method: "POST",
-          url: requestOptions.url,
-          headers: requestOptions.headers,
-          body: requestOptions.body,
-        },
-        signal,
-      )
-      if (response.status >= 400) {
-        throw new AdapterError({
-          operation: "command-code-http",
-          retryable: response.status >= 500,
-          cause: null,
-          providerId: provider,
-        })
+      const reasoningValue = reasoning.join("")
+      if (reasoningValue.length > 0) {
+        content.unshift({ type: "reasoning", text: reasoningValue })
       }
-      const deltas = parseNdjsonStream(response.body)
-      const text = deltas.map((d) => d.delta).join("")
-      return {
-        content: [{ type: "text", text }],
-        finishReason: createFinishReason(),
-        usage: createUsage(),
-        warnings: [],
-      }
+      return { content, finishReason: finish, usage, warnings: [] }
     },
-    doStream: async (call: LanguageModelV3CallOptions): Promise<LanguageModelV3StreamResult> => {
-      const signal = call.abortSignal ?? new AbortController().signal
-      if (signal.aborted) {
-        throw new OperationCancelledError("command-code-stream")
-      }
-      const token = await options.readAccessToken(signal)
-      if (token === null) {
-        throw new AdapterError({
-          operation: "command-code-missing-credentials",
-          retryable: false,
-          cause: null,
-          providerId: provider,
-        })
-      }
-      const requestOptions = buildRequestOptions(options, call, token)
-      const opened = await openHttpBody(
-        options.transport,
-        {
-          method: "POST",
-          url: requestOptions.url,
-          headers: requestOptions.headers,
-          body: requestOptions.body,
-        },
-        signal,
-      )
-      if (opened.status >= 400) {
-        throw new AdapterError({
-          operation: "command-code-http",
-          retryable: opened.status >= 500,
-          cause: null,
-          providerId: provider,
-        })
-      }
-      const stream = new ReadableStream<LanguageModelV3StreamPart>({
-        async start(controller): Promise<void> {
-          await emitCommandCodeChunks(opened.chunks, controller)
-          controller.enqueue({
-            type: "finish",
-            finishReason: createFinishReason(),
-            usage: createUsage(),
-          })
-          controller.close()
-        },
-      })
-      return { stream }
-    },
+    doStream: (call: LanguageModelV3CallOptions): Promise<LanguageModelV3StreamResult> =>
+      streamCommandCode(options, call),
   }
 }

@@ -29,13 +29,15 @@ export function parseClaudeCredentials(value: unknown): ClaudeCredentials | null
     return null
   }
   const accessToken = stringField(oauth, "accessToken")
-  if (accessToken === null) {
+  const refreshToken = stringField(oauth, "refreshToken")
+  const expiresAtMs = numberField(oauth, "expiresAt")
+  if (accessToken === null || refreshToken === null || expiresAtMs === null) {
     return null
   }
   return {
     accessToken,
-    refreshToken: stringField(oauth, "refreshToken"),
-    expiresAtMs: numberField(oauth, "expiresAt"),
+    refreshToken,
+    expiresAtMs,
   }
 }
 

@@ -4,7 +4,7 @@ import { createCommandCodeLanguageModel } from "../../../../src/providers/comman
 import { FakeHttpTransport } from "../../../support/http"
 
 describe("createCommandCodeLanguageModel request shape", () => {
-  it("posts /alpha/generate with full CLI body: config, memory, taste, skills, permissionMode, threadId, params.stream=true", async () => {
+  it("posts /alpha/generate with the upstream config and params envelope", async () => {
     // Given
     const transport = new FakeHttpTransport()
     transport.enqueueResponse({
@@ -33,19 +33,21 @@ describe("createCommandCodeLanguageModel request shape", () => {
       throw new Error("request body not found")
     }
     const body = JSON.parse(new TextDecoder().decode(requestBody))
-    expect(body).toHaveProperty("config")
-    expect(body).toHaveProperty("memory")
-    expect(body).toHaveProperty("taste")
-    expect(body).toHaveProperty("skills")
+    expect(typeof body.config.workingDir).toBe("string")
+    expect(typeof body.memory).toBe("string")
+    expect(typeof body.taste).toBe("string")
+    expect(body.skills).toBeNull()
     expect(body).toHaveProperty("permissionMode")
-    expect(body).toHaveProperty("threadId")
     expect(body).toHaveProperty("params")
     expect(body.params).toHaveProperty("stream", true)
     expect(body.params).toHaveProperty("model", "default")
     expect(body.params).toHaveProperty("messages")
+    expect(body.params).toHaveProperty("tools")
+    expect(body.params).toHaveProperty("system")
+    expect(body.params).toHaveProperty("max_tokens", 16_384)
   })
 
-  it("includes required CLI headers: x-cli-environment, x-session-id, x-project-slug, traceparent", async () => {
+  it("includes the upstream CLI headers with the detected version", async () => {
     // Given
     const transport = new FakeHttpTransport()
     transport.enqueueResponse({
@@ -69,12 +71,9 @@ describe("createCommandCodeLanguageModel request shape", () => {
       throw new Error("request not found")
     }
     const headers = request.headers
-    expect(headers["user-agent"]?.startsWith("commandcode-cli/")).toBe(true)
-    expect(headers["x-cli-environment"]).toBeDefined()
-    expect(headers["x-session-id"]).toBeDefined()
+    expect(headers["x-cli-environment"]).toBe("production")
     expect(headers["x-command-code-version"]).toBeDefined()
     expect(headers["authorization"]).toBe("Bearer cc-token")
-    expect(headers["x-project-slug"]).toBeDefined()
-    expect(headers["traceparent"]).toBeDefined()
+    expect(headers["x-project-slug"]).toBe("opencode")
   })
 })

@@ -37,10 +37,11 @@ export type CursorAcquireInput = {
   readonly model: string
   readonly executable: string
   readonly resume?: string
+  readonly sessionKey?: string
 }
 
 export type CursorAgentPool = {
-  readonly buildCursorPoolKey: (workspace: string, model: string) => string
+  readonly buildCursorPoolKey: (workspace: string, model: string, sessionKey?: string) => string
   readonly acquire: (
     input: CursorAcquireInput,
   ) => Promise<{ readonly reused: boolean; readonly child: CursorPooledChild }>
@@ -49,8 +50,8 @@ export type CursorAgentPool = {
   readonly [Symbol.asyncDispose]: () => Promise<void>
 }
 
-export function buildCursorPoolKey(workspace: string, model: string): string {
-  return `${workspace}\0${model}`
+export function buildCursorPoolKey(workspace: string, model: string, sessionKey?: string): string {
+  return `${workspace}\0${model}${sessionKey === undefined ? "" : `\0${sessionKey}`}`
 }
 
 export function createCursorAgentPool(options: CursorAgentPoolOptions): CursorAgentPool {
@@ -78,12 +79,8 @@ export function createCursorAgentPool(options: CursorAgentPoolOptions): CursorAg
   const acquire = async (
     input: CursorAcquireInput,
   ): Promise<{ readonly reused: boolean; readonly child: CursorPooledChild }> => {
-    const key = buildCursorPoolKey(input.workspace, input.model)
+    const key = buildCursorPoolKey(input.workspace, input.model, input.sessionKey)
     const existing = pool.get(key)
-    if (existing?.child.isAlive() === true) {
-      armIdle(key, existing)
-      return { reused: true, child: existing.child }
-    }
     if (existing !== undefined) {
       evict(key)
     }
@@ -99,6 +96,9 @@ export function createCursorAgentPool(options: CursorAgentPoolOptions): CursorAg
     ]
     if (input.resume !== undefined) {
       args.push("--resume", input.resume)
+    }
+    if (env["CURSOR_ACP_FORCE"] !== "false") {
+      args.push("--force")
     }
     const child = options.spawn(input.executable, args, { cwd: input.workspace, env })
     const entry: PoolEntry = { child, idleTimer: null }
