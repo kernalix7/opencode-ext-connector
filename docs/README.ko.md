@@ -61,13 +61,13 @@ OpenCode는 객체 항목의 `options`를 `ctx.options`로 그대로 넘깁니�
 
 | 옵션 | 기본값 | 의미 |
 |---|---|---|
-| `writeBackCredentials` | `true` | Claude OAuth 갱신 후 파일, Keychain(macOS), OpenCode `auth.json`에 기록 |
+| `writeBackCredentials` | `false` | Claude OAuth 갱신 후 파일, Keychain(macOS), OpenCode `auth.json`에 기록 |
 | `catalogReloadMs` | `300000` | 카탈로그 스냅샷 주기. `0`이면 끔 |
 | `snapshotTimeoutMs` | `30000` | 프로바이더별 스냅샷 기한 |
 | `health.initialBackoffMs` | `1000` | 스냅샷 실패 백오프 |
 | `health.maximumBackoffMs` | `60000` | 백오프 상한 |
 
-writeback 끄기:
+writeback는 기본으로 꺼져 있습니다. 명시적으로 켜십시오:
 
 ```jsonc
 {
@@ -75,11 +75,14 @@ writeback 끄기:
   "plugins": [
     {
       "package": "file:///absolute/path/to/00G_opencode-ext-connector",
-      "options": { "writeBackCredentials": false }
+      "options": { "writeBackCredentials": true }
     }
   ]
 }
 ```
+
+끄면 갱신된 Claude 토큰은 메모리에만 있습니다. 저장된 refresh 토큰이 회전하면
+다음 시작 때 안 맞을 수 있습니다 — 파일까지 쓰려면 `writeBackCredentials: true`.
 
 ## 동작
 
