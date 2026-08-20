@@ -53,7 +53,7 @@ export const ConnectorOptionsSchema: z.ZodType<ConnectorOptions, ConnectorOption
     })
     return Object.freeze({
       snapshotTimeoutMs: input.snapshotTimeoutMs ?? 30_000,
-      writeBackCredentials: input.writeBackCredentials ?? true,
+      writeBackCredentials: input.writeBackCredentials ?? false,
       catalogReloadMs: input.catalogReloadMs ?? 300_000,
       health,
     })

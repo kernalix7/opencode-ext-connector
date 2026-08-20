@@ -11,7 +11,7 @@ describe("connector options", () => {
     // Then
     expect(options).toEqual({
       snapshotTimeoutMs: 30_000,
-      writeBackCredentials: true,
+      writeBackCredentials: false,
       catalogReloadMs: 300_000,
       health: { initialBackoffMs: 1_000, maximumBackoffMs: 60_000 },
     })
@@ -27,7 +27,7 @@ describe("connector options", () => {
     // Then
     expect(options).toEqual({
       snapshotTimeoutMs: 50,
-      writeBackCredentials: true,
+      writeBackCredentials: false,
       catalogReloadMs: 300_000,
       health: { initialBackoffMs: 5, maximumBackoffMs: 10 },
     })
