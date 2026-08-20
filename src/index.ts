@@ -62,17 +62,12 @@ export const plugin: Plugin = define({
       intervalMs: connectorOptions.catalogReloadMs,
       reload: () => context.catalog.reload(),
     })
-    const stopProcessExit = bindProcessExit(async () => {
-      await catalogReload.dispose()
-      await cursorPool.dispose()
-    })
-    await setupConnector({
+    const connector = await setupConnector({
       catalog: {
         transform: async (callback) => {
           const registration = await context.catalog.transform(callback)
           return {
             dispose: async (): Promise<void> => {
-              stopProcessExit()
               await catalogReload.dispose()
               await cursorPool.dispose()
               await registration.dispose()
@@ -146,6 +141,11 @@ export const plugin: Plugin = define({
         }
         return null
       },
+    })
+    bindProcessExit(async () => {
+      await catalogReload.dispose()
+      await cursorPool.dispose()
+      await connector.dispose()
     })
   },
 })
