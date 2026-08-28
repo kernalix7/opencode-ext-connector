@@ -219,17 +219,7 @@ export function cursorToolParts(
   const toolName = resolveToolName(rawToolName, allowedTools)
   const args = "arguments" in parsed ? Reflect.get(parsed, "arguments") : nested?.args
   if (toolName === null) {
-    return subtype === "started"
-      ? [
-          {
-            type: "tool-call",
-            toolCallId: id,
-            toolName: rawToolName,
-            input: JSON.stringify(args ?? {}),
-            providerExecuted: true,
-          },
-        ]
-      : []
+    return []
   }
   const input = JSON.stringify(normalizeArguments(args ?? {}, allowedTools.get(toolName)))
   if (subtype === "delta") {
