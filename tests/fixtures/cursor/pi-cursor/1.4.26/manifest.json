@@ -1,0 +1,11 @@
+{
+  "upstreamRepository": "https://github.com/Rahularya01/pi-cursor",
+  "upstreamVersion": "1.4.26",
+  "upstreamCommit": "d80c12704a5136b441e6d86d1cbbd5f05d5fbcf6",
+  "protoFile": "proto/agent.proto",
+  "protoSha256": "0760b83d6a9a5ad3911aaa00a345b71bd1147178b667917fd17e5826661af47c",
+  "fixture": "agent-client-message.pb.base64",
+  "fixtureEncoding": "base64",
+  "fixtureSha256": "8cce403f5f76e9cfe3dc8f74e37dbe7b265eefa1d5f7ce13c9825ccc310843c0",
+  "evidence": "Offline AgentClientMessage bytes constructed from pinned request-build.ts semantics and pinned agent.proto field descriptors."
+}
