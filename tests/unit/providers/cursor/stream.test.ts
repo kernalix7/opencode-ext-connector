@@ -3,6 +3,32 @@ import { describe, expect, it } from "bun:test"
 import { createCursorLanguageModel } from "../../../../src/providers/cursor/language-model"
 
 describe("createCursorLanguageModel doStream", () => {
+  it("emits stream-start before the first NDJSON line", async () => {
+    // Given
+    const gate = Promise.withResolvers<void>()
+    const model = createCursorLanguageModel({
+      modelId: "auto",
+      runPrompt: async () => "should not be called",
+      streamNdjson: async function* (_prompt: string, _signal: AbortSignal) {
+        await gate.promise
+        yield '{"type":"assistant","message":{"content":[{"type":"text","text":"hi"}]}}'
+      },
+    })
+
+    // When
+    const { stream } = await model.doStream({
+      prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+    })
+    const reader = stream.getReader()
+    const first = await reader.read()
+    gate.resolve()
+    await reader.cancel()
+
+    // Then
+    expect(first.done).toBe(false)
+    expect(first.value?.type).toBe("stream-start")
+  })
+
   it("yields incremental text-delta parts from streamNdjson NDJSON lines", async () => {
     // Given
     const model = createCursorLanguageModel({
@@ -188,31 +214,32 @@ describe("createCursorLanguageModel doStream", () => {
     await expect(consume()).rejects.toThrow("boom")
   })
 
-  it("marks Cursor-owned tools provider-executed and keeps reading", async () => {
+  it("skips Cursor-owned tools OpenCode does not expose and keeps reading", async () => {
     // Given
     const model = createCursorLanguageModel({
       modelId: "auto",
       runPrompt: async () => "",
       streamNdjson: async function* () {
-        yield '{"type":"tool_call","subtype":"started","call_id":"native-1","name":"CursorNative","arguments":{}}'
+        yield '{"type":"tool_call","subtype":"started","call_id":"native-1","name":"getMcpTools","arguments":{}}'
         yield '{"type":"assistant","text":"continued"}'
       },
     })
     const { stream } = await model.doStream({
       prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+      tools: [{ type: "function", name: "read", inputSchema: { type: "object" } }],
     })
     // When
-    let providerExecuted = false
+    const toolNames: string[] = []
     let text = ""
     for await (const part of stream) {
       if (part.type === "tool-call") {
-        providerExecuted = part.providerExecuted ?? false
+        toolNames.push(part.toolName)
       } else if (part.type === "text-delta") {
         text += part.delta
       }
     }
     // Then
-    expect(providerExecuted).toBe(true)
+    expect(toolNames).toEqual([])
     expect(text).toBe("continued")
   })
 })
