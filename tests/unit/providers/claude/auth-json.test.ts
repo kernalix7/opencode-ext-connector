@@ -1,12 +1,10 @@
 import { describe, expect, it } from "bun:test"
 
-import {
-  mergeOpencodeAuthJson,
-  opencodeAuthJsonPaths,
-} from "../../../../src/providers/claude/auth-json"
+import { opencodeAuthJsonPaths } from "../../../../src/opencode/auth-store"
+import { mergeOpencodeAuthJson } from "../../../../src/providers/claude/auth-json"
 
 describe("opencode auth.json", () => {
-  it("includes xdg and windows paths", () => {
+  it("keeps an explicit XDG profile isolated from Windows fallback paths", () => {
     // Given / When
     const paths = opencodeAuthJsonPaths(
       { XDG_DATA_HOME: "/xdg-data", LOCALAPPDATA: "C:\\Local" },
@@ -14,7 +12,7 @@ describe("opencode auth.json", () => {
     )
     // Then
     expect(paths.some((path) => path.endsWith("/xdg-data/opencode/auth.json"))).toBe(true)
-    expect(paths.some((path) => path.includes("Local") && path.endsWith("auth.json"))).toBe(true)
+    expect(paths.some((path) => path.includes("Local") && path.endsWith("auth.json"))).toBe(false)
   })
 
   it("merges anthropic oauth without dropping other providers", () => {
