@@ -16,12 +16,22 @@ describe("listClaudeModels", () => {
       ),
     })
     // When
-    const models = await listClaudeModels(transport, "token", new AbortController().signal)
+    const models = await listClaudeModels({
+      transport,
+      token: "token",
+      version: "2.1.217",
+      signal: new AbortController().signal,
+    })
     // Then
     expect(models).toEqual([
       { id: parseModelId("claude-sonnet-4-6") },
       { id: parseModelId("claude-opus-4-6") },
     ])
-    expect(transport.requests.at(0)?.url).toBe("https://api.anthropic.com/v1/models")
+    const request = transport.requests.at(0)
+    expect(request?.url).toBe("https://api.anthropic.com/v1/models")
+    expect(request?.headers["anthropic-beta"]).toContain("oauth-2025-04-20")
+    expect(request?.headers["anthropic-dangerous-direct-browser-access"]).toBe("true")
+    expect(request?.headers["x-app"]).toBe("cli")
+    expect(request?.headers["user-agent"]).toContain("claude-cli/")
   })
 })

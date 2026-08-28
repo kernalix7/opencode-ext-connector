@@ -38,29 +38,32 @@ function modelFromBody(body: RequestInit["body"]): string {
   return "unknown"
 }
 
-function requestHeaders(
-  input: string | URL | Request,
-  init: RequestInit,
-  accessToken: string,
-  modelId: string,
-  version: string,
+export type ClaudeCompatibilityHeaderOptions = {
+  readonly accessToken: string
+  readonly modelId: string
+  readonly version: string
+  readonly incoming?: Headers
+}
+
+export function createClaudeCompatibilityHeaders(
+  options: ClaudeCompatibilityHeaderOptions,
 ): Headers {
-  const headers = new Headers(input instanceof Request ? input.headers : undefined)
-  new Headers(init.headers).forEach((value, key) => {
-    headers.set(key, value)
-  })
+  const headers = new Headers(options.incoming)
   const incoming = (headers.get("anthropic-beta") ?? "")
     .split(",")
     .map((value) => value.trim())
     .filter((value) => value.length > 0)
-  headers.set("authorization", `Bearer ${accessToken}`)
+  headers.set("authorization", `Bearer ${options.accessToken}`)
   headers.set("anthropic-version", "2023-06-01")
-  headers.set("anthropic-beta", [...new Set([...claudeModelBetas(modelId), ...incoming])].join(","))
+  headers.set(
+    "anthropic-beta",
+    [...new Set([...claudeModelBetas(options.modelId), ...incoming])].join(","),
+  )
   headers.set("anthropic-dangerous-direct-browser-access", "true")
   headers.set("x-app", "cli")
   headers.set(
     "user-agent",
-    process.env["ANTHROPIC_USER_AGENT"] ?? `claude-cli/${version} (external, sdk-cli)`,
+    process.env["ANTHROPIC_USER_AGENT"] ?? `claude-cli/${options.version} (external, sdk-cli)`,
   )
   headers.set("x-client-request-id", randomUUID())
   headers.set("X-Claude-Code-Session-Id", sessionId)
@@ -137,12 +140,22 @@ export function createClaudeCompatibilityFetch(options: {
     const modelId = modelFromBody(requestInit.body)
     const body = transformClaudeBody(requestInit.body, options.version)
     const url = requestUrl(input)
-    const send = (accessToken: string): Promise<Response> =>
-      fetchWithRetry(url, {
+    const send = (accessToken: string): Promise<Response> => {
+      const incoming = new Headers(input instanceof Request ? input.headers : undefined)
+      new Headers(requestInit.headers).forEach((value, key) => {
+        incoming.set(key, value)
+      })
+      return fetchWithRetry(url, {
         ...requestInit,
         body,
-        headers: requestHeaders(input, requestInit, accessToken, modelId, options.version),
+        headers: createClaudeCompatibilityHeaders({
+          accessToken,
+          modelId,
+          version: options.version,
+          incoming,
+        }),
       })
+    }
     let response = await send(token)
     if (response.status === 401) {
       const refreshed = await options.forceRefreshAccessToken(signal)
