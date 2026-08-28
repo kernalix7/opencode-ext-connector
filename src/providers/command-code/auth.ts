@@ -70,7 +70,7 @@ export async function readCommandCodeAccessToken(
   if (envToken !== undefined && envToken.length > 0) {
     return envToken
   }
-  const home = lookup.homeDir ?? homedir()
+  const home = lookup.homeDir ?? env["HOME"] ?? homedir()
   const candidates = commandCodeCredentialPaths(home, env)
   for (const candidate of candidates) {
     try {
