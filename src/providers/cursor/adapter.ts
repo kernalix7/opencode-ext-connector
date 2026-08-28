@@ -5,8 +5,8 @@ import { createAsyncDisposable } from "../../core/lifecycle"
 import type { AdapterModel, ProviderSnapshot } from "../../core/models"
 
 export type CursorAdapterOptions = {
-  readonly resolveAgent: (signal: AbortSignal) => Promise<string | null>
-  readonly listModels: (agent: string, signal: AbortSignal) => Promise<readonly AdapterModel[]>
+  readonly readAccessToken: (signal: AbortSignal) => Promise<string | null>
+  readonly listModels: (token: string, signal: AbortSignal) => Promise<readonly AdapterModel[]>
 }
 
 export function createCursorAdapter(options: CursorAdapterOptions): ProviderAdapter {
@@ -19,12 +19,12 @@ export function createCursorAdapter(options: CursorAdapterOptions): ProviderAdap
       if (signal.aborted) {
         throw new OperationCancelledError("cursor-snapshot")
       }
-      const agent = await options.resolveAgent(signal)
-      if (agent === null) {
-        return { status: "unavailable", providerId, reason: "process-error" }
+      const token = await options.readAccessToken(signal)
+      if (token === null) {
+        return { status: "unavailable", providerId, reason: "invalid-data" }
       }
       try {
-        const models = await options.listModels(agent, signal)
+        const models = await options.listModels(token, signal)
         if (models.length === 0) {
           return lastModels === null
             ? { status: "unavailable", providerId, reason: "invalid-data" }
@@ -34,8 +34,8 @@ export function createCursorAdapter(options: CursorAdapterOptions): ProviderAdap
         return { status: "ready", providerId, models }
       } catch {
         return lastModels === null
-          ? { status: "unavailable", providerId, reason: "process-error" }
-          : { status: "stale", providerId, models: lastModels, reason: "process-error" }
+          ? { status: "unavailable", providerId, reason: "transport-error" }
+          : { status: "stale", providerId, models: lastModels, reason: "transport-error" }
       }
     },
     dispose: disposal.dispose,
