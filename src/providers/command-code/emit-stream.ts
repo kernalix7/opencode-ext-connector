@@ -9,6 +9,7 @@ import type {
 import { z } from "zod"
 
 import { commandCodeNdjsonError } from "./errors"
+import { commandCodeRecords } from "./record-stream"
 
 const tokenDetailsSchema = z
   .object({
@@ -224,9 +225,7 @@ export async function emitCommandCodeChunks(
   chunks: AsyncIterable<Uint8Array>,
   controller: ReadableStreamDefaultController<LanguageModelV3StreamPart>,
 ): Promise<void> {
-  let buffer = ""
   let finished = false
-  const decoder = new TextDecoder()
   const consumeLine = (line: string): void => {
     const trimmed = line.trim()
     if (trimmed.length === 0 || trimmed.startsWith(":") || trimmed === "[DONE]") {
@@ -245,16 +244,5 @@ export async function emitCommandCodeChunks(
       finished = true
     }
   }
-  for await (const chunk of chunks) {
-    buffer += decoder.decode(chunk, { stream: true })
-    const lines = buffer.split("\n")
-    buffer = lines.pop() ?? ""
-    for (const line of lines) {
-      consumeLine(line.endsWith("\r") ? line.slice(0, -1) : line)
-    }
-  }
-  buffer += decoder.decode()
-  if (buffer.trim().length > 0) {
-    consumeLine(buffer)
-  }
+  for await (const line of commandCodeRecords(chunks)) consumeLine(line)
 }
