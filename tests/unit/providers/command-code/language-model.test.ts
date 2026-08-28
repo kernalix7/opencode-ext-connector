@@ -160,6 +160,35 @@ describe("createCommandCodeLanguageModel", () => {
     })
   })
 
+  it("aborts the lifecycle when an oversized non-success body is rejected", async () => {
+    // Given
+    const transport = new FakeHttpTransport()
+    transport.enqueueResponse({
+      status: 413,
+      headers: {},
+      body: new Uint8Array(64 * 1024 + 1),
+    })
+    const lifecycleSignal = Promise.withResolvers<AbortSignal>()
+    const model = createCommandCodeLanguageModel({
+      modelId: "default",
+      transport,
+      readAccessToken: async (signal) => {
+        lifecycleSignal.resolve(signal)
+        return "cc-token"
+      },
+      readCliVersion,
+    })
+
+    // When
+    const generation = model.doGenerate({
+      prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+    })
+
+    // Then
+    await expect(generation).rejects.toMatchObject({ reason: "response-body-too-large" })
+    expect((await lifecycleSignal.promise).aborted).toBe(true)
+  })
+
   it("rejects a successful response without a body as a typed provider error", async () => {
     // Given
     const transport = new FakeHttpTransport()
