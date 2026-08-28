@@ -1,122 +1,103 @@
-import type { AuthHook, Hooks, Plugin as V1Plugin } from "@opencode-ai/plugin"
+import type { Hooks, Plugin as V1Plugin } from "@opencode-ai/plugin"
 
 import type { ProviderAdapter } from "../core/adapter"
 import type { Clock } from "../core/clock"
-import { createDeadline } from "../core/deadline"
-import type { ProviderSnapshot } from "../core/models"
+import type { HealthPolicy } from "../core/health"
+import type { HttpTransport } from "../core/http"
+import { createAsyncDisposable } from "../core/lifecycle"
+import type { ConnectorLogger } from "../core/logger"
+import { parseConnectorOptions } from "../core/options"
+import type { OpenCodeAuthStore } from "./auth-store"
+import { type HealthStore, refreshAdaptersWithHealth } from "./health-refresh"
+import { pickConnectorOptionsInput } from "./host-options"
+import type { ProviderEntry, ProviderEntryDeps } from "./provider-entry"
+import { scheduleCatalogReload } from "./reload"
+import { createV1CatalogProjector } from "./v1-catalog"
 
 export type V1ServerOptions = {
   readonly clock: Clock
-  readonly adapters: readonly ProviderAdapter[]
+  readonly transport: HttpTransport
+  readonly authStore: OpenCodeAuthStore
+  readonly env?: Readonly<Record<string, string | undefined>>
+  readonly providers: readonly ProviderEntry[]
   readonly snapshotTimeoutMs?: number
-  readonly anthropicAuth?: AuthHook
+  readonly catalogReloadMs?: number
+  readonly health?: HealthPolicy
+  readonly logger?: ConnectorLogger
   readonly npmSpecifiers?: Readonly<Record<string, string>>
-  readonly fallbackModelIds?: Readonly<Record<string, readonly string[]>>
-  readonly isProviderConnected?: (providerId: string) => Promise<boolean>
 }
 
-const DISPLAY_NAME: { readonly [providerId: string]: string } = {
-  claude: "Claude",
-  cursor: "Cursor",
-  "command-code": "Command Code",
-}
-
-type ProviderModels = {
-  readonly [modelId: string]: {
-    readonly id: string
-    readonly name: string
+function entryDeps(options: V1ServerOptions): ProviderEntryDeps {
+  return {
+    env: options.env ?? process.env,
+    transport: options.transport,
+    clock: options.clock,
+    authStore: options.authStore,
+    writeBackCredentials: false,
   }
-}
-
-function modelsFromSnapshot(snapshot: ProviderSnapshot): ProviderModels | undefined {
-  switch (snapshot.status) {
-    case "unavailable":
-      return undefined
-    case "ready":
-    case "stale": {
-      const models: { [modelId: string]: { readonly id: string; readonly name: string } } = {}
-      for (const model of snapshot.models) {
-        models[model.id] = { id: model.id, name: model.id }
-      }
-      return models
-    }
-    default: {
-      const _exhaustive: never = snapshot
-      return _exhaustive
-    }
-  }
-}
-
-async function snapshotProviderModels(
-  options: V1ServerOptions,
-): Promise<ReadonlyMap<string, ProviderModels>> {
-  const collected = new Map<string, ProviderModels>()
-  for (const [providerId, modelIds] of Object.entries(options.fallbackModelIds ?? {})) {
-    const models: { [modelId: string]: { readonly id: string; readonly name: string } } = {}
-    for (const modelId of modelIds) {
-      models[modelId] = { id: modelId, name: modelId }
-    }
-    collected.set(providerId, models)
-  }
-  for (const adapter of options.adapters) {
-    const deadline = createDeadline({
-      clock: options.clock,
-      timeoutMs: options.snapshotTimeoutMs ?? 30_000,
-      parentSignal: new AbortController().signal,
-    })
-    try {
-      try {
-        const snapshot = await adapter.snapshot(deadline.signal)
-        const models = modelsFromSnapshot(snapshot)
-        if (models !== undefined) {
-          collected.set(adapter.providerId, models)
-        }
-      } catch {}
-    } finally {
-      await deadline.dispose()
-    }
-  }
-  return collected
 }
 
 export async function buildV1Hooks(options: V1ServerOptions): Promise<Hooks> {
-  const modelsByProvider = await snapshotProviderModels(options)
-  const npmSpecifiers = options.npmSpecifiers
-  const hooks: Hooks = {
-    config: async (config) => {
-      if (npmSpecifiers === undefined) {
-        return
-      }
-      const provider = { ...config.provider }
-      for (const [providerId, models] of modelsByProvider) {
-        if (
-          options.isProviderConnected !== undefined &&
-          !(await options.isProviderConnected(providerId))
-        ) {
-          continue
-        }
-        const npmSpecifier = npmSpecifiers[providerId]
-        if (npmSpecifier === undefined) {
-          continue
-        }
-        provider[providerId] = {
-          npm: npmSpecifier,
-          name: DISPLAY_NAME[providerId] ?? providerId,
-          models,
-        }
-      }
-      config.provider = provider
-    },
-    dispose: async () => {
-      for (const adapter of options.adapters) {
-        await adapter.dispose()
-      }
-    },
+  const deps = entryDeps(options)
+  const providers: ProviderEntry[] = []
+  for (const entry of options.providers) {
+    if (await entry.isConnected(deps)) {
+      providers.push(entry)
+    }
   }
-  if (options.anthropicAuth === undefined) {
-    return hooks
+  const adapters: ProviderAdapter[] = providers.map((entry) => entry.createAdapter(deps))
+  const projector = createV1CatalogProjector({
+    entries: providers,
+    ...(options.npmSpecifiers === undefined ? {} : { npmSpecifiers: options.npmSpecifiers }),
+  })
+  const lifetime = new AbortController()
+  const healthStore: HealthStore = new Map()
+  const refresh = (): Promise<void> =>
+    refreshAdaptersWithHealth({
+      adapters,
+      publisher: projector.publisher,
+      logger: options.logger ?? { log: () => undefined },
+      clock: options.clock,
+      health: options.health ?? { initialBackoffMs: 1_000, maximumBackoffMs: 60_000 },
+      store: healthStore,
+      signal: lifetime.signal,
+      snapshotTimeoutMs: options.snapshotTimeoutMs ?? 30_000,
+    })
+  await refresh()
+  const reload = scheduleCatalogReload({
+    clock: options.clock,
+    intervalMs: options.catalogReloadMs ?? 300_000,
+    reload: refresh,
+  })
+  const disposal = createAsyncDisposable(async () => {
+    lifetime.abort()
+    await reload.dispose()
+    await Promise.all(adapters.map((adapter) => adapter.dispose()))
+  })
+  return {
+    config: async (config) => projector.attach(config),
+    dispose: disposal.dispose,
   }
-  return { ...hooks, auth: options.anthropicAuth }
+}
+
+export function buildV1AuthHooks(
+  entry: ProviderEntry,
+  deps: ProviderEntryDeps,
+  options: unknown,
+): Hooks {
+  const configured = parseConnectorOptions(pickConnectorOptionsInput(options))
+  return configured.providers.some((providerId) => providerId === entry.id)
+    ? {
+        auth: entry.createAuthHook({
+          ...deps,
+          writeBackCredentials: configured.writeBackCredentials,
+        }),
+      }
+    : {}
+}
+
+export function createV1AuthServer(entry: ProviderEntry, deps: ProviderEntryDeps): V1Plugin {
+  return async (_input, options): Promise<Hooks> => buildV1AuthHooks(entry, deps, options)
 }
 
 export function createV1Server(options: V1ServerOptions): V1Plugin {
