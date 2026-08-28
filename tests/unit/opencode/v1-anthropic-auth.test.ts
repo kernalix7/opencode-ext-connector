@@ -82,4 +82,22 @@ describe("createAnthropicCliAuth", () => {
     // Then
     expect(callback).toEqual({ type: "failed" })
   })
+
+  it("keeps the built-in Anthropic loader active for OAuth", async () => {
+    // Given
+    const auth = createAnthropicCliAuth({
+      readCredentials: async () => ({
+        accessToken: "access-1",
+        refreshToken: "refresh-1",
+        expiresAtMs: 1_700_000_000_000,
+      }),
+      readAccessToken: async () => "access-1",
+      forceRefreshAccessToken: async () => "access-2",
+      cliVersion: "2.1.217",
+    })
+
+    // When / Then
+    expect(auth.provider).toBe("anthropic")
+    expect(typeof auth.loader).toBe("function")
+  })
 })
