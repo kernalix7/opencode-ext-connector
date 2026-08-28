@@ -1,0 +1,6 @@
+{
+  "version": "1.32.1",
+  "source": "https://unpkg.com/command-code@1.32.1/dist/cli.mjs",
+  "file": "cli.mjs",
+  "sha256": "d404aa1e66d9e4adbfa0f998d328609b50cea5d78812cfe119ad2da529c08988"
+}
