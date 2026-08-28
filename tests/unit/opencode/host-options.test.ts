@@ -7,6 +7,7 @@ describe("pickConnectorOptionsInput", () => {
   it("keeps known fields and drops host-only keys", () => {
     // Given
     const input = {
+      providers: ["cursor"],
       snapshotTimeoutMs: 12_000,
       health: { initialBackoffMs: 2_000, maximumBackoffMs: 8_000 },
       id: "opencode-ext-connector",
@@ -16,6 +17,7 @@ describe("pickConnectorOptionsInput", () => {
     const options = parseConnectorOptions(pickConnectorOptionsInput(input))
     // Then
     expect(options).toEqual({
+      providers: ["cursor"],
       snapshotTimeoutMs: 12_000,
       writeBackCredentials: false,
       catalogReloadMs: 300_000,
