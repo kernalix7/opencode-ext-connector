@@ -2,10 +2,12 @@ import type { LanguageModelV3 } from "@ai-sdk/provider"
 
 import type { Clock } from "../core/clock"
 import { createFetchHttpTransport } from "../http/fetch-transport"
+import { createConsoleLogger } from "../logging/logger"
 import { createClaudeTokenReader } from "../providers/claude/auth"
-import { spawnCursorPooledChild } from "../providers/cursor/child"
-import { createCursorAgentPool } from "../providers/cursor/pool"
+import { readCursorAccessToken } from "../providers/cursor/auth"
+import { createCursorDirectRuntime } from "../providers/cursor/direct-runtime"
 import { createConnectorLanguage } from "./language-factory"
+import { productionOllamaRuntime } from "./ollama-production"
 
 const clock: Clock = {
   nowMs: (): number => Date.now(),
@@ -24,12 +26,19 @@ const clock: Clock = {
 
 const env = process.env
 const transport = createFetchHttpTransport()
-const cursorPool = createCursorAgentPool({
+const logger = createConsoleLogger(clock)
+const cursorRuntime = createCursorDirectRuntime({
   clock,
-  spawn: spawnCursorPooledChild,
-  env,
+  readAccessToken: (signal) => readCursorAccessToken(env, signal),
+  onBackgroundCleanupError: (error) => {
+    logger.log("warn", "cursor.session.ttl-cleanup-failed", {
+      code: error.code,
+      operation: error.operation,
+      sessionId: error.identity.sessionId,
+      modelId: error.identity.modelId,
+    })
+  },
 })
-const cursorSessions = new Map<string, string>()
 const readClaudeToken = createClaudeTokenReader({
   env,
   clock,
@@ -53,8 +62,8 @@ export function languageForV1Provider(
     env,
     transport,
     readClaudeToken,
-    cursorPool,
-    cursorSessions,
+    cursorRuntime,
+    ollamaRuntime: productionOllamaRuntime,
     ...(commandCodeApiKey === undefined ? {} : { commandCodeApiKey }),
   })
   const model = createLanguage(providerID, modelId)
@@ -64,6 +73,4 @@ export function languageForV1Provider(
   return model
 }
 
-export async function disposeV1LanguageRuntime(): Promise<void> {
-  await cursorPool.dispose()
-}
+export const disposeV1LanguageRuntime: () => Promise<void> = cursorRuntime.dispose
