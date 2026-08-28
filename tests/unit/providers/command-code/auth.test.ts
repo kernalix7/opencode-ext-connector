@@ -26,4 +26,46 @@ describe("readCommandCodeAccessToken", () => {
     // Then
     expect(token).toBe("from-file")
   })
+
+  it("ignores generic credentials in shared Pi auth", async () => {
+    // Given
+    const homeDir = await mkdtemp(join(tmpdir(), "cc-auth-"))
+    const piDir = join(homeDir, ".pi", "agent")
+    await mkdir(piDir, { recursive: true })
+    await writeFile(join(piDir, "auth.json"), '{"token":"shared-generic"}', { encoding: "utf8" })
+    // When
+    const token = await readCommandCodeAccessToken({}, new AbortController().signal, { homeDir })
+    // Then
+    expect(token).toBeNull()
+  })
+
+  it("accepts a scoped string credential in shared Pi auth", async () => {
+    // Given
+    const homeDir = await mkdtemp(join(tmpdir(), "cc-auth-"))
+    const piDir = join(homeDir, ".pi", "agent")
+    await mkdir(piDir, { recursive: true })
+    await writeFile(join(piDir, "auth.json"), '{"commandcode":"shared-scoped"}', {
+      encoding: "utf8",
+    })
+    // When
+    const token = await readCommandCodeAccessToken({}, new AbortController().signal, { homeDir })
+    // Then
+    expect(token).toBe("shared-scoped")
+  })
+
+  it("accepts a scoped OAuth credential in shared Pi auth", async () => {
+    // Given
+    const homeDir = await mkdtemp(join(tmpdir(), "cc-auth-"))
+    const piDir = join(homeDir, ".pi", "agent")
+    await mkdir(piDir, { recursive: true })
+    await writeFile(
+      join(piDir, "auth.json"),
+      '{"commandcode":{"type":"oauth","access":"shared-oauth"}}',
+      { encoding: "utf8" },
+    )
+    // When
+    const token = await readCommandCodeAccessToken({}, new AbortController().signal, { homeDir })
+    // Then
+    expect(token).toBe("shared-oauth")
+  })
 })

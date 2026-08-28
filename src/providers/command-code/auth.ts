@@ -1,32 +1,45 @@
 import { readFile } from "node:fs/promises"
 import { homedir } from "node:os"
 import { join } from "node:path"
+import { z } from "zod"
 
 import { OperationCancelledError } from "../../core/errors"
 
-function tokenFromUnknown(value: unknown): string | null {
-  if (typeof value !== "object" || value === null) {
+const credentialSchema = z
+  .object({
+    apiKey: z.string().optional(),
+    accessToken: z.string().optional(),
+    token: z.string().optional(),
+    commandcode: z
+      .union([z.string(), z.object({ type: z.literal("oauth"), access: z.string() })])
+      .optional(),
+  })
+  .passthrough()
+
+type CredentialCandidate = {
+  readonly path: string
+  readonly allowsGenericToken: boolean
+}
+
+function tokenFromUnknown(value: unknown, allowsGenericToken: boolean): string | null {
+  const parsed = credentialSchema.safeParse(value)
+  if (!parsed.success) {
     return null
   }
-  for (const [key, token] of Object.entries(value)) {
-    if (
-      (key === "apiKey" || key === "accessToken" || key === "token") &&
-      typeof token === "string" &&
-      token.length > 0
-    ) {
-      return token
+  if (allowsGenericToken) {
+    for (const key of ["apiKey", "accessToken", "token"] as const) {
+      const token = parsed.data[key]
+      if (token !== undefined && token.length > 0) {
+        return token
+      }
     }
   }
-  const commandCode = Reflect.get(value, "commandcode")
+  const commandCode = parsed.data.commandcode
   if (typeof commandCode === "string" && commandCode.length > 0) {
     return commandCode
   }
-  if (typeof commandCode === "object" && commandCode !== null) {
-    const type = Reflect.get(commandCode, "type")
-    const access = Reflect.get(commandCode, "access")
-    if (type === "oauth" && typeof access === "string" && access.length > 0) {
-      return access
-    }
+  if (typeof commandCode === "object" && commandCode.access.length > 0) {
+    return commandCode.access
   }
   return null
 }
@@ -72,14 +85,24 @@ export async function readCommandCodeAccessToken(
   }
   const home = lookup.homeDir ?? env["HOME"] ?? homedir()
   const candidates = commandCodeCredentialPaths(home, env)
-  for (const candidate of candidates) {
+  const sharedPiPath = join(home, ".pi", "agent", "auth.json")
+  const ownedCandidates: readonly CredentialCandidate[] = candidates.map((path) => ({
+    path,
+    allowsGenericToken: path !== sharedPiPath,
+  }))
+  for (const candidate of ownedCandidates) {
     try {
-      const parsed: unknown = JSON.parse(await readFile(candidate, "utf8"))
-      const token = tokenFromUnknown(parsed)
+      const parsed: unknown = JSON.parse(await readFile(candidate.path, "utf8"))
+      const token = tokenFromUnknown(parsed, candidate.allowsGenericToken)
       if (token !== null) {
         return token
       }
-    } catch {}
+    } catch (error) {
+      if (error instanceof Error) {
+        continue
+      }
+      throw error
+    }
   }
   return null
 }
