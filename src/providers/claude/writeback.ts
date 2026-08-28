@@ -1,9 +1,10 @@
 import { execFile } from "node:child_process"
-import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { readFile } from "node:fs/promises"
 import { homedir } from "node:os"
-import { dirname, join } from "node:path"
+import { join } from "node:path"
 import { promisify } from "node:util"
 import { opencodeAuthJsonPaths } from "../../opencode/auth-store"
+import { writeClaudePrivateFile } from "./atomic-private-file"
 import { mergeOpencodeAuthJson } from "./auth-json"
 import type { ClaudeCredentials } from "./credentials"
 import { parseKeychainAccount } from "./keychain-account"
@@ -104,8 +105,7 @@ async function defaultReadFile(path: string): Promise<string | null> {
 }
 
 async function defaultWriteFile(path: string, body: string): Promise<void> {
-  await mkdir(dirname(path), { recursive: true })
-  await writeFile(path, body, { encoding: "utf8", mode: 0o600 })
+  await writeClaudePrivateFile(path, body)
 }
 
 async function defaultWriteKeychain(args: readonly string[]): Promise<void> {
