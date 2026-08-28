@@ -131,6 +131,7 @@ export type ClaudeTokenManager = {
 
 export function createClaudeTokenManager(options: ClaudeTokenOptions): ClaudeTokenManager {
   let cached: ClaudeCredentials | null = null
+  let lastStored: ClaudeCredentials | null = null
   let refreshing: Promise<string | null> | null = null
   let refreshRetryAtMs = 0
   let consecutiveRefreshFailures = 0
@@ -139,6 +140,20 @@ export function createClaudeTokenManager(options: ClaudeTokenOptions): ClaudeTok
     if (options.writeBack !== undefined) {
       await options.writeBack(credentials)
     }
+  }
+  const readSource = async (signal: AbortSignal): Promise<ClaudeCredentials | null> => {
+    const latest = await readClaudeCredentials(options.env, signal, options.lookup ?? {})
+    if (
+      latest !== null &&
+      (lastStored === null ||
+        latest.accessToken !== lastStored.accessToken ||
+        latest.refreshToken !== lastStored.refreshToken ||
+        latest.expiresAtMs !== lastStored.expiresAtMs)
+    ) {
+      lastStored = latest
+      cached = latest
+    }
+    return cached
   }
   const refresh = async (
     credentials: ClaudeCredentials,
@@ -191,29 +206,21 @@ export function createClaudeTokenManager(options: ClaudeTokenOptions): ClaudeTok
     }
   }
   const readAccessToken = async (signal: AbortSignal): Promise<string | null> => {
-    const latest = await readClaudeCredentials(options.env, signal, options.lookup ?? {})
-    if (latest !== null && latest.accessToken !== cached?.accessToken) {
-      cached = latest
-    }
-    if (cached === null) {
+    const source = await readSource(signal)
+    if (source === null) {
       return null
     }
-    if (!claudeAccessNeedsRefresh(cached, options.clock.nowMs()) || cached.refreshToken === null) {
-      return cached.accessToken
+    if (!claudeAccessNeedsRefresh(source, options.clock.nowMs()) || source.refreshToken === null) {
+      return source.accessToken
     }
-    const refreshedToken = await refresh(cached, signal)
+    const refreshedToken = await refresh(source, signal)
     if (refreshedToken === null) {
-      return cached.accessToken
+      return source.accessToken
     }
     return refreshedToken
   }
   const forceRefreshAccessToken = async (signal: AbortSignal): Promise<string | null> => {
-    const latest = await readClaudeCredentials(options.env, signal, options.lookup ?? {})
-    if (latest !== null && latest.accessToken !== cached?.accessToken) {
-      cached = latest
-      return latest.accessToken
-    }
-    const source = latest ?? cached
+    const source = await readSource(signal)
     if (source === null) {
       return null
     }
