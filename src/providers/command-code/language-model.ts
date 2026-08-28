@@ -136,8 +136,15 @@ async function streamCommandCode(
     throw error
   }
   if (opened.status < 200 || opened.status >= 300) {
-    const errorBody = await readCommandCodeErrorBody(opened.chunks)
-    lifecycle.dispose()
+    let errorBody: string
+    try {
+      errorBody = await readCommandCodeErrorBody(opened.chunks)
+    } catch (error) {
+      lifecycle.abort()
+      throw error
+    } finally {
+      lifecycle.dispose()
+    }
     throw commandCodeHttpError(opened.status, errorBody)
   }
   if (!opened.bodyPresent) {
