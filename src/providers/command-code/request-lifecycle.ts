@@ -1,5 +1,7 @@
 import { OperationCancelledError } from "../../core/errors"
 
+export { commandCodeHttpError } from "./errors"
+
 export type CommandCodeRequestLifecycle = {
   readonly signal: AbortSignal
   readonly abort: () => void
@@ -33,29 +35,4 @@ export async function readCommandCodeErrorBody(chunks: AsyncIterable<Uint8Array>
     result += decoder.decode(chunk, { stream: true })
   }
   return result + decoder.decode()
-}
-
-export function commandCodeHttpError(
-  status: number,
-  statusText: string | undefined,
-  body: string,
-  modelId: string,
-): Error {
-  let message = `Command Code API error: ${status} ${statusText ?? ""}`.trim()
-  try {
-    const parsed: unknown = JSON.parse(body)
-    if (typeof parsed === "object" && parsed !== null) {
-      const error = "error" in parsed ? parsed.error : undefined
-      const candidate =
-        typeof error === "object" && error !== null && "message" in error
-          ? error.message
-          : "message" in parsed
-            ? parsed.message
-            : undefined
-      if (typeof candidate === "string") {
-        message = candidate
-      }
-    }
-  } catch {}
-  return new Error(`${message} [model=${modelId}]`)
 }

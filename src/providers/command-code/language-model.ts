@@ -17,12 +17,14 @@ import { parseProviderId } from "../../core/ids"
 import { type HttpBodyStream, openHttpBody } from "../../http/read-body"
 import { readCommandCodeCliVersion } from "./cli-version"
 import { emitCommandCodeChunks } from "./emit-stream"
+import { commandCodeMissingBodyError } from "./errors"
 import { type BuildBodyOptions, type BuildHeadersOptions, buildBody, buildHeaders } from "./request"
 import {
   commandCodeHttpError,
   createCommandCodeRequestLifecycle,
   readCommandCodeErrorBody,
 } from "./request-lifecycle"
+import { type CommandCodeSessionId, createCommandCodeSessionId } from "./session"
 
 export type CommandCodeLanguageModelOptions = {
   readonly modelId: string
@@ -32,16 +34,22 @@ export type CommandCodeLanguageModelOptions = {
   readonly baseURL?: string
   readonly headers?: Readonly<Record<string, string>>
   readonly timeoutMs?: number
+  readonly generateSessionId?: () => string
+}
+
+type CommandCodeModelRuntime = CommandCodeLanguageModelOptions & {
+  readonly sessionId: CommandCodeSessionId
 }
 
 function buildRequestOptions(
-  options: CommandCodeLanguageModelOptions,
+  options: CommandCodeModelRuntime,
   call: LanguageModelV3CallOptions,
   token: string,
 ): { readonly url: string; readonly headers: Record<string, string>; readonly body: Uint8Array } {
   const bodyOptions: BuildBodyOptions = {
     modelId: options.modelId,
     call,
+    sessionId: options.sessionId,
   }
   const cliVersion =
     options.readCliVersion === undefined ? readCommandCodeCliVersion() : options.readCliVersion()
@@ -56,6 +64,7 @@ function buildRequestOptions(
   const headerOptions: BuildHeadersOptions = {
     token,
     cliVersion,
+    sessionId: options.sessionId,
   }
   return {
     url: `${(options.baseURL ?? "https://api.commandcode.ai").replace(/\/+$/, "")}/alpha/generate`,
@@ -89,7 +98,7 @@ function createFinishReason(): LanguageModelV3FinishReason {
 }
 
 async function streamCommandCode(
-  options: CommandCodeLanguageModelOptions,
+  options: CommandCodeModelRuntime,
   call: LanguageModelV3CallOptions,
 ): Promise<LanguageModelV3StreamResult> {
   if (call.abortSignal?.aborted === true) {
@@ -129,11 +138,11 @@ async function streamCommandCode(
   if (opened.status < 200 || opened.status >= 300) {
     const errorBody = await readCommandCodeErrorBody(opened.chunks)
     lifecycle.dispose()
-    throw commandCodeHttpError(opened.status, opened.statusText, errorBody, options.modelId)
+    throw commandCodeHttpError(opened.status, errorBody)
   }
   if (!opened.bodyPresent) {
     lifecycle.dispose()
-    throw new Error(`Command Code API returned no body [model=${options.modelId}]`)
+    throw commandCodeMissingBodyError(opened.status)
   }
   let cancelled = false
   const stream = new ReadableStream<LanguageModelV3StreamPart>({
@@ -168,13 +177,15 @@ export function createCommandCodeLanguageModel(
   options: CommandCodeLanguageModelOptions,
 ): LanguageModelV3 {
   const provider = parseProviderId("command-code")
+  const sessionId = createCommandCodeSessionId(options.generateSessionId)
+  const runtime: CommandCodeModelRuntime = { ...options, sessionId }
   return {
     specificationVersion: "v3",
     provider,
     modelId: options.modelId,
     supportedUrls: {},
     doGenerate: async (call: LanguageModelV3CallOptions) => {
-      const { stream } = await streamCommandCode(options, call)
+      const { stream } = await streamCommandCode(runtime, call)
       const content: LanguageModelV3Content[] = []
       const text: string[] = []
       const reasoning: string[] = []
@@ -226,6 +237,6 @@ export function createCommandCodeLanguageModel(
       return { content, finishReason: finish, usage, warnings: [] }
     },
     doStream: (call: LanguageModelV3CallOptions): Promise<LanguageModelV3StreamResult> =>
-      streamCommandCode(options, call),
+      streamCommandCode(runtime, call),
   }
 }
