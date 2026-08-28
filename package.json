@@ -4,6 +4,14 @@
   "description": "External provider connector for OpenCode",
   "type": "module",
   "license": "BSD-3-Clause",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kernalix7/opencode-ext-connector.git"
+  },
+  "homepage": "https://github.com/kernalix7/opencode-ext-connector#readme",
+  "bugs": {
+    "url": "https://github.com/kernalix7/opencode-ext-connector/issues"
+  },
   "sideEffects": false,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -20,6 +28,10 @@
       "types": "./dist/sdk/cursor.d.ts",
       "import": "./dist/sdk/cursor.js"
     },
+    "./ollama": {
+      "types": "./dist/sdk/ollama.d.ts",
+      "import": "./dist/sdk/ollama.js"
+    },
     "./server": {
       "types": "./dist/server.d.ts",
       "import": "./dist/server.js"
@@ -34,12 +46,15 @@
     "THIRD_PARTY_NOTICES.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "bun run clean && tsc -p tsconfig.build.json && bun run build:h2-bridge",
+    "build:h2-bridge": "bun build --target=node --format=esm --sourcemap=linked --outdir=dist/providers/cursor --root=src/providers/cursor src/providers/cursor/h2-bridge.ts",
     "check": "bun run lint && bun run typecheck && bun run check:policy && bun run check:loc && bun run test:foundation",
     "check:loc": "bun run scripts/check-file-size.ts",
     "check:policy": "bun run scripts/check-source-policy.ts",
+    "clean": "rm -rf dist",
     "lint": "biome check .",
     "test": "bun test",
+    "test:e2e": "bun run build && bun test tests/e2e/opencode-legacy-loader.test.ts tests/e2e/opencode-provider-lifecycle.test.ts tests/e2e/ollama-lifecycle.test.ts",
     "test:foundation": "bun test tests/unit/scripts",
     "test:integration": "bun test tests/integration",
     "test:provider": "bun test tests/unit/providers",
