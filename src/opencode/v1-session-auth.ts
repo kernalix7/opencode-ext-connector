@@ -1,12 +1,16 @@
-import { spawnSync } from "node:child_process"
-
 import type { AuthHook } from "@opencode-ai/plugin"
 
 import { readCommandCodeAccessToken } from "../providers/command-code/auth"
-import { resolveCursorAgent } from "../providers/cursor/auth"
+import { readCursorAccessToken } from "../providers/cursor/auth"
+import { type OllamaFetch, productionOllamaFetch } from "../providers/ollama/http"
+import { probeLocalOllama } from "./ollama-probe"
 
 const CURSOR_SESSION_MARKER = "cli-session:cursor"
 const COMMAND_CODE_SESSION_MARKER = "cli-session:command-code"
+const OLLAMA_SESSION_MARKER = "cli-session:ollama"
+const OLLAMA_AVAILABLE_INSTRUCTIONS =
+  "The connector will reuse the running local Ollama daemon. Cloud access remains managed by `ollama signin`; this plugin does not run sign-in."
+const OLLAMA_UNAVAILABLE_INSTRUCTIONS = "Start the local Ollama daemon, then retry."
 
 function sessionMethod(options: {
   readonly provider: string
@@ -42,17 +46,7 @@ function sessionMethod(options: {
 async function hasCursorSession(
   env: Readonly<Record<string, string | undefined>>,
 ): Promise<boolean> {
-  const signal = new AbortController().signal
-  const executable = await resolveCursorAgent(env, signal)
-  if (executable === null) {
-    return false
-  }
-  const result = spawnSync(executable, ["status"], {
-    encoding: "utf8",
-    timeout: 5_000,
-    env: { ...env },
-  })
-  return result.error === undefined && result.status === 0
+  return (await readCursorAccessToken(env, new AbortController().signal)) !== null
 }
 
 async function hasCommandCodeSession(
@@ -70,8 +64,8 @@ export function createCursorSessionAuth(
     methods: [
       sessionMethod({
         provider: "cursor",
-        label: "Cursor Agent login",
-        instructions: "Using the existing cursor-agent login session.",
+        label: "Cursor CLI login",
+        instructions: "Using the existing Cursor CLI login/token.",
         marker: CURSOR_SESSION_MARKER,
         verify: () => hasCursorSession(env),
       }),
@@ -102,6 +96,37 @@ export function createCommandCodeSessionAuth(
       {
         type: "api",
         label: "Command Code API key",
+      },
+    ],
+  }
+}
+
+export function createOllamaSessionAuth(fetch: OllamaFetch = productionOllamaFetch): AuthHook {
+  return {
+    provider: "ollama",
+    loader: async () => ({}),
+    methods: [
+      {
+        type: "oauth",
+        label: "Ollama local daemon",
+        authorize: async () => {
+          const available = await probeLocalOllama(fetch)
+          return {
+            url: "",
+            instructions: available
+              ? OLLAMA_AVAILABLE_INSTRUCTIONS
+              : OLLAMA_UNAVAILABLE_INSTRUCTIONS,
+            method: "auto",
+            callback: async () =>
+              (await probeLocalOllama(fetch))
+                ? {
+                    type: "success",
+                    provider: "ollama",
+                    key: OLLAMA_SESSION_MARKER,
+                  }
+                : { type: "failed" },
+          }
+        },
       },
     ],
   }
