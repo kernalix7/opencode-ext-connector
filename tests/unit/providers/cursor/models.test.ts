@@ -1,7 +1,12 @@
 import { describe, expect, it } from "bun:test"
 
 import { parseModelId } from "../../../../src/core/ids"
-import { listCursorModels, parseCursorModelOutput } from "../../../../src/providers/cursor/models"
+import {
+  listCursorModels,
+  parseCursorModelOutput,
+  parseCursorUsableModels,
+} from "../../../../src/providers/cursor/models"
+import { encodeBytesField, encodeStringField } from "../../../../src/providers/cursor/proto-wire"
 
 describe("parseCursorModelOutput", () => {
   it("parses id - name lines from cursor-agent models", () => {
@@ -43,5 +48,18 @@ describe("listCursorModels", () => {
       parseModelId("auto"),
       parseModelId("composer-2.5"),
     ])
+  })
+})
+
+describe("parseCursorUsableModels", () => {
+  it("reads model_id strings from GetUsableModels protobuf", () => {
+    // Given
+    const body = encodeBytesField(1, encodeStringField(1, "kimi-k3-low"))
+
+    // When
+    const models = parseCursorUsableModels(body)
+
+    // Then
+    expect(models.map((model) => model.id)).toEqual([parseModelId("kimi-k3-low")])
   })
 })

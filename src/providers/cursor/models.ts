@@ -3,6 +3,8 @@ import { spawn } from "node:child_process"
 import { parseModelIdList } from "../../catalog/parse-ids"
 import { OperationCancelledError } from "../../core/errors"
 import type { AdapterModel } from "../../core/models"
+import { type CursorHttp2Post, cursorHttp2Post } from "./http2"
+import { decodeFields, decodeUtf8 } from "./proto-wire"
 
 function stripAnsi(text: string): string {
   let output = ""
@@ -100,4 +102,45 @@ export async function listCursorModels(
     }
   }
   return []
+}
+
+export function parseCursorUsableModels(body: Uint8Array): readonly AdapterModel[] {
+  const ids: string[] = []
+  for (const model of decodeFields(body)) {
+    if (model.field !== 1) {
+      continue
+    }
+    for (const inner of decodeFields(model.bytes)) {
+      if (inner.field === 1) {
+        ids.push(decodeUtf8(inner.bytes))
+      }
+    }
+  }
+  return parseModelIdList(ids)
+}
+
+export type CursorUsableModelsPost = (request: CursorHttp2Post) => Promise<{
+  readonly status: number
+  readonly body: Uint8Array
+}>
+
+export async function listCursorUsableModels(
+  token: string,
+  signal: AbortSignal,
+  post: CursorUsableModelsPost = cursorHttp2Post,
+): Promise<readonly AdapterModel[]> {
+  if (signal.aborted) {
+    throw new OperationCancelledError("cursor-list-models")
+  }
+  const response = await post({
+    path: "/agent.v1.AgentService/GetUsableModels",
+    token,
+    body: new Uint8Array(),
+    headers: { "content-type": "application/proto", te: "trailers" },
+    signal,
+  })
+  if (response.status < 200 || response.status >= 300) {
+    return []
+  }
+  return parseCursorUsableModels(response.body)
 }
