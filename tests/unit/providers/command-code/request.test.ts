@@ -4,6 +4,8 @@ import { z } from "zod"
 import { createCommandCodeLanguageModel } from "../../../../src/providers/command-code/language-model"
 import { FakeHttpTransport } from "../../../support/http"
 
+const readCliVersion = (): string => "1.27.1"
+
 const requestBodySchema = z.object({
   threadId: z.string().uuid(),
   params: z.object({ messages: z.array(z.unknown()) }),
@@ -41,6 +43,7 @@ describe("createCommandCodeLanguageModel request shape", () => {
       modelId: "default",
       transport,
       readAccessToken: async () => "cc-token",
+      readCliVersion,
     })
     // When
     await model.doGenerate({
@@ -150,6 +153,7 @@ describe("createCommandCodeLanguageModel request shape", () => {
       modelId: "default",
       transport,
       readAccessToken: async () => "cc-token",
+      readCliVersion,
       generateSessionId: () => sessionId,
     })
 
@@ -176,6 +180,7 @@ describe("createCommandCodeLanguageModel request shape", () => {
       modelId: "default",
       transport,
       readAccessToken: async () => "cc-token",
+      readCliVersion,
       generateSessionId: () => "123e4567-e89b-42d3-a456-426614174000",
     })
 

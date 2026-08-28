@@ -3,6 +3,8 @@ import { describe, expect, it } from "bun:test"
 import { createCommandCodeLanguageModel } from "../../../../src/providers/command-code/language-model"
 import { FakeHttpTransport } from "../../../support/http"
 
+const readCliVersion = (): string => "1.27.1"
+
 describe("createCommandCodeLanguageModel doStream", () => {
   it("parses upstream NDJSON text and delta fields incrementally", async () => {
     // Given
@@ -23,6 +25,7 @@ describe("createCommandCodeLanguageModel doStream", () => {
       modelId: "default",
       transport,
       readAccessToken: async () => "cc-token",
+      readCliVersion,
     })
     // When
     const { stream } = await model.doStream({
@@ -62,6 +65,7 @@ describe("createCommandCodeLanguageModel doStream", () => {
       modelId: "default",
       transport,
       readAccessToken: async () => "cc-token",
+      readCliVersion,
     })
     // When
     const { stream } = await model.doStream({
@@ -91,6 +95,7 @@ describe("createCommandCodeLanguageModel doStream", () => {
       modelId: "default",
       transport,
       readAccessToken: async () => "cc-token",
+      readCliVersion,
     })
     // When
     const { stream } = await model.doStream({
@@ -125,6 +130,7 @@ describe("createCommandCodeLanguageModel doStream", () => {
       modelId: "default",
       transport,
       readAccessToken: async () => "cc-token",
+      readCliVersion,
     })
     // When
     const { stream } = await model.doStream({
@@ -154,6 +160,7 @@ describe("createCommandCodeLanguageModel doStream", () => {
       modelId: "default",
       transport,
       readAccessToken: async () => "cc-token",
+      readCliVersion,
     })
 
     // When
