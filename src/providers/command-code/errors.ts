@@ -10,8 +10,19 @@ export const commandCodeProviderErrorStages = [
 
 export type CommandCodeProviderErrorStage = (typeof commandCodeProviderErrorStages)[number]
 
+export const commandCodeProviderErrorReasons = [
+  "http-status",
+  "ndjson-event",
+  "missing-response-body",
+  "response-body-too-large",
+  "stream-record-too-large",
+] as const
+
+export type CommandCodeProviderErrorReason = (typeof commandCodeProviderErrorReasons)[number]
+
 type CommandCodeProviderErrorOptions = {
   readonly stage: CommandCodeProviderErrorStage
+  readonly reason: CommandCodeProviderErrorReason
   readonly statusCode: number | null
   readonly providerCode: string | null
   readonly retryable: boolean
@@ -40,6 +51,7 @@ export class CommandCodeProviderError extends Error {
   public override readonly name = "CommandCodeProviderError"
   public readonly code: typeof COMMAND_CODE_PROVIDER_ERROR = COMMAND_CODE_PROVIDER_ERROR
   public readonly stage: CommandCodeProviderErrorStage
+  public readonly reason: CommandCodeProviderErrorReason
   public readonly statusCode: number | null
   public readonly providerCode: string | null
   public readonly retryable: boolean
@@ -47,6 +59,7 @@ export class CommandCodeProviderError extends Error {
   public constructor(options: CommandCodeProviderErrorOptions) {
     super("Command Code provider request failed")
     this.stage = options.stage
+    this.reason = options.reason
     this.statusCode = options.statusCode
     this.providerCode = options.providerCode
     this.retryable = options.retryable
@@ -72,6 +85,7 @@ export function commandCodeHttpError(statusCode: number, body: string): CommandC
   const metadata = parseHttpMetadata(body)
   return new CommandCodeProviderError({
     stage: "http-response",
+    reason: "http-status",
     statusCode,
     providerCode: metadata?.code ?? null,
     retryable: metadata?.isRetryable ?? (statusCode === 429 || statusCode >= 500),
@@ -84,6 +98,7 @@ export function commandCodeNdjsonError(
   const metadata = typeof error === "object" ? error : undefined
   return new CommandCodeProviderError({
     stage: "ndjson-stream",
+    reason: "ndjson-event",
     statusCode: metadata?.statusCode ?? null,
     providerCode: metadata?.code ?? null,
     retryable: metadata?.isRetryable ?? false,
@@ -93,7 +108,28 @@ export function commandCodeNdjsonError(
 export function commandCodeMissingBodyError(statusCode: number): CommandCodeProviderError {
   return new CommandCodeProviderError({
     stage: "response-body",
+    reason: "missing-response-body",
     statusCode,
+    providerCode: null,
+    retryable: false,
+  })
+}
+
+export function commandCodeResponseBodyTooLargeError(): CommandCodeProviderError {
+  return new CommandCodeProviderError({
+    stage: "response-body",
+    reason: "response-body-too-large",
+    statusCode: null,
+    providerCode: null,
+    retryable: false,
+  })
+}
+
+export function commandCodeStreamRecordTooLargeError(): CommandCodeProviderError {
+  return new CommandCodeProviderError({
+    stage: "ndjson-stream",
+    reason: "stream-record-too-large",
+    statusCode: null,
     providerCode: null,
     retryable: false,
   })
