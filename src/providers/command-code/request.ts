@@ -1,20 +1,26 @@
 // Derived from brent-weatherall/opencode-commandcode-provider src/convert.ts.
 // Licensed under MIT. See THIRD_PARTY_NOTICES.md.
 
+import { randomBytes } from "node:crypto"
+
 import type { LanguageModelV3CallOptions, LanguageModelV3ToolResultOutput } from "@ai-sdk/provider"
+
+import type { CommandCodeSessionId } from "./session"
 
 export type BuildHeadersOptions = {
   readonly token: string
   readonly cliVersion: string
+  readonly sessionId: CommandCodeSessionId
 }
 
 export type BuildBodyOptions = {
   readonly modelId: string
   readonly call: LanguageModelV3CallOptions
+  readonly sessionId: CommandCodeSessionId
 }
 
 type CommandCodeMessage =
-  | { readonly role: "user"; readonly content: string }
+  | { readonly role: "user"; readonly content: readonly CommandCodeUserPart[] }
   | { readonly role: "assistant"; readonly content: readonly CommandCodeAssistantPart[] }
   | { readonly role: "tool"; readonly content: readonly CommandCodeToolResult[] }
 
@@ -27,6 +33,10 @@ type CommandCodeAssistantPart =
       readonly toolName: string
       readonly input: unknown
     }
+
+type CommandCodeUserPart =
+  | { readonly type: "text"; readonly text: string }
+  | { readonly type: "image"; readonly image: string; readonly mimeType: string }
 
 type CommandCodeToolResult = {
   readonly type: "tool-result"
@@ -45,14 +55,31 @@ type CommandCodeTool = {
 }
 
 export function buildHeaders(options: BuildHeadersOptions): Record<string, string> {
-  const { token, cliVersion } = options
+  const { token, cliVersion, sessionId } = options
   return {
+    accept: "application/json, */*",
+    "accept-encoding": "gzip, deflate, br",
+    "accept-language": "en-US,en;q=0.9",
     authorization: `Bearer ${token}`,
+    connection: "keep-alive",
     "content-type": "application/json",
+    traceparent: `00-${randomBytes(16).toString("hex")}-${randomBytes(8).toString("hex")}-01`,
+    "user-agent": `commandcode-cli/${cliVersion} Node.js/${process.version}`,
     "x-cli-environment": "production",
+    "x-co-flag": "false",
     "x-command-code-version": cliVersion,
     "x-project-slug": "opencode",
+    "x-session-id": sessionId,
+    "x-taste-learning": "false",
   }
+}
+
+function imageData(data: Uint8Array | string | URL, mediaType: string): string {
+  if (data instanceof URL) {
+    return data.toString()
+  }
+  const encoded = typeof data === "string" ? data : Buffer.from(data).toString("base64")
+  return `data:${mediaType};base64,${encoded}`
 }
 
 function toolResultOutput(
@@ -92,11 +119,24 @@ function messagesFromCall(call: LanguageModelV3CallOptions): {
       continue
     }
     if (message.role === "user") {
-      const text = message.content
-        .filter((part) => part.type === "text")
-        .map((part) => part.text)
-        .join("\n")
-      messages.push({ role: "user", content: text })
+      const content: CommandCodeUserPart[] = []
+      for (const part of message.content) {
+        switch (part.type) {
+          case "text":
+            content.push({ type: "text", text: part.text })
+            break
+          case "file":
+            if (part.mediaType.startsWith("image/")) {
+              content.push({
+                type: "image",
+                image: imageData(part.data, part.mediaType),
+                mimeType: part.mediaType,
+              })
+            }
+            break
+        }
+      }
+      messages.push({ role: "user", content })
       continue
     }
     if (message.role === "assistant") {
@@ -186,6 +226,7 @@ export function buildBody(options: BuildBodyOptions): Record<string, unknown> {
     taste: "",
     skills: null,
     permissionMode: "standard",
+    threadId: options.sessionId,
     params,
   }
 }
