@@ -4,7 +4,7 @@ Frozen T1 layer. Provider-agnostic. No I/O, no credentials, no `@opencode-ai/*`.
 
 ## OVERVIEW
 
-Pull-based adapter + catalog snapshot primitives that three future providers share.
+Pull-based adapter + catalog snapshot primitives shared by provider implementations.
 
 ## WHERE TO LOOK
 
@@ -21,7 +21,7 @@ Pull-based adapter + catalog snapshot primitives that three future providers sha
 | `options.ts` | `parseConnectorOptions` | Present `undefined` defaults (30_000 / 1_000 / 60_000); initial ≤ max |
 | `logger.ts` | `createConnectorLogger` | Sink only; recursive key + URL query redaction |
 | `http.ts` | `HttpTransport` | Interface; body is `Uint8Array` |
-| `process.ts` | `ProcessSupervisor` / `SupervisedProcess` | Interface; Cursor `cursor-agent` later |
+| `process.ts` | `ProcessSupervisor` / `SupervisedProcess` | Interface only; provider runtimes own process boundaries |
 
 Tests: `tests/unit/core/<same>.test.ts`. Fakes: `tests/support/{clock,http,process,log-sink}.ts`.
 
@@ -33,5 +33,5 @@ Tests: `tests/unit/core/<same>.test.ts`. Fakes: `tests/support/{clock,http,proce
 
 ## ANTI-PATTERNS
 
-- Hard-code `claude` / `cursor` / `command-code` in this folder.
+- Hard-code provider IDs in this folder.
 - Push-style adapters or mixing protocol parsers into `refreshProviderCatalog`.
