@@ -23,6 +23,16 @@ export function pickConnectorOptionsInput(input: unknown): ConnectorOptionsInput
     return {}
   }
   return {
+    providers:
+      "providers" in input && Array.isArray(input.providers)
+        ? input.providers.filter(
+            (provider): provider is "claude" | "cursor" | "command-code" | "ollama" =>
+              provider === "claude" ||
+              provider === "cursor" ||
+              provider === "command-code" ||
+              provider === "ollama",
+          )
+        : undefined,
     snapshotTimeoutMs:
       "snapshotTimeoutMs" in input ? positiveInteger(input.snapshotTimeoutMs) : undefined,
     writeBackCredentials:
