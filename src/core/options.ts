@@ -3,6 +3,7 @@ import { z } from "zod"
 import type { HealthPolicy } from "./health"
 
 export type ConnectorOptionsInput = {
+  readonly providers?: readonly ("claude" | "cursor" | "command-code" | "ollama")[] | undefined
   readonly snapshotTimeoutMs?: number | undefined
   readonly writeBackCredentials?: boolean | undefined
   readonly catalogReloadMs?: number | undefined
@@ -15,19 +16,29 @@ export type ConnectorOptionsInput = {
 }
 
 export type ConnectorOptions = {
+  readonly providers: readonly ("claude" | "cursor" | "command-code" | "ollama")[]
   readonly snapshotTimeoutMs: number
   readonly writeBackCredentials: boolean
   readonly catalogReloadMs: number
   readonly health: HealthPolicy
 }
 
-const PositiveSafeIntegerSchema = z.number().int().positive().max(Number.MAX_SAFE_INTEGER)
+const MaximumTimerMs = 2_147_483_647
+const PositiveSafeIntegerSchema = z.number().int().positive().max(MaximumTimerMs)
+const ProviderSchema = z.enum(["claude", "cursor", "command-code", "ollama"])
+const DefaultProviders: ConnectorOptions["providers"] = [
+  "claude",
+  "cursor",
+  "command-code",
+  "ollama",
+]
 
 const ConnectorOptionsInputSchema = z
   .object({
+    providers: z.array(ProviderSchema).optional(),
     snapshotTimeoutMs: PositiveSafeIntegerSchema.optional(),
     writeBackCredentials: z.boolean().optional(),
-    catalogReloadMs: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
+    catalogReloadMs: z.number().int().nonnegative().max(MaximumTimerMs).optional(),
     health: z
       .object({
         initialBackoffMs: PositiveSafeIntegerSchema.optional(),
@@ -52,6 +63,7 @@ export const ConnectorOptionsSchema: z.ZodType<ConnectorOptions, ConnectorOption
       maximumBackoffMs: input.health?.maximumBackoffMs ?? 60_000,
     })
     return Object.freeze({
+      providers: Object.freeze(input.providers ?? DefaultProviders),
       snapshotTimeoutMs: input.snapshotTimeoutMs ?? 30_000,
       writeBackCredentials: input.writeBackCredentials ?? false,
       catalogReloadMs: input.catalogReloadMs ?? 300_000,

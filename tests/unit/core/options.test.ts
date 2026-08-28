@@ -3,13 +3,14 @@ import { describe, expect, it } from "bun:test"
 import { parseConnectorOptions } from "../../../src/core/options"
 
 describe("connector options", () => {
-  it("applies immutable defaults", () => {
+  it("selects all providers by default", () => {
     // Given
     const input = {}
     // When
     const options = parseConnectorOptions(input)
     // Then
     expect(options).toEqual({
+      providers: ["claude", "cursor", "command-code", "ollama"],
       snapshotTimeoutMs: 30_000,
       writeBackCredentials: false,
       catalogReloadMs: 300_000,
@@ -19,13 +20,27 @@ describe("connector options", () => {
     expect(Object.isFrozen(options.health)).toBe(true)
   })
 
+  it("preserves an explicitly empty providers array", () => {
+    // Given
+    const input = { providers: [] }
+    // When
+    const options = parseConnectorOptions(input)
+    // Then
+    expect(options.providers).toEqual([])
+  })
+
   it("accepts overrides without sharing defaults", () => {
     // Given
-    const input = { snapshotTimeoutMs: 50, health: { initialBackoffMs: 5, maximumBackoffMs: 10 } }
+    const input = {
+      providers: ["cursor", "command-code", "ollama"],
+      snapshotTimeoutMs: 50,
+      health: { initialBackoffMs: 5, maximumBackoffMs: 10 },
+    }
     // When
     const options = parseConnectorOptions(input)
     // Then
     expect(options).toEqual({
+      providers: ["cursor", "command-code", "ollama"],
       snapshotTimeoutMs: 50,
       writeBackCredentials: false,
       catalogReloadMs: 300_000,
@@ -37,8 +52,11 @@ describe("connector options", () => {
     // Given
     const inputs = [
       { snapshotTimeoutMs: 0 },
+      { snapshotTimeoutMs: 2_147_483_648 },
+      { catalogReloadMs: 2_147_483_648 },
       { health: { initialBackoffMs: 20, maximumBackoffMs: 10 } },
       { credential: "secret" },
+      { providers: ["unknown"] },
     ]
     // When
     const parses = inputs.map((input) => () => parseConnectorOptions(input))
