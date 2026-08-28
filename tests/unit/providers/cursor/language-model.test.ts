@@ -4,6 +4,50 @@ import { AdapterError } from "../../../../src/core/errors"
 import { createCursorLanguageModel } from "../../../../src/providers/cursor/language-model"
 
 describe("createCursorLanguageModel", () => {
+  it("routes streaming through the direct session runtime", async () => {
+    // Given
+    let calls = 0
+    const model = createCursorLanguageModel({
+      modelId: "auto",
+      runPrompt: async () => null,
+      directRuntime: {
+        doStream: async () => {
+          calls += 1
+          return {
+            stream: new ReadableStream({
+              start(controller) {
+                controller.enqueue({ type: "stream-start", warnings: [] })
+                controller.enqueue({
+                  type: "finish",
+                  finishReason: { unified: "stop", raw: "stop" },
+                  usage: {
+                    inputTokens: {
+                      total: 0,
+                      noCache: undefined,
+                      cacheRead: undefined,
+                      cacheWrite: undefined,
+                    },
+                    outputTokens: { total: 0, text: 0, reasoning: 0 },
+                  },
+                })
+                controller.close()
+              },
+            }),
+          }
+        },
+      },
+    })
+
+    // When
+    const result = await model.doStream({
+      prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+    })
+    await Array.fromAsync(result.stream)
+
+    // Then
+    expect(calls).toBe(1)
+  })
+
   it("returns runner text as generated content", async () => {
     // Given
     const model = createCursorLanguageModel({
