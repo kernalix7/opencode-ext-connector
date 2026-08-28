@@ -6,136 +6,217 @@ import type {
   LanguageModelV3StreamPart,
   LanguageModelV3Usage,
 } from "@ai-sdk/provider"
+import { z } from "zod"
 
-function field(value: object, key: string): unknown {
-  return key in value ? Reflect.get(value, key) : undefined
-}
+import { commandCodeNdjsonError } from "./errors"
 
-function stringField(value: object, key: string): string | undefined {
-  const result = field(value, key)
-  return typeof result === "string" ? result : undefined
-}
+const tokenDetailsSchema = z
+  .object({
+    noCacheTokens: z.number().optional(),
+    cacheReadTokens: z.number().optional(),
+    cacheWriteTokens: z.number().optional(),
+    textTokens: z.number().optional(),
+    reasoningTokens: z.number().optional(),
+  })
+  .passthrough()
 
-function objectField(value: object, key: string): object | undefined {
-  const result = field(value, key)
-  return typeof result === "object" && result !== null ? result : undefined
-}
+const usageSchema = z
+  .object({
+    inputTokens: z.number().optional(),
+    outputTokens: z.number().optional(),
+    inputTokenDetails: tokenDetailsSchema.optional(),
+    outputTokenDetails: tokenDetailsSchema.optional(),
+  })
+  .passthrough()
 
-function numberField(value: object, ...keys: readonly string[]): number | undefined {
-  for (const key of keys) {
-    const result = field(value, key)
-    if (typeof result === "number") {
-      return result
-    }
-  }
-  return undefined
-}
+const providerErrorSchema = z
+  .object({
+    message: z.string(),
+    code: z.string().optional(),
+    statusCode: z.number().int().min(100).max(599).optional(),
+    isRetryable: z.boolean().optional(),
+  })
+  .passthrough()
+  .transform((error) => ({
+    ...(error.code === undefined ? {} : { code: error.code }),
+    ...(error.statusCode === undefined ? {} : { statusCode: error.statusCode }),
+    ...(error.isRetryable === undefined ? {} : { isRetryable: error.isRetryable }),
+  }))
+
+const streamEventSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("start") }).passthrough(),
+  z.object({ type: z.literal("abort") }).passthrough(),
+  z
+    .object({
+      type: z.enum([
+        "text-start",
+        "text-end",
+        "reasoning-start",
+        "reasoning-end",
+        "tool-input-end",
+      ]),
+      id: z.string().optional(),
+    })
+    .passthrough(),
+  z
+    .object({
+      type: z.enum(["text-delta", "reasoning-delta", "tool-input-delta"]),
+      id: z.string().optional(),
+      text: z.string().optional(),
+      delta: z.string().optional(),
+    })
+    .passthrough(),
+  z
+    .object({
+      type: z.literal("tool-input-start"),
+      id: z.string().optional(),
+      toolName: z.string().optional(),
+      dynamic: z.boolean().optional(),
+    })
+    .passthrough(),
+  z
+    .object({
+      type: z.literal("tool-call"),
+      toolCallId: z.string().optional(),
+      id: z.string().optional(),
+      toolName: z.string().optional(),
+      input: z.unknown().optional(),
+      args: z.unknown().optional(),
+      arguments: z.unknown().optional(),
+    })
+    .passthrough(),
+  z
+    .object({
+      type: z.literal("finish-step"),
+      finishReason: z.string().optional(),
+      usage: usageSchema.optional(),
+    })
+    .passthrough(),
+  z
+    .object({
+      type: z.literal("finish"),
+      finishReason: z.string().optional(),
+      rawFinishReason: z.string().optional(),
+      totalUsage: usageSchema.optional(),
+      usage: usageSchema.optional(),
+    })
+    .passthrough(),
+  z
+    .object({
+      type: z.literal("response-metadata"),
+      id: z.string().optional(),
+      modelId: z.string().optional(),
+    })
+    .passthrough(),
+  z
+    .object({
+      type: z.literal("error"),
+      error: z.union([z.string(), providerErrorSchema]).optional(),
+      message: z.string().optional(),
+    })
+    .passthrough(),
+])
+
+type StreamEvent = z.infer<typeof streamEventSchema>
 
 function finishReason(raw: string): LanguageModelV3FinishReason {
-  const unified: LanguageModelV3FinishReason["unified"] = (() => {
-    switch (raw) {
-      case "stop":
-      case "end_turn":
-        return "stop"
-      case "tool_calls":
-      case "tool-calls":
-        return "tool-calls"
-      case "length":
-      case "max_tokens":
-      case "max-tokens":
-      case "max_output_tokens":
-        return "length"
-      case "content_filter":
-        return "content-filter"
-      default:
-        return "other"
-    }
-  })()
-  return { unified, raw }
+  switch (raw) {
+    case "stop":
+    case "end_turn":
+      return { unified: "stop", raw }
+    case "tool_calls":
+    case "tool-calls":
+    case "tool_use":
+      return { unified: "tool-calls", raw }
+    case "length":
+    case "max_tokens":
+    case "max-tokens":
+    case "max_output_tokens":
+      return { unified: "length", raw }
+    case "content_filter":
+      return { unified: "content-filter", raw }
+    default:
+      return { unified: "other", raw }
+  }
 }
 
-function usageFromEvent(event: object): LanguageModelV3Usage {
-  const usage = objectField(event, "usage") ?? objectField(event, "totalUsage") ?? {}
-  const input =
-    objectField(usage, "inputTokenDetails") ?? objectField(usage, "input_token_details") ?? {}
-  const output =
-    objectField(usage, "outputTokenDetails") ?? objectField(usage, "output_token_details") ?? {}
+function usageFromEvent(event: Extract<StreamEvent, { type: "finish" }>): LanguageModelV3Usage {
+  const usage = event.totalUsage ?? event.usage
   return {
     inputTokens: {
-      total: numberField(usage, "inputTokens", "prompt_tokens"),
-      noCache: numberField(input, "noCacheTokens"),
-      cacheRead: numberField(input, "cacheReadTokens"),
-      cacheWrite: numberField(input, "cacheWriteTokens"),
+      total: usage?.inputTokens,
+      noCache: usage?.inputTokenDetails?.noCacheTokens,
+      cacheRead: usage?.inputTokenDetails?.cacheReadTokens,
+      cacheWrite: usage?.inputTokenDetails?.cacheWriteTokens,
     },
     outputTokens: {
-      total: numberField(usage, "outputTokens", "completion_tokens"),
-      text: numberField(output, "textTokens"),
-      reasoning: numberField(output, "reasoningTokens"),
+      total: usage?.outputTokens,
+      text: usage?.outputTokenDetails?.textTokens,
+      reasoning: usage?.outputTokenDetails?.reasoningTokens,
     },
   }
 }
 
-function toolCallPart(event: object): LanguageModelV3StreamPart {
-  const input = field(event, "input") ?? field(event, "args") ?? field(event, "arguments")
+function toolCallPart(
+  event: Extract<StreamEvent, { type: "tool-call" }>,
+): LanguageModelV3StreamPart {
+  const input = event.input ?? event.args ?? event.arguments ?? {}
   return {
     type: "tool-call",
-    toolCallId: stringField(event, "toolCallId") ?? stringField(event, "id") ?? "",
-    toolName: stringField(event, "toolName") ?? "",
-    input: typeof input === "string" ? input : JSON.stringify(input ?? {}),
+    toolCallId: event.toolCallId ?? event.id ?? "",
+    toolName: event.toolName ?? "",
+    input: typeof input === "string" ? input : JSON.stringify(input),
   }
 }
 
-function streamPart(event: object): LanguageModelV3StreamPart | null {
-  const type = stringField(event, "type")
-  const id = stringField(event, "id") ?? ""
-  switch (type) {
+function streamPart(event: StreamEvent): LanguageModelV3StreamPart | null {
+  switch (event.type) {
     case "start":
       return { type: "stream-start", warnings: [] }
+    case "abort":
+    case "finish-step":
+      return null
     case "text-start":
     case "text-end":
     case "reasoning-start":
     case "reasoning-end":
     case "tool-input-end":
-      return { type, id }
+      return { type: event.type, id: event.id ?? "" }
     case "text-delta":
     case "reasoning-delta":
     case "tool-input-delta":
+      return { type: event.type, id: event.id ?? "", delta: event.text ?? event.delta ?? "" }
+    case "tool-input-start":
       return {
-        type,
-        id,
-        delta: stringField(event, "text") ?? stringField(event, "delta") ?? "",
+        type: event.type,
+        id: event.id ?? "",
+        toolName: event.toolName ?? "",
+        ...(event.dynamic === undefined ? {} : { dynamic: event.dynamic }),
       }
-    case "tool-input-start": {
-      const dynamic = field(event, "dynamic")
-      return {
-        type,
-        id,
-        toolName: stringField(event, "toolName") ?? "",
-        ...(typeof dynamic === "boolean" ? { dynamic } : {}),
-      }
-    }
     case "tool-call":
       return toolCallPart(event)
-    case "finish-step": {
-      const raw =
-        stringField(event, "finishReason") ?? stringField(event, "rawFinishReason") ?? "stop"
+    case "finish": {
+      const raw = event.rawFinishReason ?? event.finishReason ?? "stop"
       return { type: "finish", finishReason: finishReason(raw), usage: usageFromEvent(event) }
     }
-    case "finish":
-      return null
-    case "response-metadata": {
-      const responseId = stringField(event, "id")
-      const modelId = stringField(event, "modelId")
+    case "response-metadata":
       return {
-        type,
-        ...(responseId === undefined ? {} : { id: responseId }),
-        ...(modelId === undefined ? {} : { modelId }),
+        type: event.type,
+        ...(event.id === undefined ? {} : { id: event.id }),
+        ...(event.modelId === undefined ? {} : { modelId: event.modelId }),
       }
-    }
     case "error":
-      return { type, error: field(event, "error") ?? field(event, "message") ?? "Unknown error" }
-    default:
-      return null
+      return { type: "error", error: commandCodeNdjsonError(event.error) }
+  }
+}
+
+function parseEvent(line: string): StreamEvent | null {
+  try {
+    const parsed: unknown = JSON.parse(line)
+    const result = streamEventSchema.safeParse(parsed)
+    return result.success ? result.data : null
+  } catch {
+    return null
   }
 }
 
@@ -144,27 +225,25 @@ export async function emitCommandCodeChunks(
   controller: ReadableStreamDefaultController<LanguageModelV3StreamPart>,
 ): Promise<void> {
   let buffer = ""
+  let finished = false
   const decoder = new TextDecoder()
   const consumeLine = (line: string): void => {
     const trimmed = line.trim()
     if (trimmed.length === 0 || trimmed.startsWith(":") || trimmed === "[DONE]") {
       return
     }
-    let payload = trimmed
-    if (payload.startsWith("data: ")) {
-      payload = payload.slice(6)
-    } else if (payload.startsWith("data:")) {
-      payload = payload.slice(5)
+    const payload = trimmed.startsWith("data:") ? trimmed.slice(5).trimStart() : trimmed
+    const event = parseEvent(payload)
+    if (event === null || (event.type === "finish" && finished)) {
+      return
     }
-    try {
-      const parsed: unknown = JSON.parse(payload)
-      if (typeof parsed === "object" && parsed !== null) {
-        const part = streamPart(parsed)
-        if (part !== null) {
-          controller.enqueue(part)
-        }
-      }
-    } catch {}
+    const part = streamPart(event)
+    if (part !== null) {
+      controller.enqueue(part)
+    }
+    if (event.type === "finish") {
+      finished = true
+    }
   }
   for await (const chunk of chunks) {
     buffer += decoder.decode(chunk, { stream: true })

@@ -117,6 +117,7 @@ describe("createCommandCodeLanguageModel doStream", () => {
           '{"type":"start"}',
           '{"type":"tool-call","toolCallId":"t1","toolName":"Read","input":{"path":"a.ts"}}',
           '{"type":"finish-step","finishReason":"tool-calls","usage":{}}',
+          '{"type":"finish","finishReason":"tool-calls","rawFinishReason":"tool_calls","totalUsage":{}}',
         ].join("\n"),
       ),
     })
@@ -137,5 +138,44 @@ describe("createCommandCodeLanguageModel doStream", () => {
     }
     // Then
     expect(types).toEqual(["stream-start", "tool-call", "finish"])
+  })
+
+  it("emits a typed provider error for a string NDJSON error event", async () => {
+    // Given
+    const transport = new FakeHttpTransport()
+    transport.enqueueResponse({
+      status: 200,
+      headers: {},
+      body: new TextEncoder().encode(
+        '{"type":"error","error":"provider prose must not propagate"}\n',
+      ),
+    })
+    const model = createCommandCodeLanguageModel({
+      modelId: "default",
+      transport,
+      readAccessToken: async () => "cc-token",
+    })
+
+    // When
+    const { stream } = await model.doStream({
+      prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+    })
+    const parts = await Array.fromAsync(stream)
+
+    // Then
+    expect(parts).toEqual([
+      {
+        type: "error",
+        error: expect.objectContaining({
+          name: "CommandCodeProviderError",
+          message: "Command Code provider request failed",
+          code: "COMMAND_CODE_PROVIDER_ERROR",
+          stage: "ndjson-stream",
+          statusCode: null,
+          providerCode: null,
+          retryable: false,
+        }),
+      },
+    ])
   })
 })
