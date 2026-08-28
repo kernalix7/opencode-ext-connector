@@ -1,4 +1,4 @@
-import type { Clock } from "../core/clock"
+import type { Clock, ScheduledCallback } from "../core/clock"
 import { createAsyncDisposable } from "../core/lifecycle"
 
 export type CatalogReloadOptions = {
@@ -14,20 +14,30 @@ export function scheduleCatalogReload(options: CatalogReloadOptions): {
     return createAsyncDisposable(() => undefined)
   }
   let cancelled = false
+  let scheduled: ScheduledCallback | undefined
+  let activeReload: Promise<void> | undefined
   const arm = (): void => {
     scheduled = options.clock.schedule(options.intervalMs, () => {
       if (cancelled) {
         return
       }
-      arm()
-      void options.reload()
+      scheduled = undefined
+      activeReload = options.reload().then(
+        () => undefined,
+        () => undefined,
+      )
+      void activeReload.then(() => {
+        activeReload = undefined
+        if (!cancelled) {
+          arm()
+        }
+      })
     })
   }
-  let scheduled = options.clock.schedule(options.intervalMs, () => undefined)
-  scheduled.cancel()
   arm()
-  return createAsyncDisposable(() => {
+  return createAsyncDisposable(async () => {
     cancelled = true
-    scheduled.cancel()
+    scheduled?.cancel()
+    await activeReload
   })
 }
