@@ -1,6 +1,9 @@
 import { OperationCancelledError } from "../../core/errors"
+import { commandCodeResponseBodyTooLargeError } from "./errors"
 
 export { commandCodeHttpError } from "./errors"
+
+const MAX_ERROR_BODY_BYTES = 64 * 1024
 
 export type CommandCodeRequestLifecycle = {
   readonly signal: AbortSignal
@@ -31,7 +34,12 @@ export function createCommandCodeRequestLifecycle(
 export async function readCommandCodeErrorBody(chunks: AsyncIterable<Uint8Array>): Promise<string> {
   const decoder = new TextDecoder()
   let result = ""
+  let byteLength = 0
   for await (const chunk of chunks) {
+    byteLength += chunk.byteLength
+    if (byteLength > MAX_ERROR_BODY_BYTES) {
+      throw commandCodeResponseBodyTooLargeError()
+    }
     result += decoder.decode(chunk, { stream: true })
   }
   return result + decoder.decode()
