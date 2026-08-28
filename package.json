@@ -47,7 +47,7 @@
   ],
   "scripts": {
     "build": "bun run clean && tsc -p tsconfig.build.json && bun run build:h2-bridge",
-    "build:h2-bridge": "bun build --target=node --format=esm --sourcemap=linked --outdir=dist/providers/cursor --root=src/providers/cursor src/providers/cursor/h2-bridge.ts",
+    "build:h2-bridge": "bun run scripts/build-cursor-h2-bridge.ts",
     "check": "bun run lint && bun run typecheck && bun run check:policy && bun run check:loc && bun run test:foundation",
     "check:loc": "bun run scripts/check-file-size.ts",
     "check:policy": "bun run scripts/check-source-policy.ts",
