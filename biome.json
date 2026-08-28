@@ -50,7 +50,7 @@
   },
   "overrides": [
     {
-      "includes": ["src/index.ts"],
+      "includes": ["src/index.ts", "src/server.ts"],
       "linter": {
         "rules": {
           "style": {
