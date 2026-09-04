@@ -74,7 +74,7 @@ export async function findTypeScriptFiles(paths: readonly string[]): Promise<rea
     const entries = await readdir(path, { withFileTypes: true })
     await Promise.all(
       entries
-        .filter((entry) => !entry.isDirectory() || !IGNORED_DIRECTORIES.has(entry.name))
+        .filter((entry) => !IGNORED_DIRECTORIES.has(entry.name))
         .map((entry) => visit(join(path, entry.name))),
     )
   }
