@@ -8,6 +8,7 @@ import { z } from "zod"
 import { startOpenCode } from "./opencode-process"
 
 const pidSchema = z.coerce.number().int().positive()
+const argumentsSchema = z.array(z.string())
 
 function isProcessAlive(pid: number): boolean {
   try {
@@ -22,6 +23,48 @@ function isProcessAlive(pid: number): boolean {
 }
 
 describe("OpenCode process support", () => {
+  it("passes a reserved nonzero port to the child", async () => {
+    // Given
+    const directory = await mkdtemp(join(tmpdir(), "opencode-process-port-"))
+    const home = join(directory, "home")
+    const argumentsPath = join(directory, "child-arguments.json")
+    await mkdir(home, { recursive: true })
+    await writeFile(
+      join(directory, "serve"),
+      `
+await Bun.write(${JSON.stringify(argumentsPath)}, JSON.stringify(process.argv))
+const portIndex = process.argv.indexOf("--port")
+const port = process.argv.at(portIndex + 1)
+console.error("opencode server listening on http://127.0.0.1:" + port)
+await new Promise(() => undefined)
+`,
+      "utf8",
+    )
+    let opencode: Awaited<ReturnType<typeof startOpenCode>> | undefined
+    try {
+      // When
+      opencode = await startOpenCode({
+        binary: process.execPath,
+        cwd: directory,
+        env: {
+          HOME: home,
+          PATH: process.env["PATH"] ?? "",
+          XDG_CACHE_HOME: join(home, "cache"),
+          XDG_CONFIG_HOME: join(home, "config"),
+          XDG_DATA_HOME: join(home, "data"),
+        },
+      })
+
+      // Then
+      const args = argumentsSchema.parse(JSON.parse(await readFile(argumentsPath, "utf8")))
+      const portIndex = args.indexOf("--port")
+      expect(args.at(portIndex + 1)).not.toBe("0")
+    } finally {
+      await opencode?.close()
+      await rm(directory, { force: true, recursive: true })
+    }
+  })
+
   it("kills and awaits a child that never reports a startup URL", async () => {
     // Given
     const directory = await mkdtemp(join(tmpdir(), "opencode-process-timeout-"))
