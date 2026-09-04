@@ -35,6 +35,7 @@ const lifecycleCases: LifecycleCase[] = [
 function isolatedEnvironment(home: string): Readonly<Record<string, string>> {
   return {
     HOME: home,
+    NPM_CONFIG_OFFLINE: "true",
     PATH: process.env["PATH"] ?? "",
     XDG_CACHE_HOME: join(home, "cache"),
     XDG_CONFIG_HOME: join(home, "config"),
@@ -50,6 +51,7 @@ function isolatedEnvironment(home: string): Readonly<Record<string, string>> {
 function expectIsolatedEnvironment(env: Readonly<Record<string, string>>, home: string): void {
   expect(Object.keys(env).sort()).toEqual([
     "HOME",
+    "NPM_CONFIG_OFFLINE",
     "OPENCODE_DISABLE_AUTOUPDATE",
     "OPENCODE_DISABLE_CLAUDE_CODE_SKILLS",
     "OPENCODE_DISABLE_DEFAULT_PLUGINS",
