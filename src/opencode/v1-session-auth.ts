@@ -60,7 +60,6 @@ export function createCursorSessionAuth(
 ): AuthHook {
   return {
     provider: "cursor",
-    loader: async () => ({}),
     methods: [
       sessionMethod({
         provider: "cursor",
@@ -78,13 +77,6 @@ export function createCommandCodeSessionAuth(
 ): AuthHook {
   return {
     provider: "command-code",
-    loader: async (getAuth) => {
-      const auth = await getAuth()
-      if ("type" in auth && auth.type === "api" && auth.key !== COMMAND_CODE_SESSION_MARKER) {
-        return { apiKey: auth.key }
-      }
-      return {}
-    },
     methods: [
       sessionMethod({
         provider: "command-code",
@@ -104,7 +96,6 @@ export function createCommandCodeSessionAuth(
 export function createOllamaSessionAuth(fetch: OllamaFetch = productionOllamaFetch): AuthHook {
   return {
     provider: "ollama",
-    loader: async () => ({}),
     methods: [
       {
         type: "oauth",
