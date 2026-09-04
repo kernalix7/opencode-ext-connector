@@ -7,6 +7,8 @@
 - Added automatic Cloud-only online catalog refresh, pulled-local model
   discovery, local-first deduplication, and pull-on-first-use for Cloud tags
 - Added `ollamaAuthServer` and the `opencode-ext-connector/ollama` SDK export
+- **Breaking:** Removed the `opencode-ext-connector/server` package subpath;
+  import the named plugin functions from `opencode-ext-connector` instead
 - Documented the direct `dist/index.js` plugin URL required for all named auth
   hooks
 - Cursor direct generation now uses a plugin-owned private Node >=22 child over
