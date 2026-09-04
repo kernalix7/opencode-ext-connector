@@ -9,9 +9,9 @@ import { createCursorDirectRuntime } from "../../src/providers/cursor/direct-run
 import { createCursorLanguageModel } from "../../src/providers/cursor/language-model"
 import { FakeClock } from "../support/clock"
 import { attachCursorThreeTurnLoopback } from "../support/cursor-three-turn-loopback"
+import { getTestPackageDist } from "../support/test-package"
 
-const projectRoot = join(import.meta.dir, "..", "..")
-const childUrl = pathToFileURL(join(projectRoot, "dist", "providers", "cursor", "h2-bridge.js"))
+const childUrl = pathToFileURL(join(getTestPackageDist(), "providers", "cursor", "h2-bridge.js"))
 const servers = new Set<Http2Server>()
 const ignoreBackgroundCleanupError = (): void => undefined
 

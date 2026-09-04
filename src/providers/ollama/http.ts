@@ -58,12 +58,9 @@ export async function requestOllamaCatalog(request: CatalogRequest): Promise<str
       redirect: "error",
       credentials: "omit",
     })
-  } catch (error) {
+  } catch {
     if (request.signal.aborted) throw new OperationCancelledError(request.operation)
-    if (error instanceof TypeError || error instanceof DOMException) {
-      throw new OllamaCatalogError(request.operation, "transport-error")
-    }
-    throw error
+    throw new OllamaCatalogError(request.operation, "transport-error")
   }
   if (!response.ok) {
     throw new OllamaCatalogError(request.operation, failureKind(response.status))

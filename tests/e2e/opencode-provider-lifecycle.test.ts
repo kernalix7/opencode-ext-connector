@@ -7,8 +7,8 @@ import { pathToFileURL } from "node:url"
 import { createOpencodeClient } from "@opencode-ai/sdk"
 
 import { startOpenCode } from "../support/opencode-process"
+import { getTestPackageDist } from "../support/test-package"
 
-const projectRoot = join(import.meta.dir, "..", "..")
 const blockedEnvironmentKeys = [
   "ALL_PROXY",
   "ANTHROPIC_API_KEY",
@@ -35,6 +35,7 @@ const lifecycleCases: LifecycleCase[] = [
 function isolatedEnvironment(home: string): Readonly<Record<string, string>> {
   return {
     HOME: home,
+    NPM_CONFIG_OFFLINE: "true",
     PATH: process.env["PATH"] ?? "",
     XDG_CACHE_HOME: join(home, "cache"),
     XDG_CONFIG_HOME: join(home, "config"),
@@ -50,6 +51,7 @@ function isolatedEnvironment(home: string): Readonly<Record<string, string>> {
 function expectIsolatedEnvironment(env: Readonly<Record<string, string>>, home: string): void {
   expect(Object.keys(env).sort()).toEqual([
     "HOME",
+    "NPM_CONFIG_OFFLINE",
     "OPENCODE_DISABLE_AUTOUPDATE",
     "OPENCODE_DISABLE_CLAUDE_CODE_SKILLS",
     "OPENCODE_DISABLE_DEFAULT_PLUGINS",
@@ -81,8 +83,9 @@ async function closeAndAssert(server: Awaited<ReturnType<typeof startOpenCode>>)
 }
 
 function lifecyclePlugin(): string {
-  const authStoreUrl = pathToFileURL(join(projectRoot, "dist", "opencode", "auth-store.js")).href
-  const moduleUrl = pathToFileURL(join(projectRoot, "dist", "opencode", "v1-module.js")).href
+  const dist = getTestPackageDist()
+  const authStoreUrl = pathToFileURL(join(dist, "opencode", "auth-store.js")).href
+  const moduleUrl = pathToFileURL(join(dist, "opencode", "v1-module.js")).href
   return `
 import { createOpenCodeAuthStore } from ${JSON.stringify(authStoreUrl)}
 import { buildV1AuthHooks, buildV1Hooks } from ${JSON.stringify(moduleUrl)}
