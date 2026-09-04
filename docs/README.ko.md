@@ -7,7 +7,7 @@
 <p>
   <img src="https://img.shields.io/badge/Bun-%3E%3D1.3.14-000000?style=for-the-badge" alt="Bun >=1.3.14" />
   <img src="https://img.shields.io/badge/TypeScript-6.0.2-3178C6?style=for-the-badge" alt="TypeScript 6.0.2" />
-  <img src="https://img.shields.io/badge/OpenCode-verified_1.18.24-111111?style=for-the-badge" alt="OpenCode verified 1.18.24" />
+  <img src="https://img.shields.io/badge/OpenCode-E2E_tested-111111?style=for-the-badge" alt="OpenCode E2E tested" />
   <img src="https://img.shields.io/badge/License-BSD--3--Clause-blue?style=for-the-badge" alt="BSD-3-Clause" />
 </p>
 
@@ -19,7 +19,7 @@
 
 ## 상태
 
-> 독립적인 비공식 커뮤니티 플러그인, 버전 **0.1.0**. legacy multi-function 플러그인 로더(`@opencode-ai/plugin@1.18.18`)로 OpenCode **1.18.24**에서 수동으로 검증했습니다. 소스는 BSD-3-Clause입니다. 이 프로젝트는 OpenCode 또는 어떤 프로바이더와도 제휴, 보증, 후원, 승인 관계가 없습니다. 전체 조건은 [라이선스 및 면책 조항](#라이선스-및-면책-조항)에 있습니다.
+> 독립적인 비공식 커뮤니티 플러그인, 버전 **0.2.0**. CI에 설치된 OpenCode CLI를 대상으로 legacy multi-function 로더를 패키지 E2E 테스트로 검증합니다. `@opencode-ai/plugin@1.18.18`은 컴파일 시 사용하는 플러그인 API 대상이며 OpenCode 런타임 버전 고정이 아닙니다. 소스는 BSD-3-Clause입니다. 이 프로젝트는 OpenCode 또는 어떤 프로바이더와도 제휴, 보증, 후원, 승인 관계가 없습니다. 전체 조건은 [라이선스 및 면책 조항](#라이선스-및-면책-조항)에 있습니다.
 
 이미 가지고 있는 Claude, Cursor, Command Code, Ollama 세션을 재사용합니다. `opencode.json` 플러그인 항목 하나가 라이브 카탈로그를 OpenCode에 공개합니다. Claude와 Cursor는 OpenCode에 마커 또는 OAuth 레코드가 있고 벤더 세션이 있을 때까지 연결되지 않은 상태로 유지됩니다. Command Code는 OpenCode에 저장된 직접 API 키 또는 기존 CLI 세션/키를 사용할 수 있습니다. Ollama는 정확한 세션 마커와 응답하는 localhost 데몬이 필요합니다.
 
@@ -29,7 +29,7 @@
 | --- | --- |
 | [Bun](https://bun.sh) | 1.3.14 이상 |
 | Node.js | 22 이상, Cursor 직접 생성 전용 |
-| OpenCode | legacy multi-function 플러그인 로더(`@opencode-ai/plugin@1.18.18`); OpenCode **1.18.24**에서 수동 검증 |
+| OpenCode | legacy multi-function 플러그인 로더를 지원하는 런타임; 패키지 E2E는 CI에 설치된 CLI를 테스트합니다. `@opencode-ai/plugin@1.18.18`은 컴파일 시 사용하는 API 대상입니다. |
 | Claude | 기존 Claude Code 자격 증명 (`~/.claude/.credentials.json` 및/또는 macOS Keychain) |
 | Cursor | 기존 Cursor CLI 로그인 (`~/.config/cursor/auth.json` 또는 `CURSOR_ACCESS_TOKEN`) |
 | Command Code | 기존 API 키 (`COMMAND_CODE_API_KEY` 또는 `~/.commandcode/auth.json`); 생성 및 버전 메타데이터를 위해 PATH에 `command-code` CLI |
@@ -55,7 +55,7 @@ bun run build
 }
 ```
 
-신뢰할 수 있는, 사용자가 소유한 `file://` 빌드의 직접 `dist/index.js` URL을 사용하십시오. OpenCode 1.18.24는 패키지 디렉터리 URL을 다르게 처리하므로 이 커넥터의 named legacy auth hook을 로드하지 않습니다.
+신뢰할 수 있는, 사용자가 소유한 `file://` 빌드의 직접 `dist/index.js` URL을 사용하십시오. 패키지 디렉터리 URL은 이 커넥터의 named legacy auth hook을 로드하지 않습니다.
 
 패키지 항목 하나가 카탈로그 플러그인과 Claude, Cursor, Command Code, Ollama 인증 hook을 노출합니다. 프로바이더 id: `claude`, `cursor`, `command-code`, `ollama`. 모델 id는 각 프로바이더의 라이브 카탈로그에서 가져오며, 라이브 목록이 비어 있으면 문서화된 fallback은 Cursor의 `default`와 Command Code의 `Qwen/Qwen3.8-Max`입니다.
 
@@ -94,7 +94,7 @@ writeback은 기본적으로 꺼져 있어, 요청하지 않는 한 이 플러�
 
 커넥터는 항상 초기 카탈로그 갱신을 한 번 수행합니다. `snapshotTimeoutMs`는 각 프로바이더 스냅샷에 적용되고, `catalogReloadMs: 0`은 주기적 갱신만 비활성화합니다. 주기적 갱신은 fixed-delay이며 single-flight입니다. 다음 지연은 현재 갱신이 끝난 뒤에 시작됩니다. health backoff는 반복 실패를 억제합니다. 일시적 실패는 마지막으로 알려진 카탈로그를 유지하고, 명시적인 unavailable 스냅샷은 커넥터가 소유한 프로바이더 데이터만 제거합니다.
 
-OpenCode는 인스턴스 구성 중에 활성 프로바이더 레지스트리를 만듭니다(1.18.24에서 수동 검증). 주기적 갱신은 커넥터가 유지하는 카탈로그와 health 상태를 갱신하지만, 새 인증이나 변경된 모델 소속은 정상적인 OpenCode 인스턴스 재생성 후에 표시됩니다. 커넥터는 재생성을 강제하지 않으며 생성된 프로바이더 설정을 기록하지 않습니다. `@opencode-ai/plugin@1.18.18` 패키지는 이 커넥터가 대상으로 하는 플러그인 API이며, OpenCode 런타임 고정이 아닙니다.
+OpenCode는 인스턴스 구성 중에 활성 프로바이더 레지스트리를 만듭니다. 주기적 갱신은 커넥터가 유지하는 카탈로그와 health 상태를 갱신하지만, 새 인증이나 변경된 모델 소속은 정상적인 OpenCode 인스턴스 재생성 후에 표시됩니다. 커넥터는 재생성을 강제하지 않으며 생성된 프로바이더 설정을 기록하지 않습니다. `@opencode-ai/plugin@1.18.18` 패키지는 이 커넥터가 대상으로 하는 플러그인 API이며, OpenCode 런타임 고정이 아닙니다.
 
 writeback이 꺼져 있으면 갱신된 Claude 토큰은 메모리에만 남습니다. 저장된 refresh 토큰이 회전하면 다음 프로세스 시작 때 동작하지 않을 수 있습니다 — 파일까지 갱신하려면 `writeBackCredentials: true`를 설정하십시오.
 
@@ -124,7 +124,7 @@ Ollama `/connect`는 로컬 데몬을 조사하고 정확한 세션 마커를 �
 
 | 증상 | 확인할 것 |
 | --- | --- |
-| `/connect` 메서드가 없음 | 플러그인 URL은 신뢰할 수 있는, 사용자가 소유한 `file:///absolute/path/to/opencode-ext-connector/dist/index.js`여야 합니다. 패키지 디렉터리 URL은 OpenCode 1.18.24에서 named legacy auth hook을 로드하지 않습니다. 변경한 뒤 OpenCode를 완전히 재시작하십시오. |
+| `/connect` 메서드가 없음 | 플러그인 URL은 신뢰할 수 있는, 사용자가 소유한 `file:///absolute/path/to/opencode-ext-connector/dist/index.js`여야 합니다. 패키지 디렉터리 URL은 named legacy auth hook을 로드하지 않습니다. 변경한 뒤 OpenCode를 완전히 재시작하십시오. |
 | 프로바이더가 활성화됐지만 모델이 없음 | `providers`를 생략하면 네 프로바이더가 모두 활성화됩니다. 명시적 목록은 엄격한 allow-list입니다. Claude와 Cursor는 마커 또는 OAuth 레코드와 벤더 세션이 필요하고, Command Code는 OpenCode에 저장된 API 키 또는 CLI 세션/키를 사용할 수 있으며, Ollama는 정확한 마커와 응답하는 localhost 데몬이 필요합니다. `/connect` 후 완전히 재시작해야 인스턴스 재생성이 새 소속을 반영합니다. |
 | Claude가 다음 시작 전까지만 동작함 | 기본 `writeBackCredentials: false`는 갱신된 토큰을 메모리에만 둡니다. 회전된 refresh 토큰은 writeback을 켜지 않으면 다음 프로세스 시작에서 실패합니다. |
 | Cursor 생성이 실패함 | Node.js 22 이상이 필요합니다. 생성은 `cursor-agent`가 아니라 private Node 자식 프로세스를 통한 미공개 프로토콜을 사용합니다. 프로토콜이 어긋나면 해당 프로바이더가 실패하며, 암시적 fallback은 없습니다. |

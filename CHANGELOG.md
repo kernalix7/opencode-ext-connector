@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 - 2026-09-04
 
 - Added Ollama as a fourth provider using the local daemon and existing
   `ollama signin` Cloud subscription session
@@ -8,7 +8,7 @@
   discovery, local-first deduplication, and pull-on-first-use for Cloud tags
 - Added `ollamaAuthServer` and the `opencode-ext-connector/ollama` SDK export
 - Documented the direct `dist/index.js` plugin URL required for all named auth
-  hooks under OpenCode 1.18.24
+  hooks
 - Cursor direct generation now uses a plugin-owned private Node >=22 child over
   stdio and Cursor's unpublished AgentService Connect+protobuf/HTTP/2 protocol;
   there is no plugin listening daemon and no `cursor-agent` generation fallback
