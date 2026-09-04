@@ -1,9 +1,13 @@
 import { afterEach, describe, expect, it } from "bun:test"
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { mkdtemp, rm, symlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { countPureLines, findOversizedFiles } from "../../../scripts/check-file-size"
+import {
+  countPureLines,
+  findOversizedFiles,
+  findTypeScriptFiles,
+} from "../../../scripts/check-file-size"
 
 const temporaryDirectories: string[] = []
 
@@ -48,5 +52,22 @@ describe("findOversizedFiles", () => {
 
     // Then
     expect(violations).toEqual([{ filePath, maximumLines: 1, pureLines: 2 }])
+  })
+})
+
+describe("findTypeScriptFiles", () => {
+  it("ignores a broken symlink with an ignored directory name", async () => {
+    // Given
+    const directory = await mkdtemp(join(tmpdir(), "opencode-ext-files-"))
+    temporaryDirectories.push(directory)
+    const filePath = join(directory, "source.ts")
+    await writeFile(filePath, "export const value = 1\n", "utf8")
+    await symlink(join(directory, "missing-index"), join(directory, ".codegraph"))
+
+    // When
+    const files = await findTypeScriptFiles([directory])
+
+    // Then
+    expect(files).toEqual([filePath])
   })
 })

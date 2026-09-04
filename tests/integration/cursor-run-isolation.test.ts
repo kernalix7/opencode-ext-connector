@@ -17,9 +17,9 @@ import { concatBytes } from "../../src/providers/cursor/proto-wire"
 import { CursorRunSessionError } from "../../src/providers/cursor/run-session"
 import { FakeClock } from "../support/clock"
 import { attachCursorDirectLoopback } from "../support/cursor-direct-loopback"
+import { getTestPackageDist } from "../support/test-package"
 
-const projectRoot = join(import.meta.dir, "..", "..")
-const childUrl = pathToFileURL(join(projectRoot, "dist", "providers", "cursor", "h2-bridge.js"))
+const childUrl = pathToFileURL(join(getTestPackageDist(), "providers", "cursor", "h2-bridge.js"))
 const servers = new Set<Http2Server>()
 
 function isServerStream(stream: http2.Http2Stream): stream is ServerHttp2Stream {

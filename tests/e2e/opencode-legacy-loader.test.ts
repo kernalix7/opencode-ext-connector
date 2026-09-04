@@ -7,8 +7,8 @@ import { pathToFileURL } from "node:url"
 import { createOpencodeClient } from "@opencode-ai/sdk"
 
 import { startOpenCode } from "../support/opencode-process"
+import { getTestPackageDist } from "../support/test-package"
 
-const projectRoot = join(import.meta.dir, "..", "..")
 const blockedEnvironmentKeys = [
   "ALL_PROXY",
   "ANTHROPIC_API_KEY",
@@ -24,6 +24,7 @@ const blockedEnvironmentKeys = [
 function isolatedEnvironment(home: string): Readonly<Record<string, string>> {
   return {
     HOME: home,
+    NPM_CONFIG_OFFLINE: "true",
     PATH: process.env["PATH"] ?? "",
     XDG_CACHE_HOME: join(home, "cache"),
     XDG_CONFIG_HOME: join(home, "config"),
@@ -39,6 +40,7 @@ function isolatedEnvironment(home: string): Readonly<Record<string, string>> {
 function expectIsolatedEnvironment(env: Readonly<Record<string, string>>, home: string): void {
   expect(Object.keys(env).sort()).toEqual([
     "HOME",
+    "NPM_CONFIG_OFFLINE",
     "OPENCODE_DISABLE_AUTOUPDATE",
     "OPENCODE_DISABLE_CLAUDE_CODE_SKILLS",
     "OPENCODE_DISABLE_DEFAULT_PLUGINS",
@@ -156,7 +158,7 @@ describe("OpenCode legacy multi-function loader", () => {
 
   it("exposes all package auth hooks from one configured entry", async () => {
     // Given
-    const plugin = pathToFileURL(join(projectRoot, "dist", "index.js")).href
+    const plugin = pathToFileURL(join(getTestPackageDist(), "index.js")).href
     // When
     await withOpenCode(plugin, async (url) => {
       const client = createOpencodeClient({ baseUrl: url })

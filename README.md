@@ -7,7 +7,7 @@
 <p>
   <img src="https://img.shields.io/badge/Bun-%3E%3D1.3.14-000000?style=for-the-badge" alt="Bun >=1.3.14" />
   <img src="https://img.shields.io/badge/TypeScript-6.0.2-3178C6?style=for-the-badge" alt="TypeScript 6.0.2" />
-  <img src="https://img.shields.io/badge/OpenCode-verified_1.18.24-111111?style=for-the-badge" alt="OpenCode verified 1.18.24" />
+  <img src="https://img.shields.io/badge/OpenCode-E2E_tested-111111?style=for-the-badge" alt="OpenCode E2E tested" />
   <img src="https://img.shields.io/badge/License-BSD--3--Clause-blue?style=for-the-badge" alt="BSD-3-Clause" />
 </p>
 
@@ -19,7 +19,7 @@
 
 ## Status
 
-> Independent unofficial community plugin, version **0.1.0**. Manually verified against OpenCode **1.18.24** with the legacy multi-function plugin loader (`@opencode-ai/plugin@1.18.18`). Source is BSD-3-Clause. This project is not affiliated with, endorsed by, sponsored by, or authorized by OpenCode or any provider. Full terms are in [License and Disclaimer](#license-and-disclaimer).
+> Independent unofficial community plugin, version **0.2.0**. Package E2E tests exercise the legacy multi-function loader with the OpenCode CLI installed in CI. `@opencode-ai/plugin@1.18.18` is the compile-time plugin API target, not a runtime pin. Source is BSD-3-Clause. This project is not affiliated with, endorsed by, sponsored by, or authorized by OpenCode or any provider. Full terms are in [License and Disclaimer](#license-and-disclaimer).
 
 Reuse the Claude, Cursor, Command Code, and Ollama sessions you already have. One `opencode.json` plugin entry publishes live catalogs into OpenCode. Claude and Cursor stay disconnected until OpenCode has a marker or OAuth record and the vendor session is present. Command Code may use an OpenCode-stored direct API key or an existing CLI session/key. Ollama requires the exact session marker plus a responsive localhost daemon.
 
@@ -29,7 +29,7 @@ Reuse the Claude, Cursor, Command Code, and Ollama sessions you already have. On
 | --- | --- |
 | [Bun](https://bun.sh) | 1.3.14 or later |
 | Node.js | 22 or later, for Cursor direct generation only |
-| OpenCode | Legacy multi-function plugin loader (`@opencode-ai/plugin@1.18.18`); OpenCode **1.18.24** manually verified |
+| OpenCode | Runtime with the legacy multi-function plugin loader; package E2E tests the CLI installed in CI. `@opencode-ai/plugin@1.18.18` is the compile-time API target. |
 | Claude | Existing Claude Code credentials (`~/.claude/.credentials.json` and/or macOS Keychain) |
 | Cursor | Existing Cursor CLI login (`~/.config/cursor/auth.json` or `CURSOR_ACCESS_TOKEN`) |
 | Command Code | Existing API key (`COMMAND_CODE_API_KEY` or `~/.commandcode/auth.json`); `command-code` CLI on PATH for generation and version metadata |
@@ -55,7 +55,7 @@ In `opencode.json` / `opencode.jsonc` (official `plugin` field):
 }
 ```
 
-Use that direct `dist/index.js` URL from a trusted, user-owned `file://` build. OpenCode 1.18.24 treats a package-directory URL differently and does not load this connector's named legacy auth hooks.
+Use that direct `dist/index.js` URL from a trusted, user-owned `file://` build. A package-directory URL does not load this connector's named legacy auth hooks.
 
 The one package entry exposes the catalog plugin plus the Claude, Cursor, Command Code, and Ollama auth hooks. Provider ids: `claude`, `cursor`, `command-code`, `ollama`. Model ids come from each provider's live catalog, with documented fallbacks `default` (Cursor) and `Qwen/Qwen3.8-Max` (Command Code) when a live list is empty.
 
@@ -94,7 +94,7 @@ Enabled providers remain disconnected until their provider-specific auth rule is
 
 The connector always performs one initial catalog refresh. `snapshotTimeoutMs` applies to each provider snapshot, while `catalogReloadMs: 0` disables only periodic refresh. Periodic refreshes are fixed-delay and single-flight: the next delay begins after the current refresh settles. Health backoff suppresses repeated failures; transient failures retain the last-known catalog, while an explicit unavailable snapshot removes only connector-owned provider data.
 
-OpenCode builds its active provider registry during instance setup (manually verified on 1.18.24). Periodic refresh updates the connector's retained catalog and health state, but new authentication or changed model membership becomes visible after normal OpenCode instance reconstruction. The connector never forces reconstruction or writes generated provider configuration. The `@opencode-ai/plugin@1.18.18` package is the plugin API this connector targets; it is not an OpenCode runtime pin.
+OpenCode builds its active provider registry during instance setup. Periodic refresh updates the connector's retained catalog and health state, but new authentication or changed model membership becomes visible after normal OpenCode instance reconstruction. The connector never forces reconstruction or writes generated provider configuration. The `@opencode-ai/plugin@1.18.18` package is the plugin API this connector targets; it is not an OpenCode runtime pin.
 
 With writeback off, refreshed Claude tokens stay in memory only. A stored refresh token that rotates can then stop working on the next process start — set `writeBackCredentials: true` if you want the files updated too.
 
@@ -124,7 +124,7 @@ The standalone SDK entry is `opencode-ext-connector/ollama`. It can generate wit
 
 | Symptom | What to check |
 | --- | --- |
-| `/connect` methods missing | The plugin URL must be a trusted, user-owned `file:///absolute/path/to/opencode-ext-connector/dist/index.js`. A package-directory URL does not load named legacy auth hooks on OpenCode 1.18.24. Fully restart OpenCode after changing it. |
+| `/connect` methods missing | The plugin URL must be a trusted, user-owned `file:///absolute/path/to/opencode-ext-connector/dist/index.js`. A package-directory URL does not load named legacy auth hooks. Fully restart OpenCode after changing it. |
 | Provider enabled but no models | Omitted `providers` enables all four; an explicit list is a strict allow-list. Claude and Cursor need a marker or OAuth record plus the vendor session; Command Code may use an OpenCode-stored API key or a CLI session/key; Ollama needs the exact marker plus a responsive localhost daemon. Fully restart after `/connect` so instance reconstruction picks up new membership. |
 | Claude works until the next start | Default `writeBackCredentials: false` keeps refreshed tokens in memory. A rotated refresh token then fails on the next process start unless writeback is enabled. |
 | Cursor generation fails | Node.js 22 or later is required. Generation uses the unpublished protocol through a private Node child, not `cursor-agent`. Protocol drift fails that provider; there is no implicit fallback. |

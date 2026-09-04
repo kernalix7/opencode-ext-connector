@@ -4,9 +4,9 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import { buildCursorH2Bridge } from "../../../scripts/build-cursor-h2-bridge"
+import { getTestPackageDist } from "../../support/test-package"
 
 const temporaryDirectories: string[] = []
-const productionDist = join(import.meta.dir, "..", "..", "..", "dist")
 
 async function findSourceMapPaths(directory: string): Promise<readonly string[]> {
   const paths: string[] = []
@@ -38,7 +38,7 @@ describe("buildCursorH2Bridge", () => {
   })
 })
 
-describe("production source maps", () => {
+describe("package source maps", () => {
   it("finds runtime and declaration maps by artifact path", async () => {
     // Given
     const directory = await mkdtemp(join(tmpdir(), "opencode-ext-source-maps-"))
@@ -56,14 +56,15 @@ describe("production source maps", () => {
     expect(paths).toEqual(["runtime.js.map", "types/index.d.ts.map"])
   })
 
-  it("emits no runtime or declaration maps into production dist", async () => {
+  it("emits no runtime or declaration maps into the prepared package dist", async () => {
     // Given
-    const dist = productionDist
+    const dist = getTestPackageDist()
 
     // When
     const paths = await findSourceMapPaths(dist)
 
     // Then
+    expect(await Bun.file(join(dist, "index.js")).exists()).toBe(true)
     expect(paths).toEqual([])
   })
 })

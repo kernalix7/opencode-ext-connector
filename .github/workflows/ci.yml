@@ -20,7 +20,7 @@ jobs:
         with:
           node-version: 22
       - name: Install OpenCode CLI
-        run: curl -fsSL https://opencode.ai/install | bash -s -- --version 1.18.24 --no-modify-path
+        run: curl -fsSL https://opencode.ai/install | bash -s -- --no-modify-path
       - name: Verify OpenCode CLI
         run: opencode --version
       - run: bun install --frozen-lockfile
