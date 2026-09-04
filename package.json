@@ -50,7 +50,7 @@
     "clean": "rm -rf dist",
     "lint": "biome check .",
     "test": "bun test",
-    "test:e2e": "bun run build && bun test tests/e2e/opencode-legacy-loader.test.ts tests/e2e/opencode-provider-lifecycle.test.ts tests/e2e/ollama-lifecycle.test.ts tests/e2e/opencode-package-install.test.ts",
+    "test:e2e": "bun test tests/e2e/opencode-legacy-loader.test.ts tests/e2e/opencode-provider-lifecycle.test.ts tests/e2e/ollama-lifecycle.test.ts tests/e2e/opencode-package-install.test.ts",
     "test:foundation": "bun test tests/unit/scripts",
     "test:integration": "bun test tests/integration",
     "test:provider": "bun test tests/unit/providers",
