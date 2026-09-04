@@ -7,8 +7,8 @@ import { pathToFileURL } from "node:url"
 import { createOpencodeClient } from "@opencode-ai/sdk"
 
 import { startOpenCode } from "../support/opencode-process"
+import { getTestPackageDist, getTestPackageRoot } from "../support/test-package"
 
-const projectRoot = join(import.meta.dir, "..", "..")
 const blockedEnvironmentKeys = [
   "ALL_PROXY",
   "ANTHROPIC_API_KEY",
@@ -56,7 +56,7 @@ async function withOpenCode(
   const directory = await mkdtemp(join(tmpdir(), "opencode-ollama-lifecycle-"))
   const home = join(directory, "home")
   await mkdir(home, { recursive: true })
-  const plugin = pathToFileURL(join(projectRoot, "dist", "index.js")).href
+  const plugin = pathToFileURL(join(getTestPackageDist(), "index.js")).href
   await writeFile(
     join(directory, "opencode.json"),
     JSON.stringify({ autoupdate: false, plugin: [[plugin, { providers }]], share: "disabled" }),
@@ -121,16 +121,22 @@ describe("Ollama package and disconnected OpenCode lifecycle", () => {
     `
 
     // When
-    const process = Bun.spawn(["bun", "--eval", script], {
-      cwd: projectRoot,
-      env: isolatedEnvironment(join(tmpdir(), "opencode-ollama-sdk-home")),
-      stdout: "ignore",
-      stderr: "pipe",
-    })
-    const exitCode = await process.exited
+    const sdkHome = await mkdtemp(join(tmpdir(), "opencode-ollama-sdk-home-"))
+    try {
+      const sdkProcess = Bun.spawn([process.execPath, "--eval", script], {
+        cwd: getTestPackageRoot(),
+        env: isolatedEnvironment(sdkHome),
+        stdout: "ignore",
+        stderr: "pipe",
+      })
+      const exitCode = await sdkProcess.exited
+      const stderr = await new Response(sdkProcess.stderr).text()
 
-    // Then
-    expect(exitCode).toBe(0)
-    expect(await new Response(process.stderr).text()).toBe("")
+      // Then
+      expect(exitCode, stderr).toBe(0)
+      expect(stderr).toBe("")
+    } finally {
+      await rm(sdkHome, { force: true, recursive: true })
+    }
   })
 })
