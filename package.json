@@ -1,6 +1,6 @@
 {
   "name": "opencode-ext-connector",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "External provider connector for OpenCode",
   "type": "module",
   "license": "BSD-3-Clause",
@@ -31,10 +31,6 @@
     "./ollama": {
       "types": "./dist/sdk/ollama.d.ts",
       "import": "./dist/sdk/ollama.js"
-    },
-    "./server": {
-      "types": "./dist/server.d.ts",
-      "import": "./dist/server.js"
     }
   },
   "files": [
@@ -54,12 +50,13 @@
     "clean": "rm -rf dist",
     "lint": "biome check .",
     "test": "bun test",
-    "test:e2e": "bun run build && bun test tests/e2e/opencode-legacy-loader.test.ts tests/e2e/opencode-provider-lifecycle.test.ts tests/e2e/ollama-lifecycle.test.ts",
+    "test:e2e": "bun run build && bun test tests/e2e/opencode-legacy-loader.test.ts tests/e2e/opencode-provider-lifecycle.test.ts tests/e2e/ollama-lifecycle.test.ts tests/e2e/opencode-package-install.test.ts",
     "test:foundation": "bun test tests/unit/scripts",
     "test:integration": "bun test tests/integration",
     "test:provider": "bun test tests/unit/providers",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "verify:package": "bun run build && bun pm pack --dry-run"
+    "prepack": "bun run build",
+    "verify:package": "bun pm pack --dry-run"
   },
   "dependencies": {
     "@ai-sdk/provider": "3.0.8",
