@@ -5,9 +5,9 @@ import { pathToFileURL } from "node:url"
 
 import { createCursorBridgeClient } from "../../src/providers/cursor/bridge-client"
 import { createNodeCursorBridgeProcessFactory } from "../../src/providers/cursor/bridge-process"
+import { getTestPackageDist } from "../support/test-package"
 
-const projectRoot = join(import.meta.dir, "..", "..")
-const childUrl = pathToFileURL(join(projectRoot, "dist", "providers", "cursor", "h2-bridge.js"))
+const childUrl = pathToFileURL(join(getTestPackageDist(), "providers", "cursor", "h2-bridge.js"))
 const token = "integration-parent-secret"
 const servers = new Set<Http2Server>()
 
