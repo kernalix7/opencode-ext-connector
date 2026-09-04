@@ -7,8 +7,8 @@ import { pathToFileURL } from "node:url"
 import { createOpencodeClient } from "@opencode-ai/sdk"
 
 import { startOpenCode } from "../support/opencode-process"
+import { getTestPackageDist } from "../support/test-package"
 
-const projectRoot = join(import.meta.dir, "..", "..")
 const blockedEnvironmentKeys = [
   "ALL_PROXY",
   "ANTHROPIC_API_KEY",
@@ -158,7 +158,7 @@ describe("OpenCode legacy multi-function loader", () => {
 
   it("exposes all package auth hooks from one configured entry", async () => {
     // Given
-    const plugin = pathToFileURL(join(projectRoot, "dist", "index.js")).href
+    const plugin = pathToFileURL(join(getTestPackageDist(), "index.js")).href
     // When
     await withOpenCode(plugin, async (url) => {
       const client = createOpencodeClient({ baseUrl: url })
