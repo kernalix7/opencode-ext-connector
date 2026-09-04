@@ -61,7 +61,7 @@ describe("package exports", () => {
       prepack: "bun run build",
       verifyPackage: "bun pm pack --dry-run",
       testE2e:
-        "bun run build && bun test tests/e2e/opencode-legacy-loader.test.ts tests/e2e/opencode-provider-lifecycle.test.ts tests/e2e/ollama-lifecycle.test.ts tests/e2e/opencode-package-install.test.ts",
+        "bun test tests/e2e/opencode-legacy-loader.test.ts tests/e2e/opencode-provider-lifecycle.test.ts tests/e2e/ollama-lifecycle.test.ts tests/e2e/opencode-package-install.test.ts",
     })
   })
 })
