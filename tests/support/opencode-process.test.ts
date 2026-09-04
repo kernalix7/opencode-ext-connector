@@ -23,7 +23,7 @@ function isProcessAlive(pid: number): boolean {
 }
 
 describe("OpenCode process support", () => {
-  it("passes a reserved nonzero port to the child", async () => {
+  it("passes port zero and returns the child server URL", async () => {
     // Given
     const directory = await mkdtemp(join(tmpdir(), "opencode-process-port-"))
     const home = join(directory, "home")
@@ -34,8 +34,9 @@ describe("OpenCode process support", () => {
       `
 await Bun.write(${JSON.stringify(argumentsPath)}, JSON.stringify(process.argv))
 const portIndex = process.argv.indexOf("--port")
-const port = process.argv.at(portIndex + 1)
-console.error("opencode server listening on http://127.0.0.1:" + port)
+const receivedPort = process.argv.at(portIndex + 1)
+const server = Bun.serve({ hostname: "127.0.0.1", port: Number(receivedPort), fetch: () => new Response("fixture") })
+console.error("opencode server listening on http://127.0.0.1:" + server.port)
 await new Promise(() => undefined)
 `,
       "utf8",
@@ -58,7 +59,8 @@ await new Promise(() => undefined)
       // Then
       const args = argumentsSchema.parse(JSON.parse(await readFile(argumentsPath, "utf8")))
       const portIndex = args.indexOf("--port")
-      expect(args.at(portIndex + 1)).not.toBe("0")
+      expect(args.at(portIndex + 1)).toBe("0")
+      expect(new URL(opencode.url).port).not.toBe("0")
     } finally {
       await opencode?.close()
       await rm(directory, { force: true, recursive: true })

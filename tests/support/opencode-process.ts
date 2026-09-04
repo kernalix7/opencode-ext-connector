@@ -1,7 +1,6 @@
 import { z } from "zod"
 
 const startupUrlSchema = z.url()
-const portSchema = z.number().int().min(1).max(65_535)
 const startupUrlPattern = /http:\/\/127\.0\.0\.1:\d+/
 
 class OpenCodeProcessStartError extends Error {
@@ -55,13 +54,6 @@ export type OpenCodeProcess = {
 }
 
 export async function startOpenCode(options: OpenCodeProcessOptions): Promise<OpenCodeProcess> {
-  const reservation = Bun.serve({
-    hostname: "127.0.0.1",
-    port: 0,
-    fetch: () => new Response(null, { status: 503 }),
-  })
-  const port = portSchema.parse(reservation.port)
-  await reservation.stop(true)
   const process = Bun.spawn(
     [
       options.binary,
@@ -69,7 +61,7 @@ export async function startOpenCode(options: OpenCodeProcessOptions): Promise<Op
       "--hostname",
       "127.0.0.1",
       "--port",
-      port.toString(),
+      "0",
       "--print-logs",
       "--log-level",
       "ERROR",
