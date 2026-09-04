@@ -26,6 +26,7 @@ const blockedEnvironmentKeys = [
 function isolatedEnvironment(home: string): Readonly<Record<string, string>> {
   return {
     HOME: home,
+    NPM_CONFIG_OFFLINE: "true",
     PATH: process.env["PATH"] ?? "",
     XDG_CACHE_HOME: join(home, "cache"),
     XDG_CONFIG_HOME: join(home, "config"),
@@ -43,6 +44,7 @@ function expectHermeticEnvironment(env: Readonly<Record<string, string>>, home: 
   expect(env["XDG_CACHE_HOME"]?.startsWith(home)).toBe(true)
   expect(env["XDG_CONFIG_HOME"]?.startsWith(home)).toBe(true)
   expect(env["XDG_DATA_HOME"]?.startsWith(home)).toBe(true)
+  expect(env["NPM_CONFIG_OFFLINE"]).toBe("true")
   expect(env["OPENCODE_DISABLE_MODELS_FETCH"]).toBe("1")
   for (const key of blockedEnvironmentKeys) expect(env[key]).toBeUndefined()
 }
