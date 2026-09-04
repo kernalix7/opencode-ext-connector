@@ -7,9 +7,10 @@ import {
   createBridgeEventLineDecoder,
   serializeBridgeCommand,
 } from "../../src/providers/cursor/bridge-protocol"
+import { getTestPackageDist, getTestPackageRoot } from "./test-package"
 
-const projectRoot = join(import.meta.dir, "..", "..")
-const childPath = join(projectRoot, "dist", "providers", "cursor", "h2-bridge.js")
+const packageRoot = getTestPackageRoot()
+const childPath = join(getTestPackageDist(), "providers", "cursor", "h2-bridge.js")
 const children = new Set<ChildProcessWithoutNullStreams>()
 
 export type RunningCursorH2Bridge = {
@@ -20,7 +21,7 @@ export type RunningCursorH2Bridge = {
 
 export function startCursorH2Bridge(endpoint: string): RunningCursorH2Bridge {
   const child = spawn("node", [childPath, endpoint], {
-    cwd: projectRoot,
+    cwd: packageRoot,
     env: process.env,
     stdio: ["pipe", "pipe", "pipe"],
   })
