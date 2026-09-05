@@ -1,9 +1,9 @@
 import type { Hooks } from "@opencode-ai/plugin"
 
-import type { CatalogPublisher } from "../core/adapter"
-import { InvalidArgumentError, OperationCancelledError } from "../core/errors"
-import type { ProviderSnapshot } from "../core/models"
-import type { ProviderEntry } from "./provider-entry"
+import type { CatalogPublisher } from "../core/adapter.js"
+import { InvalidArgumentError, OperationCancelledError } from "../core/errors.js"
+import type { ProviderSnapshot } from "../core/models.js"
+import type { ProviderEntry } from "./provider-entry.js"
 
 type HostConfig = Parameters<NonNullable<Hooks["config"]>>[0]
 type ProviderModels = {
