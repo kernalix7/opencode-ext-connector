@@ -1,21 +1,21 @@
-export { createOllamaAdapter, type OllamaAdapterOptions } from "./adapter"
+export { createOllamaAdapter, type OllamaAdapterOptions } from "./adapter.js"
 export {
   createOllamaCatalogState,
   type OllamaCatalogLease,
   type OllamaCatalogState,
   type OllamaCatalogStateOptions,
-} from "./catalog-state"
-export { discoverOllamaCloudModels } from "./cloud-catalog"
+} from "./catalog-state.js"
+export { discoverOllamaCloudModels } from "./cloud-catalog.js"
 export {
   OllamaCatalogError,
   type OllamaCatalogErrorKind,
   OllamaGenerationError,
   type OllamaGenerationOperation,
-} from "./errors"
-export { type OllamaFetch, productionOllamaFetch } from "./http"
+} from "./errors.js"
+export { type OllamaFetch, productionOllamaFetch } from "./http.js"
 export {
   createOllamaLanguageModel,
   type OllamaLanguageModelOptions,
-} from "./language-model"
-export { listLocalOllamaModels } from "./local-catalog"
-export { createOllamaRuntime, type OllamaRuntime, type OllamaRuntimeOptions } from "./runtime"
+} from "./language-model.js"
+export { listLocalOllamaModels } from "./local-catalog.js"
+export { createOllamaRuntime, type OllamaRuntime, type OllamaRuntimeOptions } from "./runtime.js"

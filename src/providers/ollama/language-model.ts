@@ -4,13 +4,13 @@ import type {
   LanguageModelV3StreamResult,
 } from "@ai-sdk/provider"
 
-import { OperationCancelledError } from "../../core/errors"
-import type { OllamaCatalogState } from "./catalog-state"
-import { generateFromOllamaStream } from "./generate"
-import type { OllamaFetch } from "./http"
-import { buildOllamaCall } from "./prompt"
-import { createOllamaRuntime, type OllamaRuntime } from "./runtime"
-import { createOllamaChatStream } from "./stream"
+import { OperationCancelledError } from "../../core/errors.js"
+import type { OllamaCatalogState } from "./catalog-state.js"
+import { generateFromOllamaStream } from "./generate.js"
+import type { OllamaFetch } from "./http.js"
+import { buildOllamaCall } from "./prompt.js"
+import { createOllamaRuntime, type OllamaRuntime } from "./runtime.js"
+import { createOllamaChatStream } from "./stream.js"
 
 export type OllamaLanguageModelOptions = {
   readonly modelId: string
