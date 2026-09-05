@@ -1,4 +1,4 @@
-import { CursorProtocolError } from "./proto/errors"
+import { CursorProtocolError } from "./proto/errors.js"
 
 export type CursorProtocolFailureStage = "connect-frame" | "server-dispatch"
 
