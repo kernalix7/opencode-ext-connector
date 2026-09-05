@@ -1,6 +1,6 @@
 import type { z } from "zod"
 
-import { OllamaGenerationError, type OllamaGenerationOperation } from "./errors"
+import { OllamaGenerationError, type OllamaGenerationOperation } from "./errors.js"
 
 const MAX_LINE_BYTES = 1024 * 1024
 
