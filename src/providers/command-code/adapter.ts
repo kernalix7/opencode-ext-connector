@@ -1,8 +1,8 @@
-import type { ProviderAdapter } from "../../core/adapter"
-import { OperationCancelledError } from "../../core/errors"
-import { parseProviderId } from "../../core/ids"
-import { createAsyncDisposable } from "../../core/lifecycle"
-import type { AdapterModel, ProviderSnapshot } from "../../core/models"
+import type { ProviderAdapter } from "../../core/adapter.js"
+import { OperationCancelledError } from "../../core/errors.js"
+import { parseProviderId } from "../../core/ids.js"
+import { createAsyncDisposable } from "../../core/lifecycle.js"
+import type { AdapterModel, ProviderSnapshot } from "../../core/models.js"
 
 export type CommandCodeAdapterOptions = {
   readonly readAccessToken: (signal: AbortSignal) => Promise<string | null>
