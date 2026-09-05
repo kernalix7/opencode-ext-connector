@@ -1,15 +1,15 @@
-import type { Clock } from "../../core/clock"
-import { InvalidArgumentError } from "../../core/errors"
-import { createAsyncDisposable } from "../../core/lifecycle"
-import type { CursorBridgeStream } from "./bridge-client"
-import type { CursorRequestBlobOwnership } from "./request-blob-ownership"
+import type { Clock } from "../../core/clock.js"
+import { InvalidArgumentError } from "../../core/errors.js"
+import { createAsyncDisposable } from "../../core/lifecycle.js"
+import type { CursorBridgeStream } from "./bridge-client.js"
+import type { CursorRequestBlobOwnership } from "./request-blob-ownership.js"
 import {
   type CursorRunSessionBackgroundCleanupErrorHandler,
   settleCursorRunSessionExpiry,
-} from "./run-session-expiry"
-import type { CursorServerDispatcher } from "./server-dispatch"
-import type { CursorSessionId } from "./session-state"
-import { settleCursorCleanup } from "./settle-cleanup"
+} from "./run-session-expiry.js"
+import type { CursorServerDispatcher } from "./server-dispatch.js"
+import type { CursorSessionId } from "./session-state.js"
+import { settleCursorCleanup } from "./settle-cleanup.js"
 
 export type CursorRunSessionIdentity = {
   readonly sessionId: CursorSessionId

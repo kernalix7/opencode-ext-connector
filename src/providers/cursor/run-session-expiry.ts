@@ -1,4 +1,4 @@
-import type { CursorRunSessionIdentity } from "./run-session"
+import type { CursorRunSessionIdentity } from "./run-session.js"
 
 export type CursorRunSessionBackgroundCleanupErrorHandler = (
   error: CursorRunSessionTtlCleanupError,
