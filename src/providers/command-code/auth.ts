@@ -3,7 +3,7 @@ import { homedir } from "node:os"
 import { join } from "node:path"
 import { z } from "zod"
 
-import { OperationCancelledError } from "../../core/errors"
+import { OperationCancelledError } from "../../core/errors.js"
 
 const credentialSchema = z
   .object({
