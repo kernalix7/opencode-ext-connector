@@ -3,8 +3,8 @@ import { type ChildProcessWithoutNullStreams, execFile, spawn } from "node:child
 import { fileURLToPath } from "node:url"
 import { promisify } from "node:util"
 
-import { OperationCancelledError } from "../../core/errors"
-import { type AsyncDisposableHandle, createAsyncDisposable } from "../../core/lifecycle"
+import { OperationCancelledError } from "../../core/errors.js"
+import { type AsyncDisposableHandle, createAsyncDisposable } from "../../core/lifecycle.js"
 
 const execFileAsync = promisify(execFile)
 const maximumStderrBytes = 16 * 1024

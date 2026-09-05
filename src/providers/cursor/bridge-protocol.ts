@@ -1,14 +1,14 @@
-import { MAX_BRIDGE_LINE_LENGTH } from "./bridge-limits"
-import { parseBridgeCommandLine, parseBridgeEventLine } from "./bridge-wire"
+import { MAX_BRIDGE_LINE_LENGTH } from "./bridge-limits.js"
+import { parseBridgeCommandLine, parseBridgeEventLine } from "./bridge-wire.js"
 
-export { sanitizeBridgeEvent } from "./bridge-event-sanitize"
+export { sanitizeBridgeEvent } from "./bridge-event-sanitize.js"
 export {
   MAX_BRIDGE_BASE64_CHARACTERS,
   MAX_BRIDGE_BINARY_BYTES,
   MAX_BRIDGE_LINE_LENGTH,
-} from "./bridge-limits"
-export { serializeBridgeCommand, serializeBridgeEvent } from "./bridge-serialize"
-export { parseBridgeCommandLine, parseBridgeEventLine } from "./bridge-wire"
+} from "./bridge-limits.js"
+export { serializeBridgeCommand, serializeBridgeEvent } from "./bridge-serialize.js"
+export { parseBridgeCommandLine, parseBridgeEventLine } from "./bridge-wire.js"
 
 export type BridgeCommand =
   | {
