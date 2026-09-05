@@ -11,13 +11,17 @@ import { type OpenCodeProcess, startOpenCode } from "../support/opencode-process
 import { packCleanSource, readPackageManifest } from "../support/packed-package"
 
 const projectRoot = join(import.meta.dir, "..", "..")
-const rootExportsSchema = z.object({
-  names: z.array(z.string()),
-  kinds: z.array(z.string()),
-})
+const rootExportNames = [
+  "claudeAuthServer",
+  "commandCodeAuthServer",
+  "connectorServer",
+  "cursorAuthServer",
+  "ollamaAuthServer",
+] as const
+const rootExportsSchema = z.object({ names: z.array(z.string()), kinds: z.array(z.string()) })
 
 type PackageCommand = {
-  readonly operation: "extract" | "inspect-exports"
+  readonly operation: "extract" | "inspect-exports" | "node-consumer"
   readonly command: readonly string[]
   readonly cwd: string
   readonly env: Readonly<Record<string, string>>
@@ -84,10 +88,9 @@ describe("packed package installation", () => {
         return new Response("registry access is forbidden", { status: 502 })
       },
     })
-    const directory = await mkdtemp(join(tmpdir(), "opencode-package-install-"))
-    const home = join(directory, "home")
-    const registryUrl = `http://${registry.hostname}:${registry.port}`
-    const env = isolatedEnvironment(home, registryUrl)
+    const directory = await mkdtemp(join(tmpdir(), "opencode-package-install-")),
+      home = join(directory, "home")
+    const env = isolatedEnvironment(home, `http://${registry.hostname}:${registry.port}`)
     const binary = process.env["OPENCODE_BIN"] ?? "opencode"
     const manifest = await readPackageManifest(projectRoot)
     const cacheProjectRoot = join(
@@ -98,8 +101,8 @@ describe("packed package installation", () => {
     )
     const cacheNodeModules = join(cacheProjectRoot, "node_modules")
     const packageDirectory = join(cacheNodeModules, manifest.name)
-    let opencode: OpenCodeProcess | undefined
-    let packed: Awaited<ReturnType<typeof packCleanSource>> | undefined
+    let opencode: OpenCodeProcess | undefined,
+      packed: Awaited<ReturnType<typeof packCleanSource>> | undefined
     try {
       const authDirectory = join(home, "data", "opencode")
       await mkdir(authDirectory, { recursive: true })
@@ -162,13 +165,7 @@ describe("packed package installation", () => {
 
       // Then
       expect(rootExportsSchema.parse(JSON.parse(rawExports))).toEqual({
-        names: [
-          "claudeAuthServer",
-          "commandCodeAuthServer",
-          "connectorServer",
-          "cursorAuthServer",
-          "ollamaAuthServer",
-        ],
+        names: [...rootExportNames],
         kinds: ["function", "function", "function", "function", "function"],
       })
       expect(Object.keys(auth.data ?? {}).sort()).toEqual([
@@ -185,6 +182,82 @@ describe("packed package installation", () => {
       await opencode?.close()
       await packed?.cleanup()
       await registry.stop(true)
+      await rm(directory, { force: true, recursive: true })
+    }
+  }, 60_000)
+
+  it("loads every public entrypoint in real Node ESM", async () => {
+    // Given
+    const directory = await mkdtemp(join(tmpdir(), "opencode-package-node-esm-")),
+      home = join(directory, "home")
+    const env = isolatedEnvironment(home, "http://127.0.0.1:1")
+    const manifest = await readPackageManifest(projectRoot)
+    const cacheProjectRoot = join(
+      env["XDG_CACHE_HOME"] ?? "",
+      "opencode",
+      "packages",
+      `${manifest.name}@${manifest.version}`,
+    )
+    const packageDirectory = join(cacheProjectRoot, "node_modules", manifest.name)
+    let packed: Awaited<ReturnType<typeof packCleanSource>> | undefined
+    try {
+      packed = await packCleanSource({ projectRoot })
+      const dependencyEntries = await readdir(join(projectRoot, "node_modules"))
+      await mkdir(join(cacheProjectRoot, "node_modules"), { recursive: true })
+      await Promise.all(
+        dependencyEntries.map((entry) =>
+          symlink(
+            join(projectRoot, "node_modules", entry),
+            join(cacheProjectRoot, "node_modules", entry),
+          ),
+        ),
+      )
+      await mkdir(packageDirectory)
+      await runPackageCommand({
+        operation: "extract",
+        command: [
+          "tar",
+          "-xzf",
+          packed.tarballPath,
+          "--strip-components=1",
+          "-C",
+          packageDirectory,
+        ],
+        cwd: cacheProjectRoot,
+        env,
+      })
+
+      // When
+      const output = await runPackageCommand({
+        operation: "node-consumer",
+        command: [
+          process.env["NODE_BIN"] ?? "node",
+          "--input-type=module",
+          "--eval",
+          `
+            if (Number(process.versions.node.split('.')[0]) < 22) throw new Error('Node >=22 is required');
+            const root = await import('opencode-ext-connector');
+            const commandCode = await import('opencode-ext-connector/command-code');
+            const cursor = await import('opencode-ext-connector/cursor');
+            const ollama = await import('opencode-ext-connector/ollama');
+            const names = Object.keys(root).sort();
+            const kinds = [commandCode.createCommandCode, cursor.createCursor, ollama.createOllama].map((value) => typeof value);
+            const hooks = await root.claudeAuthServer({}, {});
+            await hooks.dispose?.();
+            process.stdout.write(JSON.stringify({ names, kinds }));
+          `,
+        ],
+        cwd: cacheProjectRoot,
+        env,
+      })
+
+      // Then
+      expect(JSON.parse(output)).toEqual({
+        names: rootExportNames,
+        kinds: ["function", "function", "function"],
+      })
+    } finally {
+      await packed?.cleanup()
       await rm(directory, { force: true, recursive: true })
     }
   }, 60_000)
