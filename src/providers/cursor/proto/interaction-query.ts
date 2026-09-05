@@ -1,9 +1,14 @@
 // Derived from Rahularya01/pi-cursor proto/agent.proto InteractionQuery/Response. Licensed under MIT.
 // See THIRD_PARTY_NOTICES.md.
 
-import { concatBytes, decodeFieldsStrict, encodeBytesField, encodeInt32Field } from "../proto-wire"
-import { CursorProtocolDriftError, unreachableVariant } from "./errors"
-import { assertKnownFields, oneofField, requiredUint32 } from "./fields"
+import {
+  concatBytes,
+  decodeFieldsStrict,
+  encodeBytesField,
+  encodeInt32Field,
+} from "../proto-wire.js"
+import { CursorProtocolDriftError, unreachableVariant } from "./errors.js"
+import { assertKnownFields, oneofField, requiredUint32 } from "./fields.js"
 
 export type InteractionKind =
   | "web-search"
