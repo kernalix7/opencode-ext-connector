@@ -7,9 +7,9 @@ import {
   encodeBytesField,
   encodeInt32Field,
   encodeStringField,
-} from "../proto-wire"
-import { CursorProtocolDriftError, unreachableVariant } from "./errors"
-import { oneofField, optionalString, optionalUint32 } from "./fields"
+} from "../proto-wire.js"
+import { CursorProtocolDriftError, unreachableVariant } from "./errors.js"
+import { oneofField, optionalString, optionalUint32 } from "./fields.js"
 
 export type ExecClientControl =
   | { readonly kind: "stream-close"; readonly id: number }
