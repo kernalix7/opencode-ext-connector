@@ -1,4 +1,4 @@
-import type { CursorBlobId, CursorBlobStore } from "./blob-store"
+import type { CursorBlobId, CursorBlobStore } from "./blob-store.js"
 
 export type CursorRequestBlobOwnership = {
   readonly blobIds: readonly CursorBlobId[]
