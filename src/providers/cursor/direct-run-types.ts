@@ -1,12 +1,12 @@
 import type { LanguageModelV3CallOptions } from "@ai-sdk/provider"
 
-import type { Clock } from "../../core/clock"
-import type { CursorBridgeClient } from "./bridge-client"
-import type { CursorCheckpointStore } from "./checkpoint-store"
-import type { CursorMcpTool } from "./mcp-tools"
-import type { CursorRequestBlobOwnership } from "./request-blob-ownership"
-import type { CursorRunSessionRegistry } from "./run-session"
-import type { CursorSessionId, CursorSessionStateStore } from "./session-state"
+import type { Clock } from "../../core/clock.js"
+import type { CursorBridgeClient } from "./bridge-client.js"
+import type { CursorCheckpointStore } from "./checkpoint-store.js"
+import type { CursorMcpTool } from "./mcp-tools.js"
+import type { CursorRequestBlobOwnership } from "./request-blob-ownership.js"
+import type { CursorRunSessionRegistry } from "./run-session.js"
+import type { CursorSessionId, CursorSessionStateStore } from "./session-state.js"
 
 export type CursorDirectSetupCleanupResources = {
   readonly checkpointStore: CursorCheckpointStore
