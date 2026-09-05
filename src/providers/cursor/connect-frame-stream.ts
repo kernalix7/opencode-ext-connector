@@ -5,8 +5,8 @@ import {
   CONNECT_END_STREAM,
   MAX_CONNECT_FRAME_BYTES,
   MAX_CONNECT_MESSAGE_BYTES,
-} from "./connect-frame"
-import { CursorProtocolError } from "./proto/errors"
+} from "./connect-frame.js"
+import { CursorProtocolError } from "./proto/errors.js"
 
 const ConnectCodeSchema = z.enum([
   "canceled",
