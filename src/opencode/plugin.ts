@@ -1,11 +1,11 @@
 import type { LanguageModelV3 } from "@ai-sdk/provider"
 
-import type { CatalogPublisher, ProviderAdapter } from "../core/adapter"
-import type { Clock } from "../core/clock"
-import type { HealthPolicy } from "../core/health"
-import type { ConnectorLogger } from "../core/logger"
-import type { CatalogDraft, Registration } from "./beta-api"
-import { type HealthStore, refreshAdaptersWithHealth } from "./health-refresh"
+import type { CatalogPublisher, ProviderAdapter } from "../core/adapter.js"
+import type { Clock } from "../core/clock.js"
+import type { HealthPolicy } from "../core/health.js"
+import type { ConnectorLogger } from "../core/logger.js"
+import type { CatalogDraft, Registration } from "./beta-api.js"
+import { type HealthStore, refreshAdaptersWithHealth } from "./health-refresh.js"
 
 export const PLUGIN_ID: string = "opencode-ext-connector"
 
