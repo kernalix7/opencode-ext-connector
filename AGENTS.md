@@ -102,6 +102,15 @@ bun run verify:package
 `bun run check` runs Biome, TypeScript, source policy, pure-LOC policy, and the
 policy foundation tests. `bun run verify:package` is a dry-run package pack.
 
+## RELEASE
+
+- `.github/workflows/release.yml` publishes to npm when a `v*` tag is pushed
+  and fails if the tag differs from `package.json`.
+- The first publish of a new package needs the `NPM_TOKEN` repository secret;
+  afterwards configure npm trusted publishing for `release.yml` and remove it.
+- Bump `package.json`, both READMEs, `CHANGELOG.md`, and
+  `tests/unit/index/package-export.test.ts` together.
+
 ## SAFETY
 
 - Do not claim affiliation with OpenCode or any provider.
