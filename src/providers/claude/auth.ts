@@ -7,6 +7,7 @@ import { promisify } from "node:util"
 import type { Clock } from "../../core/clock"
 import { OperationCancelledError } from "../../core/errors"
 import type { HttpTransport } from "../../core/http"
+import type { CredentialRefreshPolicy } from "../../core/options"
 import {
   type ClaudeCredentials,
   claudeAccessNeedsRefresh,
@@ -121,8 +122,11 @@ type ClaudeTokenOptions = {
   readonly clock: Clock
   readonly transport: HttpTransport
   readonly lookup?: ClaudeAuthLookup
+  readonly refresh?: CredentialRefreshPolicy
   readonly writeBack?: (credentials: ClaudeCredentials) => Promise<void>
 }
+
+const DefaultRefreshPolicy: CredentialRefreshPolicy = { mode: "auto", leadMs: 60_000 }
 
 export type ClaudeTokenManager = {
   readonly readAccessToken: (signal: AbortSignal) => Promise<string | null>
@@ -130,6 +134,7 @@ export type ClaudeTokenManager = {
 }
 
 export function createClaudeTokenManager(options: ClaudeTokenOptions): ClaudeTokenManager {
+  const policy = options.refresh ?? DefaultRefreshPolicy
   let cached: ClaudeCredentials | null = null
   let lastStored: ClaudeCredentials | null = null
   let refreshing: Promise<string | null> | null = null
@@ -210,7 +215,11 @@ export function createClaudeTokenManager(options: ClaudeTokenOptions): ClaudeTok
     if (source === null) {
       return null
     }
-    if (!claudeAccessNeedsRefresh(source, options.clock.nowMs()) || source.refreshToken === null) {
+    if (
+      policy.mode === "never" ||
+      source.refreshToken === null ||
+      !claudeAccessNeedsRefresh(source, options.clock.nowMs(), policy.leadMs)
+    ) {
       return source.accessToken
     }
     const refreshedToken = await refresh(source, signal)
@@ -220,9 +229,13 @@ export function createClaudeTokenManager(options: ClaudeTokenOptions): ClaudeTok
     return refreshedToken
   }
   const forceRefreshAccessToken = async (signal: AbortSignal): Promise<string | null> => {
+    const previous = cached?.accessToken ?? null
     const source = await readSource(signal)
     if (source === null) {
       return null
+    }
+    if (policy.mode === "never") {
+      return source.accessToken === previous ? null : source.accessToken
     }
     return refresh(source, signal)
   }

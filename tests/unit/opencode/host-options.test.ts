@@ -20,9 +20,30 @@ describe("pickConnectorOptionsInput", () => {
       providers: ["cursor"],
       snapshotTimeoutMs: 12_000,
       writeBackCredentials: false,
+      credentialRefresh: { mode: "auto", leadMs: 60_000 },
       catalogReloadMs: 300_000,
       health: { initialBackoffMs: 2_000, maximumBackoffMs: 8_000 },
     })
+  })
+
+  it("keeps a valid credentialRefresh policy and drops malformed fields", () => {
+    // Given / When
+    const options = parseConnectorOptions(
+      pickConnectorOptionsInput({
+        credentialRefresh: { mode: "never", leadMs: "soon", unrelated: 1 },
+      }),
+    )
+    // Then
+    expect(options.credentialRefresh).toEqual({ mode: "never", leadMs: 60_000 })
+  })
+
+  it("ignores an unknown credentialRefresh mode", () => {
+    // Given / When
+    const options = parseConnectorOptions(
+      pickConnectorOptionsInput({ credentialRefresh: { mode: "sometimes", leadMs: 5 } }),
+    )
+    // Then
+    expect(options.credentialRefresh).toEqual({ mode: "auto", leadMs: 5 })
   })
 
   it("defaults when the host passes an unrelated object", () => {
