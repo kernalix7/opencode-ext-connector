@@ -1,7 +1,7 @@
-import { OperationCancelledError } from "../core/errors"
-import { OllamaCatalogError } from "../providers/ollama/errors"
-import type { OllamaFetch } from "../providers/ollama/http"
-import { listLocalOllamaModels } from "../providers/ollama/local-catalog"
+import { OperationCancelledError } from "../core/errors.js"
+import { OllamaCatalogError } from "../providers/ollama/errors.js"
+import type { OllamaFetch } from "../providers/ollama/http.js"
+import { listLocalOllamaModels } from "../providers/ollama/local-catalog.js"
 
 const OLLAMA_PROBE_TIMEOUT_MS = 5_000
 
