@@ -10,7 +10,7 @@ const PackageSchema = z.object({
 })
 
 describe("package exports", () => {
-  it("publishes the exact 0.3.0 package entry points", async () => {
+  it("publishes the exact 0.3.1 package entry points", async () => {
     // Given
     const packageJson: unknown = await Bun.file("package.json").json()
 
@@ -24,7 +24,7 @@ describe("package exports", () => {
       types: manifest.types,
       exports: manifest.exports,
     }).toEqual({
-      version: "0.3.0",
+      version: "0.3.1",
       main: "./dist/index.js",
       types: "./dist/index.d.ts",
       exports: {
