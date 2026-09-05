@@ -1,16 +1,16 @@
-import type { CatalogPublisher, ProviderAdapter } from "../core/adapter"
-import { refreshProviderCatalog } from "../core/adapter"
-import type { Clock } from "../core/clock"
-import { createDeadline } from "../core/deadline"
-import { ConnectorError } from "../core/errors"
+import type { CatalogPublisher, ProviderAdapter } from "../core/adapter.js"
+import { refreshProviderCatalog } from "../core/adapter.js"
+import type { Clock } from "../core/clock.js"
+import { createDeadline } from "../core/deadline.js"
+import { ConnectorError } from "../core/errors.js"
 import {
   createInitialHealthState,
   type HealthPolicy,
   type HealthState,
   reduceHealth,
-} from "../core/health"
-import type { ProviderId } from "../core/ids"
-import type { ConnectorLogger } from "../core/logger"
+} from "../core/health.js"
+import type { ProviderId } from "../core/ids.js"
+import type { ConnectorLogger } from "../core/logger.js"
 
 export type HealthStore = Map<ProviderId, HealthState>
 
