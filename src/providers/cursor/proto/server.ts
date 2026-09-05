@@ -6,25 +6,25 @@ import {
   decodeFieldsStrict,
   encodeBytesField,
   type ProtoDecodeOptions,
-} from "../proto-wire"
+} from "../proto-wire.js"
 import {
   type ConversationCheckpoint,
   decodeConversationCheckpoint,
   encodeConversationCheckpoint,
-} from "./checkpoint"
-import { CursorProtocolDriftError, unreachableVariant } from "./errors"
-import { decodeExecServerMessage, type ExecServerMessage, encodeExecServerMessage } from "./exec"
+} from "./checkpoint.js"
+import { CursorProtocolDriftError, unreachableVariant } from "./errors.js"
+import { decodeExecServerMessage, type ExecServerMessage, encodeExecServerMessage } from "./exec.js"
 import {
   decodeExecServerControl,
   type ExecServerControl,
   encodeExecServerControl,
-} from "./exec-control"
+} from "./exec-control.js"
 import {
   collectDriftMetadata,
   encodeDriftFields,
   oneofField,
   type ProtoDriftMetadata,
-} from "./fields"
+} from "./fields.js"
 import {
   decodeInteractionQuery,
   decodeInteractionUpdate,
@@ -32,8 +32,8 @@ import {
   encodeInteractionUpdate,
   type InteractionQuery,
   type InteractionUpdate,
-} from "./interaction"
-import { decodeKvServerMessage, encodeKvServerMessage, type KvServerMessage } from "./kv"
+} from "./interaction.js"
+import { decodeKvServerMessage, encodeKvServerMessage, type KvServerMessage } from "./kv.js"
 
 export type AgentServerMessage = (
   | { readonly kind: "interaction-update"; readonly update: InteractionUpdate }
