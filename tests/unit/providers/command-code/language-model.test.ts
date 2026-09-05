@@ -4,7 +4,7 @@ import { AdapterError } from "../../../../src/core/errors"
 import { createCommandCodeLanguageModel } from "../../../../src/providers/command-code/language-model"
 import { FakeHttpTransport } from "../../../support/http"
 
-const readCliVersion = (): string => "1.27.1"
+const readCliVersion = async (): Promise<string> => "1.27.1"
 
 describe("createCommandCodeLanguageModel", () => {
   it("posts /alpha/generate with CLI headers and parses NDJSON text", async () => {

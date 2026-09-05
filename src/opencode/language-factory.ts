@@ -40,6 +40,7 @@ export function createConnectorLanguage(
       return createCommandCodeLanguageModel({
         modelId,
         transport: deps.transport,
+        env: deps.env,
         readAccessToken: (signal) =>
           deps.commandCodeApiKey === undefined
             ? readCommandCodeAccessToken(deps.env, signal)

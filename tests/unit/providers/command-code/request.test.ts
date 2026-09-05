@@ -4,7 +4,7 @@ import { z } from "zod"
 import { createCommandCodeLanguageModel } from "../../../../src/providers/command-code/language-model"
 import { FakeHttpTransport } from "../../../support/http"
 
-const readCliVersion = (): string => "1.27.1"
+const readCliVersion = async (): Promise<string> => "1.27.1"
 
 const requestBodySchema = z.object({
   threadId: z.string().uuid(),
@@ -87,7 +87,7 @@ describe("createCommandCodeLanguageModel request shape", () => {
       modelId: "default",
       transport,
       readAccessToken: async () => "cc-token",
-      readCliVersion: () => "9.8.7",
+      readCliVersion: async () => "9.8.7",
     })
     // When
     await model.doGenerate({
@@ -126,7 +126,7 @@ describe("createCommandCodeLanguageModel request shape", () => {
       modelId: "default",
       transport,
       readAccessToken: async () => "cc-token",
-      readCliVersion: () => "9.8.7",
+      readCliVersion: async () => "9.8.7",
     })
 
     // When
