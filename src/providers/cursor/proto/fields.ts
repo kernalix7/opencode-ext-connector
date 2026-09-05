@@ -1,7 +1,7 @@
-import type { ProtoField } from "../proto-wire"
-import { decodeUtf8Strict, decodeVarintNumberStrict } from "../proto-wire"
-import { CursorProtocolDriftError, CursorProtocolError } from "./errors"
-import { encodeUnknownField } from "./unknown-field"
+import type { ProtoField } from "../proto-wire.js"
+import { decodeUtf8Strict, decodeVarintNumberStrict } from "../proto-wire.js"
+import { CursorProtocolDriftError, CursorProtocolError } from "./errors.js"
+import { encodeUnknownField } from "./unknown-field.js"
 
 export type FieldSpec = {
   readonly context: string
