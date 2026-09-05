@@ -1,13 +1,13 @@
 import type { LanguageModelV3 } from "@ai-sdk/provider"
 
-import type { Clock } from "../core/clock"
-import { createFetchHttpTransport } from "../http/fetch-transport"
-import { createConsoleLogger } from "../logging/logger"
-import { createClaudeTokenReader } from "../providers/claude/auth"
-import { readCursorAccessToken } from "../providers/cursor/auth"
-import { createCursorDirectRuntime } from "../providers/cursor/direct-runtime"
-import { createConnectorLanguage } from "./language-factory"
-import { productionOllamaRuntime } from "./ollama-production"
+import type { Clock } from "../core/clock.js"
+import { createFetchHttpTransport } from "../http/fetch-transport.js"
+import { createConsoleLogger } from "../logging/logger.js"
+import { createClaudeTokenReader } from "../providers/claude/auth.js"
+import { readCursorAccessToken } from "../providers/cursor/auth.js"
+import { createCursorDirectRuntime } from "../providers/cursor/direct-runtime.js"
+import { createConnectorLanguage } from "./language-factory.js"
+import { productionOllamaRuntime } from "./ollama-production.js"
 
 const clock: Clock = {
   nowMs: (): number => Date.now(),
