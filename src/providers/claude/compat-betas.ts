@@ -1,7 +1,11 @@
 // Derived from griffinmartin/opencode-claude-auth@0f0ff6f12c367339130cbfd250393863ed2c8d9e.
 // Licensed under MIT. See THIRD_PARTY_NOTICES.md.
 
-import { CLAUDE_BASE_BETAS, CLAUDE_LONG_CONTEXT_BETAS, claudeModelOverride } from "./compat-config"
+import {
+  CLAUDE_BASE_BETAS,
+  CLAUDE_LONG_CONTEXT_BETAS,
+  claudeModelOverride,
+} from "./compat-config.js"
 
 const excludedBetas = new Map<string, Set<string>>()
 let lastFlags: string | undefined = process.env["ANTHROPIC_BETA_FLAGS"]
