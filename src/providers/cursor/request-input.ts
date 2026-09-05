@@ -1,9 +1,9 @@
 import { z } from "zod"
 
-import { type ModelId, ModelIdSchema } from "../../core/ids"
-import type { McpToolDefinition } from "./proto/mcp"
-import type { RequestedModelParameter } from "./proto/model"
-import { type CursorSessionId, CursorSessionIdSchema } from "./session-state"
+import { type ModelId, ModelIdSchema } from "../../core/ids.js"
+import type { McpToolDefinition } from "./proto/mcp.js"
+import type { RequestedModelParameter } from "./proto/model.js"
+import { type CursorSessionId, CursorSessionIdSchema } from "./session-state.js"
 
 type CursorJson =
   | string

@@ -3,10 +3,10 @@
 
 import { spawn } from "node:child_process"
 
-import { OperationCancelledError } from "../../core/errors"
+import { OperationCancelledError } from "../../core/errors.js"
 
-import { resolveCursorAgent } from "./auth"
-import { extractCursorNdjsonText } from "./ndjson"
+import { resolveCursorAgent } from "./auth.js"
+import { extractCursorNdjsonText } from "./ndjson.js"
 
 export async function runCursorAgentPrompt(
   env: Readonly<Record<string, string | undefined>>,

@@ -1,8 +1,8 @@
 // Derived from griffinmartin/opencode-claude-auth@0f0ff6f12c367339130cbfd250393863ed2c8d9e.
 // Licensed under MIT. See THIRD_PARTY_NOTICES.md.
 
-import { claudeModelOverride } from "./compat-config"
-import { claudeBillingHeader } from "./compat-signing"
+import { claudeModelOverride } from "./compat-config.js"
+import { claudeBillingHeader } from "./compat-signing.js"
 
 export const CLAUDE_SYSTEM_IDENTITY = "You are Claude Code, Anthropic's official CLI for Claude."
 const BILLING_PREFIX = "x-anthropic-billing-header"

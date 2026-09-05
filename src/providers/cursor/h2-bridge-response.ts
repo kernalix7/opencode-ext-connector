@@ -1,7 +1,7 @@
 import type { ClientHttp2Stream, IncomingHttpHeaders } from "node:http2"
 import { createBrotliDecompress, createGunzip } from "node:zlib"
 
-import { MAX_BRIDGE_BINARY_BYTES } from "./bridge-limits"
+import { MAX_BRIDGE_BINARY_BYTES } from "./bridge-limits.js"
 
 export type CursorH2ResponseCallbacks = {
   readonly onData: (chunk: Uint8Array) => boolean

@@ -1,9 +1,9 @@
 // Derived from griffinmartin/opencode-claude-auth@0f0ff6f12c367339130cbfd250393863ed2c8d9e.
 // Licensed under MIT. See THIRD_PARTY_NOTICES.md.
 
-import type { Clock } from "../../core/clock"
-import type { HttpTransport } from "../../core/http"
-import type { ClaudeCredentials } from "./credentials"
+import type { Clock } from "../../core/clock.js"
+import type { HttpTransport } from "../../core/http.js"
+import type { ClaudeCredentials } from "./credentials.js"
 
 const OAUTH_TOKEN_URL = "https://claude.ai/v1/oauth/token"
 const OAUTH_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"

@@ -1,15 +1,15 @@
 // Derived from Rahularya01/pi-cursor proto/agent.proto MCP fields. Licensed under MIT.
 // See THIRD_PARTY_NOTICES.md.
 
-import { decodeProtobufValueStrict, encodeProtobufValue } from "../proto-value"
+import { decodeProtobufValueStrict, encodeProtobufValue } from "../proto-value.js"
 import {
   concatBytes,
   decodeFieldsStrict,
   decodeUtf8Strict,
   encodeBytesField,
   encodeStringField,
-} from "../proto-wire"
-import { CursorProtocolError } from "./errors"
+} from "../proto-wire.js"
+import { CursorProtocolError } from "./errors.js"
 import {
   assertKnownFields,
   optionalField,
@@ -17,7 +17,7 @@ import {
   repeatedFields,
   requiredField,
   requiredString,
-} from "./fields"
+} from "./fields.js"
 
 export {
   decodeMcpResult,
@@ -28,7 +28,7 @@ export {
   type McpResultContent,
   type McpToolResult,
   type OutputLocation,
-} from "./mcp-result"
+} from "./mcp-result.js"
 
 export type McpToolDefinition = {
   readonly name: string

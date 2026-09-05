@@ -5,9 +5,9 @@ import type {
   SharedV3Warning,
 } from "@ai-sdk/provider"
 
-import { OllamaGenerationError } from "./errors"
-import { parseOllamaNdjson } from "./ndjson"
-import { type OllamaChatChunk, OllamaChatChunkSchema } from "./protocol"
+import { OllamaGenerationError } from "./errors.js"
+import { parseOllamaNdjson } from "./ndjson.js"
+import { type OllamaChatChunk, OllamaChatChunkSchema } from "./protocol.js"
 
 function usage(chunk: OllamaChatChunk): LanguageModelV3Usage {
   return {

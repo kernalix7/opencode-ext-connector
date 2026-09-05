@@ -1,5 +1,5 @@
-import { parseModelId } from "../core/ids"
-import type { AdapterModel } from "../core/models"
+import { parseModelId } from "../core/ids.js"
+import type { AdapterModel } from "../core/models.js"
 
 function idFromUnknown(value: unknown): string | null {
   if (typeof value === "string" && value.length > 0) {

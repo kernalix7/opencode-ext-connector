@@ -6,37 +6,45 @@ import {
   decodeFieldsStrict,
   encodeBytesField,
   type ProtoDecodeOptions,
-} from "../proto-wire"
+} from "../proto-wire.js"
 import {
   type ConversationAction,
   decodeConversationAction,
   encodeConversationAction,
-} from "./context"
-import { CursorProtocolDriftError, unreachableVariant } from "./errors"
-import { decodeExecClientMessage, type ExecClientMessage, encodeExecClientMessage } from "./exec"
+} from "./context.js"
+import { CursorProtocolDriftError, unreachableVariant } from "./errors.js"
+import { decodeExecClientMessage, type ExecClientMessage, encodeExecClientMessage } from "./exec.js"
 import {
   decodeExecClientControl,
   type ExecClientControl,
   encodeExecClientControl,
-} from "./exec-control"
+} from "./exec-control.js"
 import {
   assertKnownFields,
   collectDriftMetadata,
   encodeDriftFields,
   oneofField,
   type ProtoDriftMetadata,
-} from "./fields"
+} from "./fields.js"
 import {
   decodeInteractionResponse,
   encodeInteractionResponse,
   type InteractionResponse,
-} from "./interaction-query"
-import { decodeKvClientMessage, encodeKvClientMessage, type KvClientMessage } from "./kv"
-import { decodePrewarmRequest, encodePrewarmRequest, type PrewarmRequest } from "./prewarm"
-import { type AgentRunRequest, decodeAgentRunRequest, encodeAgentRunRequest } from "./run-request"
+} from "./interaction-query.js"
+import { decodeKvClientMessage, encodeKvClientMessage, type KvClientMessage } from "./kv.js"
+import { decodePrewarmRequest, encodePrewarmRequest, type PrewarmRequest } from "./prewarm.js"
+import {
+  type AgentRunRequest,
+  decodeAgentRunRequest,
+  encodeAgentRunRequest,
+} from "./run-request.js"
 
-export type { PrewarmRequest } from "./prewarm"
-export { type AgentRunRequest, decodeAgentRunRequest, encodeAgentRunRequest } from "./run-request"
+export type { PrewarmRequest } from "./prewarm.js"
+export {
+  type AgentRunRequest,
+  decodeAgentRunRequest,
+  encodeAgentRunRequest,
+} from "./run-request.js"
 
 export type AgentClientMessage = (
   | { readonly kind: "run-request"; readonly request: AgentRunRequest }

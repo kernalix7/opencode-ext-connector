@@ -1,13 +1,13 @@
 import type { LanguageModelV3 } from "@ai-sdk/provider"
 
-import type { HttpTransport } from "../core/http"
-import { createClaudeLanguageModel } from "../providers/claude/language-model"
-import { readCommandCodeAccessToken } from "../providers/command-code/auth"
-import { createCommandCodeLanguageModel } from "../providers/command-code/language-model"
-import type { CursorDirectRuntime } from "../providers/cursor/direct-runtime"
-import { createCursorLanguageModel } from "../providers/cursor/language-model"
-import { createOllamaLanguageModel } from "../providers/ollama/language-model"
-import type { OllamaRuntime } from "../providers/ollama/runtime"
+import type { HttpTransport } from "../core/http.js"
+import { createClaudeLanguageModel } from "../providers/claude/language-model.js"
+import { readCommandCodeAccessToken } from "../providers/command-code/auth.js"
+import { createCommandCodeLanguageModel } from "../providers/command-code/language-model.js"
+import type { CursorDirectRuntime } from "../providers/cursor/direct-runtime.js"
+import { createCursorLanguageModel } from "../providers/cursor/language-model.js"
+import { createOllamaLanguageModel } from "../providers/ollama/language-model.js"
+import type { OllamaRuntime } from "../providers/ollama/runtime.js"
 
 export type ConnectorLanguageDeps = {
   readonly env: Readonly<Record<string, string | undefined>>

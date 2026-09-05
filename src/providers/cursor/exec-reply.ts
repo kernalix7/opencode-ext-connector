@@ -1,19 +1,19 @@
 // Derived from Rahularya01/pi-cursor src/stream/server-messages.ts exec replies.
 // Licensed under MIT. See THIRD_PARTY_NOTICES.md.
 
-import { encodeConnectFrame } from "./connect-frame"
-import type { CursorMcpTool } from "./mcp-tools"
-import type { ExecNativeOperation, ExecServerMessage } from "./proto/exec"
-import type { McpToolDefinition } from "./proto/mcp"
-import { type AgentClientMessage, encodeAgentClientMessage } from "./proto/request"
-import { decodeAgentServerMessage } from "./proto/server"
+import { encodeConnectFrame } from "./connect-frame.js"
+import type { CursorMcpTool } from "./mcp-tools.js"
+import type { ExecNativeOperation, ExecServerMessage } from "./proto/exec.js"
+import type { McpToolDefinition } from "./proto/mcp.js"
+import { type AgentClientMessage, encodeAgentClientMessage } from "./proto/request.js"
+import { decodeAgentServerMessage } from "./proto/server.js"
 import {
   concatBytes,
   encodeBoolField,
   encodeBytesField,
   encodeInt32Field,
   encodeStringField,
-} from "./proto-wire"
+} from "./proto-wire.js"
 
 const NATIVE_REJECT =
   "This native Cursor tool is not available. Use the MCP tools provided instead."

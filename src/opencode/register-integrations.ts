@@ -1,5 +1,5 @@
-import type { IntegrationDraft } from "./beta-api"
-import type { ProviderEntry } from "./provider-entry"
+import type { IntegrationDraft } from "./beta-api.js"
+import type { ProviderEntry } from "./provider-entry.js"
 
 export function registerProviderIntegrations(
   entries: readonly ProviderEntry[],

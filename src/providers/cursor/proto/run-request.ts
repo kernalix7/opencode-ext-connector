@@ -1,26 +1,31 @@
 // Derived from Rahularya01/pi-cursor proto/agent.proto AgentRunRequest. Licensed under MIT.
 // See THIRD_PARTY_NOTICES.md.
 
-import { concatBytes, decodeFieldsStrict, encodeBytesField, encodeStringField } from "../proto-wire"
+import {
+  concatBytes,
+  decodeFieldsStrict,
+  encodeBytesField,
+  encodeStringField,
+} from "../proto-wire.js"
 import {
   type ConversationCheckpoint,
   decodeConversationCheckpoint,
   encodeConversationCheckpoint,
-} from "./checkpoint"
+} from "./checkpoint.js"
 import {
   type ConversationAction,
   decodeConversationAction,
   encodeConversationAction,
-} from "./context"
+} from "./context.js"
 import {
   assertKnownFields,
   optionalField,
   optionalString,
   repeatedFields,
   requiredField,
-} from "./fields"
-import { decodeMcpToolDefinition, encodeMcpToolDefinition, type McpToolDefinition } from "./mcp"
-import { decodeRequestedModel, encodeRequestedModel, type RequestedModel } from "./model"
+} from "./fields.js"
+import { decodeMcpToolDefinition, encodeMcpToolDefinition, type McpToolDefinition } from "./mcp.js"
+import { decodeRequestedModel, encodeRequestedModel, type RequestedModel } from "./model.js"
 
 export type AgentRunRequest = {
   readonly conversationState: ConversationCheckpoint

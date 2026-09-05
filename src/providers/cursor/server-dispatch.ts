@@ -1,22 +1,22 @@
-import type { CursorBlobId } from "./blob-store"
-import { parseCursorWireBlobId } from "./blob-store"
+import type { CursorBlobId } from "./blob-store.js"
+import { parseCursorWireBlobId } from "./blob-store.js"
 import {
   cursorMcpDefinitions,
   encodeCursorClientFrame,
   encodeNativeRejectFrame,
   encodeRequestContextFrame,
-} from "./exec-reply"
-import { buildCursorInteractionReply } from "./interaction-reply"
-import { type ConversationCheckpoint, encodeConversationCheckpoint } from "./proto/checkpoint"
-import type { AgentServerMessage } from "./proto/server"
-import { decodeAgentServerMessage } from "./proto/server"
+} from "./exec-reply.js"
+import { buildCursorInteractionReply } from "./interaction-reply.js"
+import { type ConversationCheckpoint, encodeConversationCheckpoint } from "./proto/checkpoint.js"
+import type { AgentServerMessage } from "./proto/server.js"
+import { decodeAgentServerMessage } from "./proto/server.js"
 import type {
   CursorDispatchOutcome,
   CursorDispatchResult,
   CursorServerDispatcher,
   CursorServerDispatcherOptions,
   ParkedMcpCall,
-} from "./server-dispatch-types"
+} from "./server-dispatch-types.js"
 
 export type {
   CursorDispatchOutcome,
@@ -24,7 +24,7 @@ export type {
   CursorServerDispatcher,
   CursorServerDispatcherOptions,
   ParkedMcpCall,
-} from "./server-dispatch-types"
+} from "./server-dispatch-types.js"
 
 function result(
   outcome: CursorDispatchOutcome,

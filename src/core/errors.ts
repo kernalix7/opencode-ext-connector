@@ -1,4 +1,4 @@
-import type { ProviderId } from "./ids"
+import type { ProviderId } from "./ids.js"
 
 export type ConnectorErrorCode =
   | "invalid-argument"

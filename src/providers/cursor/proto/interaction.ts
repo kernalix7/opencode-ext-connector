@@ -8,8 +8,8 @@ import {
   encodeInt32Field,
   encodeStringField,
   type ProtoField,
-} from "../proto-wire"
-import { CursorProtocolDriftError, unreachableVariant } from "./errors"
+} from "../proto-wire.js"
+import { CursorProtocolDriftError, unreachableVariant } from "./errors.js"
 import {
   assertKnownFields,
   collectDriftMetadata,
@@ -19,10 +19,10 @@ import {
   optionalString,
   optionalUint32,
   type ProtoDriftMetadata,
-} from "./fields"
-import { decodeToolUpdate, encodeToolUpdate, type ToolUpdate } from "./interaction-tool-update"
-import { decodeTurnEndedUpdate, encodeTurnEndedUpdate } from "./interaction-turn-ended"
-import { encodeUnknownField } from "./unknown-field"
+} from "./fields.js"
+import { decodeToolUpdate, encodeToolUpdate, type ToolUpdate } from "./interaction-tool-update.js"
+import { decodeTurnEndedUpdate, encodeTurnEndedUpdate } from "./interaction-turn-ended.js"
+import { encodeUnknownField } from "./unknown-field.js"
 
 export {
   decodeInteractionQuery,
@@ -32,7 +32,7 @@ export {
   type InteractionKind,
   type InteractionQuery,
   type InteractionResponse,
-} from "./interaction-query"
+} from "./interaction-query.js"
 
 const SEMANTIC_FIELDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17] as const
 const KNOWN_FIELDS = [...SEMANTIC_FIELDS, 25] as const

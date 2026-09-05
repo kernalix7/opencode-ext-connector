@@ -2,14 +2,14 @@ import {
   type ConnectFrameStreamDecoder,
   type ConnectStreamFrame,
   createConnectFrameStreamDecoder,
-} from "./connect-frame-stream"
-import { annotateCursorProtocolFailure } from "./protocol-failure"
-import type { CursorIdleWatchdog } from "./recovery"
-import type { CursorRunSession, CursorRunSessionRegistry } from "./run-session"
-import type { CursorDispatchResult } from "./server-dispatch"
-import { type CursorStreamAdapter, createCursorStreamAdapter } from "./stream-adapter"
+} from "./connect-frame-stream.js"
+import { annotateCursorProtocolFailure } from "./protocol-failure.js"
+import type { CursorIdleWatchdog } from "./recovery.js"
+import type { CursorRunSession, CursorRunSessionRegistry } from "./run-session.js"
+import type { CursorDispatchResult } from "./server-dispatch.js"
+import { type CursorStreamAdapter, createCursorStreamAdapter } from "./stream-adapter.js"
 
-export { createConnectFrameStreamDecoder } from "./connect-frame-stream"
+export { createConnectFrameStreamDecoder } from "./connect-frame-stream.js"
 
 export type CursorDirectAttemptExit = { readonly kind: "terminal" } | { readonly kind: "parked" }
 

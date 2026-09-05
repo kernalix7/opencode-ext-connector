@@ -2,9 +2,13 @@ import { Buffer } from "node:buffer"
 
 import { z } from "zod"
 
-import { isSensitiveBridgeHeader } from "./bridge-event-sanitize"
-import { MAX_BRIDGE_BASE64_CHARACTERS, MAX_BRIDGE_LINE_LENGTH } from "./bridge-limits"
-import { type BridgeCommand, type BridgeEvent, CursorBridgeProtocolError } from "./bridge-protocol"
+import { isSensitiveBridgeHeader } from "./bridge-event-sanitize.js"
+import { MAX_BRIDGE_BASE64_CHARACTERS, MAX_BRIDGE_LINE_LENGTH } from "./bridge-limits.js"
+import {
+  type BridgeCommand,
+  type BridgeEvent,
+  CursorBridgeProtocolError,
+} from "./bridge-protocol.js"
 
 const BridgeIdSchema = z
   .string()

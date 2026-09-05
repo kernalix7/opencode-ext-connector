@@ -1,4 +1,4 @@
-import type { HttpHeaders, HttpRequest, HttpTransport } from "../core/http"
+import type { HttpHeaders, HttpRequest, HttpTransport } from "../core/http.js"
 
 export type HttpBodyStream = {
   readonly status: number

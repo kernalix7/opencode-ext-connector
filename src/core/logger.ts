@@ -1,4 +1,4 @@
-import type { Clock } from "./clock"
+import type { Clock } from "./clock.js"
 
 export type LogLevel = "debug" | "info" | "warn" | "error"
 export type LogValue =

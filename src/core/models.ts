@@ -1,7 +1,7 @@
 import { z } from "zod"
 
-import type { ModelId, ProviderId } from "./ids"
-import { ModelIdSchema, ProviderIdSchema } from "./ids"
+import type { ModelId, ProviderId } from "./ids.js"
+import { ModelIdSchema, ProviderIdSchema } from "./ids.js"
 
 export type AdapterModelInput = { readonly id: string }
 export type AdapterModel = { readonly id: ModelId }

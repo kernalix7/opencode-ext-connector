@@ -2,27 +2,27 @@ import { randomUUID } from "node:crypto"
 
 import type { LanguageModelV3CallOptions, LanguageModelV3StreamPart } from "@ai-sdk/provider"
 
-import type { Clock } from "../../core/clock"
-import { AdapterError, OperationCancelledError } from "../../core/errors"
-import { parseProviderId } from "../../core/ids"
-import { createAsyncDisposable } from "../../core/lifecycle"
-import { type CursorBridgeClient, createCursorBridgeClient } from "./bridge-client"
-import { startCursorDirectRun } from "./direct-run"
+import type { Clock } from "../../core/clock.js"
+import { AdapterError, OperationCancelledError } from "../../core/errors.js"
+import { parseProviderId } from "../../core/ids.js"
+import { createAsyncDisposable } from "../../core/lifecycle.js"
+import { type CursorBridgeClient, createCursorBridgeClient } from "./bridge-client.js"
+import { startCursorDirectRun } from "./direct-run.js"
 import type {
   CursorDirectSetupCleanup,
   CursorDirectSetupCleanupResources,
-} from "./direct-run-types"
-import { consumeCursorDirectSession } from "./direct-stream"
-import type { CursorMcpTool } from "./mcp-tools"
-import { createCursorRunSessionRegistry } from "./run-session"
-import type { CursorRunSessionBackgroundCleanupErrorHandler } from "./run-session-expiry"
-import { settleCursorCleanup } from "./settle-cleanup"
-import { buildCursorToolContinuations } from "./tool-continuation"
+} from "./direct-run-types.js"
+import { consumeCursorDirectSession } from "./direct-stream.js"
+import type { CursorMcpTool } from "./mcp-tools.js"
+import { createCursorRunSessionRegistry } from "./run-session.js"
+import type { CursorRunSessionBackgroundCleanupErrorHandler } from "./run-session-expiry.js"
+import { settleCursorCleanup } from "./settle-cleanup.js"
+import { buildCursorToolContinuations } from "./tool-continuation.js"
 
 export type {
   CursorDirectSetupCleanup,
   CursorDirectSetupCleanupResources,
-} from "./direct-run-types"
+} from "./direct-run-types.js"
 
 export type CursorDirectRuntimeOptions = {
   readonly clock: Clock

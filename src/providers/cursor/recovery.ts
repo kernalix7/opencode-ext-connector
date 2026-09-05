@@ -1,9 +1,9 @@
-import type { Clock, ScheduledCallback } from "../../core/clock"
-import { InvalidArgumentError, OperationCancelledError } from "../../core/errors"
+import type { Clock, ScheduledCallback } from "../../core/clock.js"
+import { InvalidArgumentError, OperationCancelledError } from "../../core/errors.js"
 import {
   type CursorProtocolFailureProjection,
   projectCursorProtocolFailure,
-} from "./protocol-failure"
+} from "./protocol-failure.js"
 
 export type CursorRecoveryAttemptMode = "initial" | "checkpoint" | "history"
 

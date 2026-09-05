@@ -1,4 +1,4 @@
-import { CursorProtocolError } from "./proto/errors"
+import { CursorProtocolError } from "./proto/errors.js"
 
 export const MAX_PROTO_MESSAGE_BYTES: number = 64 * 1024 * 1024
 

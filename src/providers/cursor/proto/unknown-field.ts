@@ -1,5 +1,5 @@
-import { concatBytes } from "../proto-wire"
-import { CursorProtocolError } from "./errors"
+import { concatBytes } from "../proto-wire.js"
+import { CursorProtocolError } from "./errors.js"
 
 function encodeVarint(value: number): Uint8Array {
   const output: number[] = []

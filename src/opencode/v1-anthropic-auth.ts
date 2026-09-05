@@ -1,7 +1,7 @@
 import type { AuthHook } from "@opencode-ai/plugin"
 
-import { createClaudeCompatibilityFetch } from "../providers/claude/compat-request"
-import type { ClaudeCredentials } from "../providers/claude/credentials"
+import { createClaudeCompatibilityFetch } from "../providers/claude/compat-request.js"
+import type { ClaudeCredentials } from "../providers/claude/credentials.js"
 
 export function createAnthropicCliAuth(options: {
   readonly readCredentials: (signal: AbortSignal) => Promise<ClaudeCredentials | null>

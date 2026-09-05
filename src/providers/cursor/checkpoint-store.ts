@@ -1,11 +1,11 @@
-import type { Clock } from "../../core/clock"
+import type { Clock } from "../../core/clock.js"
 import {
   type CursorBlobId,
   type CursorBlobStore,
   requireCursorStoreTtl,
   requirePositiveCursorStoreBound,
-} from "./blob-store"
-import type { CursorSessionId } from "./session-state"
+} from "./blob-store.js"
+import type { CursorSessionId } from "./session-state.js"
 
 export type CursorCheckpoint = {
   readonly blobIds: readonly CursorBlobId[]

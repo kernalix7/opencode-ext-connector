@@ -1,7 +1,7 @@
-import { OperationCancelledError } from "../../core/errors"
-import { commandCodeResponseBodyTooLargeError } from "./errors"
+import { OperationCancelledError } from "../../core/errors.js"
+import { commandCodeResponseBodyTooLargeError } from "./errors.js"
 
-export { commandCodeHttpError } from "./errors"
+export { commandCodeHttpError } from "./errors.js"
 
 const MAX_ERROR_BODY_BYTES = 64 * 1024
 

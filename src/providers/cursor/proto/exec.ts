@@ -8,8 +8,8 @@ import {
   encodeBytesField,
   encodeInt32Field,
   encodeStringField,
-} from "../proto-wire"
-import { CursorProtocolDriftError, unreachableVariant } from "./errors"
+} from "../proto-wire.js"
+import { CursorProtocolDriftError, unreachableVariant } from "./errors.js"
 import {
   assertKnownFields,
   oneofField,
@@ -17,7 +17,7 @@ import {
   optionalField,
   optionalString,
   optionalUint32,
-} from "./fields"
+} from "./fields.js"
 import {
   decodeMcpArgs,
   decodeMcpResult,
@@ -25,14 +25,14 @@ import {
   encodeMcpResult,
   type McpArgs,
   type McpResult,
-} from "./mcp"
+} from "./mcp.js"
 import {
   decodeRequestContextResult,
   encodeRequestContextResult,
   type RequestContextResult,
-} from "./request-context"
+} from "./request-context.js"
 
-export type { RequestContext, RequestContextResult } from "./request-context"
+export type { RequestContext, RequestContextResult } from "./request-context.js"
 
 type ExecIdentity = { readonly id: number; readonly execId: string }
 

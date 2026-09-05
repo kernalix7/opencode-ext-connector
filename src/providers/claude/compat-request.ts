@@ -8,9 +8,9 @@ import {
   excludeClaudeBeta,
   isClaudeLongContextError,
   nextClaudeBetaToExclude,
-} from "./compat-betas"
-import { transformClaudeResponse } from "./compat-response"
-import { transformClaudeBody } from "./compat-transform"
+} from "./compat-betas.js"
+import { transformClaudeResponse } from "./compat-response.js"
+import { transformClaudeBody } from "./compat-transform.js"
 
 const sessionId = randomUUID()
 

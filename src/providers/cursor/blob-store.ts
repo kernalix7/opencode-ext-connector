@@ -2,8 +2,8 @@ import { createHash } from "node:crypto"
 
 import { z } from "zod"
 
-import type { Clock } from "../../core/clock"
-import { InvalidArgumentError } from "../../core/errors"
+import type { Clock } from "../../core/clock.js"
+import { InvalidArgumentError } from "../../core/errors.js"
 
 export const CursorBlobIdSchema: z.core.$ZodBranded<z.ZodString, "CursorBlobId"> = z
   .string()

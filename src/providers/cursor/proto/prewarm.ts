@@ -7,16 +7,16 @@ import {
   encodeBoolField,
   encodeBytesField,
   encodeStringField,
-} from "../proto-wire"
+} from "../proto-wire.js"
 import {
   type ConversationCheckpoint,
   decodeConversationCheckpoint,
   encodeConversationCheckpoint,
-} from "./checkpoint"
-import { assertKnownFields, optionalBool, optionalField, optionalString } from "./fields"
-import type { McpToolDefinition } from "./mcp"
-import { decodeRequestedModel, encodeRequestedModel, type RequestedModel } from "./model"
-import { decodeMcpTools, encodeMcpTools } from "./run-request"
+} from "./checkpoint.js"
+import { assertKnownFields, optionalBool, optionalField, optionalString } from "./fields.js"
+import type { McpToolDefinition } from "./mcp.js"
+import { decodeRequestedModel, encodeRequestedModel, type RequestedModel } from "./model.js"
+import { decodeMcpTools, encodeMcpTools } from "./run-request.js"
 
 export type PrewarmRequest = {
   readonly modelDetails?: Uint8Array

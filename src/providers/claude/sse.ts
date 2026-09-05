@@ -3,7 +3,7 @@
 
 import type { LanguageModelV3StreamPart } from "@ai-sdk/provider"
 
-import { convertEventToPart } from "./sse-convert"
+import { convertEventToPart } from "./sse-convert.js"
 
 export type AnthropicSseEvent =
   | {
@@ -193,4 +193,4 @@ export function parseAnthropicSse(
   }
 }
 
-export { convertEventToPart, mapStopReason } from "./sse-convert"
+export { convertEventToPart, mapStopReason } from "./sse-convert.js"

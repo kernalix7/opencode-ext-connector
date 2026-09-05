@@ -6,7 +6,7 @@ import type {
   LanguageModelV3Usage,
 } from "@ai-sdk/provider"
 
-import { emptyCursorUsage } from "./usage"
+import { emptyCursorUsage } from "./usage.js"
 
 export async function generateFromCursorStream(
   stream: ReadableStream<LanguageModelV3StreamPart>,

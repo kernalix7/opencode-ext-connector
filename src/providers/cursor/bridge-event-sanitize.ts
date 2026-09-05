@@ -1,4 +1,4 @@
-import type { BridgeEvent } from "./bridge-protocol"
+import type { BridgeEvent } from "./bridge-protocol.js"
 
 function assertNever(event: never): never {
   void event

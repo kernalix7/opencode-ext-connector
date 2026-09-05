@@ -8,7 +8,7 @@ import {
   encodeBytesField,
   encodeInt32Field,
   encodeStringField,
-} from "../proto-wire"
+} from "../proto-wire.js"
 import {
   assertKnownFields,
   optionalField,
@@ -17,8 +17,8 @@ import {
   repeatedFields,
   requiredField,
   requiredString,
-} from "./fields"
-import { encodeUnknownField } from "./unknown-field"
+} from "./fields.js"
+import { encodeUnknownField } from "./unknown-field.js"
 
 export type CheckpointMapEntry = {
   readonly key: string

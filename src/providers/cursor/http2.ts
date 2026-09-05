@@ -1,6 +1,6 @@
 import http2 from "node:http2"
 
-import { OperationCancelledError } from "../../core/errors"
+import { OperationCancelledError } from "../../core/errors.js"
 
 export const CURSOR_API_URL = "https://api2.cursor.sh"
 export const CURSOR_CLIENT_VERSION = "cli-2026.08.11-e8db854"

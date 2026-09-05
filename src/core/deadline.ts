@@ -1,12 +1,12 @@
-import type { Clock } from "./clock"
+import type { Clock } from "./clock.js"
 import {
   DeadlineExceededError,
   InvalidArgumentError,
   OperationCancelledError,
   ResourceDisposedError,
-} from "./errors"
-import type { AsyncDisposableHandle } from "./lifecycle"
-import { createAsyncDisposable } from "./lifecycle"
+} from "./errors.js"
+import type { AsyncDisposableHandle } from "./lifecycle.js"
+import { createAsyncDisposable } from "./lifecycle.js"
 
 export type DeadlineOptions = {
   readonly clock: Clock

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1 - 2026-09-05
+
+- Fix Node ESM compatibility for root and SDK subpath imports by using explicit
+  `.js` extensions in emitted relative specifiers
+- Enforce NodeNext module resolution in the build and cover Node consumers of
+  the packed artifact
+
 ## 0.3.0 - 2026-09-05
 
 - Publish releases to npm from GitHub Actions when a `v*` tag is pushed; the

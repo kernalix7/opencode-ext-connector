@@ -4,16 +4,16 @@ import { homedir } from "node:os"
 import { join } from "node:path"
 import { promisify } from "node:util"
 
-import type { Clock } from "../../core/clock"
-import { OperationCancelledError } from "../../core/errors"
-import type { HttpTransport } from "../../core/http"
-import type { CredentialRefreshPolicy } from "../../core/options"
+import type { Clock } from "../../core/clock.js"
+import { OperationCancelledError } from "../../core/errors.js"
+import type { HttpTransport } from "../../core/http.js"
+import type { CredentialRefreshPolicy } from "../../core/options.js"
 import {
   type ClaudeCredentials,
   claudeAccessNeedsRefresh,
   parseClaudeCredentials,
-} from "./credentials"
-import { refreshClaudeAccessTokenResult } from "./refresh"
+} from "./credentials.js"
+import { refreshClaudeAccessTokenResult } from "./refresh.js"
 
 const execFileAsync = promisify(execFile)
 const CLAUDE_KEYCHAIN_SERVICE = "Claude Code-credentials"

@@ -1,13 +1,13 @@
 import { Buffer } from "node:buffer"
 
-import { sanitizeBridgeEvent } from "./bridge-event-sanitize"
-import { MAX_BRIDGE_LINE_LENGTH } from "./bridge-limits"
+import { sanitizeBridgeEvent } from "./bridge-event-sanitize.js"
+import { MAX_BRIDGE_LINE_LENGTH } from "./bridge-limits.js"
 import {
   type BridgeCommand,
   type BridgeEvent,
   type BridgeEventSerializationContext,
   CursorBridgeProtocolError,
-} from "./bridge-protocol"
+} from "./bridge-protocol.js"
 
 function assertNever(value: never): never {
   void value

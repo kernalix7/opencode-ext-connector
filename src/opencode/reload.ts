@@ -1,5 +1,5 @@
-import type { Clock, ScheduledCallback } from "../core/clock"
-import { createAsyncDisposable } from "../core/lifecycle"
+import type { Clock, ScheduledCallback } from "../core/clock.js"
+import { createAsyncDisposable } from "../core/lifecycle.js"
 
 export type CatalogReloadOptions = {
   readonly clock: Clock

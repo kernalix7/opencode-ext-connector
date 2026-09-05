@@ -1,10 +1,10 @@
-import type { Clock } from "../core/clock"
+import type { Clock } from "../core/clock.js"
 import {
   type ConnectorLogger,
   createConnectorLogger,
   type LogRecord,
   type LogSink,
-} from "../core/logger"
+} from "../core/logger.js"
 
 export function createConsoleLogSink(): LogSink {
   return {

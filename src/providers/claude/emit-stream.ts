@@ -3,7 +3,7 @@
 
 import type { LanguageModelV3StreamPart } from "@ai-sdk/provider"
 
-import { createSseParseState, mapStopReason, parseAnthropicSse } from "./sse"
+import { createSseParseState, mapStopReason, parseAnthropicSse } from "./sse.js"
 
 type FinishReason = ReturnType<typeof mapStopReason>
 

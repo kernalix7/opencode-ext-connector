@@ -8,8 +8,8 @@ import {
   encodeBoolField,
   encodeBytesField,
   encodeStringField,
-} from "../proto-wire"
-import { CursorProtocolDriftError, unreachableVariant } from "./errors"
+} from "../proto-wire.js"
+import { CursorProtocolDriftError, unreachableVariant } from "./errors.js"
 import {
   assertKnownFields,
   oneofField,
@@ -18,11 +18,15 @@ import {
   repeatedFields,
   requiredField,
   requiredString,
-} from "./fields"
-import { decodeOutputLocation, encodeOutputLocation, type OutputLocation } from "./output-location"
-import { encodeUnknownField } from "./unknown-field"
+} from "./fields.js"
+import {
+  decodeOutputLocation,
+  encodeOutputLocation,
+  type OutputLocation,
+} from "./output-location.js"
+import { encodeUnknownField } from "./unknown-field.js"
 
-export type { OutputLocation } from "./output-location"
+export type { OutputLocation } from "./output-location.js"
 
 export type McpResultContent =
   | { readonly kind: "text"; readonly text: string; readonly outputLocation?: OutputLocation }

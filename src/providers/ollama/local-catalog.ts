@@ -1,9 +1,9 @@
 import { z } from "zod"
 
-import type { AdapterModel } from "../../core/models"
-import { parseAdapterModel } from "../../core/models"
-import { OllamaCatalogError } from "./errors"
-import { type OllamaFetch, requestOllamaCatalog } from "./http"
+import type { AdapterModel } from "../../core/models.js"
+import { parseAdapterModel } from "../../core/models.js"
+import { OllamaCatalogError } from "./errors.js"
+import { type OllamaFetch, requestOllamaCatalog } from "./http.js"
 
 const LOCAL_TAGS_URL = "http://localhost:11434/api/tags"
 const LocalModelSchema = z

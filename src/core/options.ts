@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-import type { HealthPolicy } from "./health"
+import type { HealthPolicy } from "./health.js"
 
 export type CredentialRefreshMode = "auto" | "never"
 

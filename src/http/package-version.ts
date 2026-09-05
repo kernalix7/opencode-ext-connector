@@ -1,4 +1,4 @@
-import type { HttpTransport } from "../core/http"
+import type { HttpTransport } from "../core/http.js"
 
 const REGISTRY_URL = "https://registry.npmjs.org"
 const SEMVER_PATTERN = /^\d+\.\d+\.\d+$/

@@ -4,8 +4,8 @@ import type {
   SharedV3Warning,
 } from "@ai-sdk/provider"
 
-import { OllamaGenerationError } from "./errors"
-import type { OllamaChatRequest, OllamaMessage } from "./protocol"
+import { OllamaGenerationError } from "./errors.js"
+import type { OllamaChatRequest, OllamaMessage } from "./protocol.js"
 
 type BuiltOllamaCall = {
   readonly request: OllamaChatRequest
