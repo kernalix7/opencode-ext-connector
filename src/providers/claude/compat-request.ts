@@ -127,7 +127,7 @@ async function fetchWithRetry(input: string | URL | Request, init: RequestInit):
 }
 
 export function createClaudeCompatibilityFetch(options: {
-  readonly version: string
+  readonly readVersion: (signal: AbortSignal) => Promise<string | null>
   readonly readAccessToken: (signal: AbortSignal) => Promise<string | null>
   readonly forceRefreshAccessToken: (signal: AbortSignal) => Promise<string | null>
 }): (input: string | URL | Request, init?: RequestInit) => Promise<Response> {
@@ -135,10 +135,18 @@ export function createClaudeCompatibilityFetch(options: {
     const signal = requestInit.signal ?? new AbortController().signal
     let token = await options.readAccessToken(signal)
     if (token === null) {
-      throw new Error("Claude Code credentials are unavailable or expired. Run `claude` to log in.")
+      throw new Error(
+        "Claude Code credentials are unavailable or expired. Provide a valid `~/.claude/.credentials.json`.",
+      )
+    }
+    const version = await options.readVersion(signal)
+    if (version === null) {
+      throw new Error(
+        "Claude Code client version is unavailable. Set ANTHROPIC_CLI_VERSION or allow access to registry.npmjs.org.",
+      )
     }
     const modelId = modelFromBody(requestInit.body)
-    const body = transformClaudeBody(requestInit.body, options.version)
+    const body = transformClaudeBody(requestInit.body, version)
     const url = requestUrl(input)
     const send = (accessToken: string): Promise<Response> => {
       const incoming = new Headers(input instanceof Request ? input.headers : undefined)
@@ -151,7 +159,7 @@ export function createClaudeCompatibilityFetch(options: {
         headers: createClaudeCompatibilityHeaders({
           accessToken,
           modelId,
-          version: options.version,
+          version,
           incoming,
         }),
       })

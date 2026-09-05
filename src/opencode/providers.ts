@@ -1,6 +1,6 @@
 import { createClaudeAdapter } from "../providers/claude/adapter"
 import { createClaudeTokenManager, readClaudeCredentials } from "../providers/claude/auth"
-import { readClaudeCliVersion } from "../providers/claude/cli-version"
+import { createClaudeVersionResolver } from "../providers/claude/cli-version"
 import type { ClaudeCredentials } from "../providers/claude/credentials"
 import { listClaudeModels } from "../providers/claude/models"
 import { createCommandCodeAdapter } from "../providers/command-code/adapter"
@@ -90,24 +90,27 @@ export function createProviderRegistry(
       displayName: "Claude",
       integrationId: "anthropic",
       integrationMethod: { type: "env", names: ["CLAUDE_EXT_CONNECTOR_ENABLED"] },
-      createAdapter: (deps) =>
-        createClaudeAdapter({
+      createAdapter: (deps) => {
+        const readVersion = createClaudeVersionResolver(deps)
+        return createClaudeAdapter({
           readAccessToken: async (signal) => {
             const credentials = await readClaudeCredentials(deps.env, signal)
             return credentials?.accessToken ?? null
           },
-          listModels: (token, signal) => {
-            const version = readClaudeCliVersion(deps.env)
+          listModels: async (token, signal) => {
+            const version = await readVersion(signal)
             return version === null
-              ? Promise.resolve([])
+              ? []
               : listClaudeModels({ transport: deps.transport, token, signal, version })
           },
-        }),
+        })
+      },
       createAuthHook: (deps) => {
         const tokenManager = createClaudeTokenManager({
           env: deps.env,
           clock: deps.clock,
           transport: deps.transport,
+          ...(deps.credentialRefresh === undefined ? {} : { refresh: deps.credentialRefresh }),
           ...(deps.writeBackCredentials && writeClaudeCredentials !== undefined
             ? {
                 writeBack: (credentials) => writeClaudeCredentials(deps.env, credentials),
@@ -119,7 +122,7 @@ export function createProviderRegistry(
           readCredentials: (signal) => readClaudeCredentials(deps.env, signal),
           readAccessToken: tokenManager.readAccessToken,
           forceRefreshAccessToken: tokenManager.forceRefreshAccessToken,
-          cliVersion: readClaudeCliVersion(deps.env),
+          readVersion: createClaudeVersionResolver(deps),
         })
       },
       isConnected: async (deps) => {

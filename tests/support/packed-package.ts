@@ -2,6 +2,10 @@ import { cp, mkdir, mkdtemp, rm, symlink } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
+import { z } from "zod"
+
+const PackageManifestSchema = z.object({ name: z.string(), version: z.string() })
+
 const stagedEntries = [
   "CHANGELOG.md",
   "LICENSE",
@@ -17,8 +21,17 @@ const stagedEntries = [
 ] as const
 
 export type PackedPackage = {
+  readonly name: string
+  readonly version: string
   readonly tarballPath: string
   cleanup(): Promise<void>
+}
+
+export async function readPackageManifest(
+  projectRoot: string,
+): Promise<{ readonly name: string; readonly version: string }> {
+  const manifest: unknown = await Bun.file(join(projectRoot, "package.json")).json()
+  return PackageManifestSchema.parse(manifest)
 }
 
 export type PackCleanSourceOptions = {
@@ -42,7 +55,8 @@ export async function packCleanSource(options: PackCleanSourceOptions): Promise<
   const sourceDirectory = join(root, "source")
   const artifactDirectory = join(root, "artifacts")
   const home = join(root, "home")
-  const filename = "opencode-ext-connector-0.2.0.tgz"
+  const { name, version } = await readPackageManifest(options.projectRoot)
+  const filename = `${name}-${version}.tgz`
   try {
     await Promise.all([
       mkdir(sourceDirectory, { recursive: true }),
@@ -82,6 +96,8 @@ export async function packCleanSource(options: PackCleanSourceOptions): Promise<
     ])
     if (exitCode !== 0) throw new PackagePackError(exitCode, stderr)
     return {
+      name,
+      version,
       tarballPath: join(artifactDirectory, filename),
       cleanup: () => rm(root, { force: true, recursive: true }),
     }
