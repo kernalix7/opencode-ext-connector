@@ -1,18 +1,18 @@
 // Derived from Rahularya01/pi-cursor v1.4.26 request-build.ts. Licensed under MIT.
 // See THIRD_PARTY_NOTICES.md.
 
-import { InvalidArgumentError } from "../../core/errors"
-import type { CursorBlobId, CursorBlobStore } from "./blob-store"
-import type { CursorCheckpointStore } from "./checkpoint-store"
-import type { ConversationCheckpoint } from "./proto/checkpoint"
-import { decodeConversationCheckpoint } from "./proto/checkpoint"
-import type { ConversationAction } from "./proto/context"
-import { encodeAgentClientMessage } from "./proto/request"
+import { InvalidArgumentError } from "../../core/errors.js"
+import type { CursorBlobId, CursorBlobStore } from "./blob-store.js"
+import type { CursorCheckpointStore } from "./checkpoint-store.js"
+import type { ConversationCheckpoint } from "./proto/checkpoint.js"
+import { decodeConversationCheckpoint } from "./proto/checkpoint.js"
+import type { ConversationAction } from "./proto/context.js"
+import { encodeAgentClientMessage } from "./proto/request.js"
 import {
   type CursorRequestBlobCollector,
   type CursorRequestBlobOwnership,
   createCursorRequestBlobCollector,
-} from "./request-blob-ownership"
+} from "./request-blob-ownership.js"
 import {
   buildCursorSelectedContextBlob,
   buildCursorUserMessage,
@@ -20,8 +20,8 @@ import {
   normalizeCursorRootPromptBytes,
   storeCursorHistory,
   storeCursorRequestBlob,
-} from "./request-history"
-import { type CursorRunBuildInput, parseCursorRunBuildInput } from "./request-input"
+} from "./request-history.js"
+import { type CursorRunBuildInput, parseCursorRunBuildInput } from "./request-input.js"
 
 export type CursorAgentRunBuildDependencies = {
   readonly blobStore: CursorBlobStore
