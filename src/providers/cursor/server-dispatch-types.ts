@@ -1,9 +1,9 @@
-import type { CursorBlobStore } from "./blob-store"
-import type { CursorCheckpointStore } from "./checkpoint-store"
-import type { CursorMcpTool } from "./mcp-tools"
-import type { McpArgs } from "./proto/mcp"
-import type { AgentServerMessage } from "./proto/server"
-import type { CursorSessionId } from "./session-state"
+import type { CursorBlobStore } from "./blob-store.js"
+import type { CursorCheckpointStore } from "./checkpoint-store.js"
+import type { CursorMcpTool } from "./mcp-tools.js"
+import type { McpArgs } from "./proto/mcp.js"
+import type { AgentServerMessage } from "./proto/server.js"
+import type { CursorSessionId } from "./session-state.js"
 
 export type ParkedMcpCall = {
   readonly callId: string
