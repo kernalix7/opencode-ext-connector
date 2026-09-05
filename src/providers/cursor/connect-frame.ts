@@ -1,7 +1,7 @@
 // Derived from Rahularya01/pi-cursor Connect envelope handling. Licensed under MIT.
 // See THIRD_PARTY_NOTICES.md.
 
-import { CursorProtocolError } from "./proto/errors"
+import { CursorProtocolError } from "./proto/errors.js"
 
 export const CONNECT_COMPRESSED: number = 0x01
 export const CONNECT_END_STREAM: number = 0x02
