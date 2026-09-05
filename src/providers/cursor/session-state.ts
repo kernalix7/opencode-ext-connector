@@ -1,12 +1,12 @@
 import { z } from "zod"
 
-import type { Clock } from "../../core/clock"
+import type { Clock } from "../../core/clock.js"
 import {
   type CursorBlobId,
   type CursorBlobStore,
   requireCursorStoreTtl,
   requirePositiveCursorStoreBound,
-} from "./blob-store"
+} from "./blob-store.js"
 
 export const CursorSessionIdSchema: z.core.$ZodBranded<z.ZodString, "CursorSessionId"> = z
   .string()
