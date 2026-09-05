@@ -1,4 +1,4 @@
-import type { AsyncDisposableHandle } from "./lifecycle"
+import type { AsyncDisposableHandle } from "./lifecycle.js"
 
 export type ProcessCommand = {
   readonly executable: string
