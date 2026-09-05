@@ -1,5 +1,5 @@
-import { encodeProtobufValue } from "./proto-value"
-import { concatBytes, encodeBytesField, encodeStringField } from "./proto-wire"
+import { encodeProtobufValue } from "./proto-value.js"
+import { concatBytes, encodeBytesField, encodeStringField } from "./proto-wire.js"
 
 export type CursorMcpTool = {
   readonly name: string

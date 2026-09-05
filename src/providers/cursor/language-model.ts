@@ -7,12 +7,12 @@ import type {
   LanguageModelV3StreamPart,
 } from "@ai-sdk/provider"
 
-import { AdapterError, OperationCancelledError } from "../../core/errors"
-import { parseProviderId } from "../../core/ids"
-import { generateFromCursorStream } from "./language-generate"
-import { type CursorNdjsonStream, createCursorLegacyStream } from "./legacy-stream"
-import { cursorPromptText } from "./prompt"
-import { emptyCursorUsage } from "./usage"
+import { AdapterError, OperationCancelledError } from "../../core/errors.js"
+import { parseProviderId } from "../../core/ids.js"
+import { generateFromCursorStream } from "./language-generate.js"
+import { type CursorNdjsonStream, createCursorLegacyStream } from "./legacy-stream.js"
+import { cursorPromptText } from "./prompt.js"
+import { emptyCursorUsage } from "./usage.js"
 
 export type CursorLanguageModelOptions = {
   readonly modelId: string
