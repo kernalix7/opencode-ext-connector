@@ -91,6 +91,7 @@ export function buildV1AuthHooks(
         auth: entry.createAuthHook({
           ...deps,
           writeBackCredentials: configured.writeBackCredentials,
+          credentialRefresh: configured.credentialRefresh,
         }),
       }
     : {}

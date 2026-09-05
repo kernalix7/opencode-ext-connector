@@ -110,6 +110,7 @@ export function createProviderRegistry(
           env: deps.env,
           clock: deps.clock,
           transport: deps.transport,
+          ...(deps.credentialRefresh === undefined ? {} : { refresh: deps.credentialRefresh }),
           ...(deps.writeBackCredentials && writeClaudeCredentials !== undefined
             ? {
                 writeBack: (credentials) => writeClaudeCredentials(deps.env, credentials),

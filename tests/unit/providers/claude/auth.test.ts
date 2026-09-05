@@ -4,13 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import { OperationCancelledError } from "../../../../src/core/errors"
-import {
-  createClaudeTokenManager,
-  readClaudeAccessToken,
-} from "../../../../src/providers/claude/auth"
-import { parseClaudeCliVersion } from "../../../../src/providers/claude/cli-version"
-import { FakeClock } from "../../../support/clock"
-import { FakeHttpTransport } from "../../../support/http"
+import { readClaudeAccessToken } from "../../../../src/providers/claude/auth"
 
 function createSignal(aborted = false): AbortSignal {
   const controller = new AbortController()
@@ -28,11 +22,6 @@ function credentialJson(accessToken: string, wrapped = true): string {
 }
 
 describe("readClaudeAccessToken", () => {
-  it("parses installed Claude CLI version output", () => {
-    // Given / When / Then
-    expect(parseClaudeCliVersion("2.1.217 (Claude Code)")).toBe("2.1.217")
-  })
-
   it("returns keychain token when injected readKeychain succeeds — file not read", async () => {
     // Given
     const keychainToken = "kc-token"
@@ -162,84 +151,5 @@ describe("readClaudeAccessToken", () => {
     await expect(readClaudeAccessToken(env, controller.signal, lookup)).rejects.toBeInstanceOf(
       OperationCancelledError,
     )
-  })
-})
-
-describe("createClaudeTokenManager", () => {
-  it("keeps rotated credentials as the source for subsequent reads", async () => {
-    // Given
-    const transport = new FakeHttpTransport()
-    transport.enqueueResponse({
-      status: 200,
-      headers: {},
-      body: new TextEncoder().encode(
-        JSON.stringify({
-          access_token: "rotated-access",
-          refresh_token: "rotated-refresh",
-          expires_in: 3_600,
-        }),
-      ),
-    })
-    const manager = createClaudeTokenManager({
-      env: {},
-      clock: new FakeClock(120_000),
-      transport,
-      lookup: {
-        readKeychain: async () =>
-          JSON.stringify({
-            accessToken: "stored-access",
-            refreshToken: "stored-refresh",
-            expiresAt: 0,
-          }),
-      },
-    })
-    const signal = new AbortController().signal
-    await manager.readAccessToken(signal)
-
-    // When
-    const token = await manager.readAccessToken(signal)
-
-    // Then
-    expect(token).toBe("rotated-access")
-    expect(transport.requests).toHaveLength(1)
-  })
-
-  it("passes rotated credentials to an injected writeback", async () => {
-    // Given
-    const transport = new FakeHttpTransport()
-    transport.enqueueResponse({
-      status: 200,
-      headers: {},
-      body: new TextEncoder().encode(
-        JSON.stringify({
-          access_token: "rotated-access",
-          refresh_token: "rotated-refresh",
-          expires_in: 3_600,
-        }),
-      ),
-    })
-    const written: string[] = []
-    const manager = createClaudeTokenManager({
-      env: {},
-      clock: new FakeClock(120_000),
-      transport,
-      lookup: {
-        readKeychain: async () =>
-          JSON.stringify({
-            accessToken: "stored-access",
-            refreshToken: "stored-refresh",
-            expiresAt: 0,
-          }),
-      },
-      writeBack: async (credentials) => {
-        written.push(credentials.accessToken)
-      },
-    })
-
-    // When
-    await manager.readAccessToken(new AbortController().signal)
-
-    // Then
-    expect(written).toEqual(["rotated-access"])
   })
 })

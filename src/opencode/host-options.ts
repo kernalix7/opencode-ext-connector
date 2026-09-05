@@ -4,6 +4,23 @@ function positiveInteger(value: unknown): number | undefined {
   return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : undefined
 }
 
+function nonNegativeInteger(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : undefined
+}
+
+function pickCredentialRefresh(value: unknown): ConnectorOptionsInput["credentialRefresh"] {
+  if (typeof value !== "object" || value === null) {
+    return undefined
+  }
+  const rawMode = "mode" in value ? value.mode : undefined
+  const mode = rawMode === "auto" || rawMode === "never" ? rawMode : undefined
+  const leadMs = "leadMs" in value ? nonNegativeInteger(value.leadMs) : undefined
+  if (mode === undefined && leadMs === undefined) {
+    return undefined
+  }
+  return { mode, leadMs }
+}
+
 function pickHealth(value: unknown): ConnectorOptionsInput["health"] {
   if (typeof value !== "object" || value === null) {
     return undefined
@@ -39,13 +56,10 @@ export function pickConnectorOptionsInput(input: unknown): ConnectorOptionsInput
       "writeBackCredentials" in input && typeof input.writeBackCredentials === "boolean"
         ? input.writeBackCredentials
         : undefined,
+    credentialRefresh:
+      "credentialRefresh" in input ? pickCredentialRefresh(input.credentialRefresh) : undefined,
     catalogReloadMs:
-      "catalogReloadMs" in input &&
-      typeof input.catalogReloadMs === "number" &&
-      Number.isSafeInteger(input.catalogReloadMs) &&
-      input.catalogReloadMs >= 0
-        ? input.catalogReloadMs
-        : undefined,
+      "catalogReloadMs" in input ? nonNegativeInteger(input.catalogReloadMs) : undefined,
     health: "health" in input ? pickHealth(input.health) : undefined,
   }
 }

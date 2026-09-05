@@ -78,4 +78,25 @@ describe("buildV1AuthHooks", () => {
     // Then
     expect(received).toBe(expected)
   })
+
+  it("threads the credential refresh policy through auth dependencies", () => {
+    // Given
+    let received: unknown
+    const entry: ProviderEntry = {
+      ...fakeEntry("claude", "anthropic"),
+      createAuthHook: (providerDeps) => {
+        received = providerDeps.credentialRefresh
+        return { provider: "anthropic", methods: [] }
+      },
+    }
+
+    // When
+    buildV1AuthHooks(entry, deps, {
+      providers: ["claude"],
+      credentialRefresh: { mode: "never", leadMs: 1_800_000 },
+    })
+
+    // Then
+    expect(received).toEqual({ mode: "never", leadMs: 1_800_000 })
+  })
 })
