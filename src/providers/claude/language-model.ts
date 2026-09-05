@@ -7,17 +7,17 @@ import type {
   LanguageModelV3StreamPart,
 } from "@ai-sdk/provider"
 
-import { AdapterError, OperationCancelledError } from "../../core/errors"
-import type { HttpTransport } from "../../core/http"
-import { parseProviderId } from "../../core/ids"
-import { openHttpBody } from "../../http/read-body"
-import { emitClaudeSseChunks } from "./emit-stream"
+import { AdapterError, OperationCancelledError } from "../../core/errors.js"
+import type { HttpTransport } from "../../core/http.js"
+import { parseProviderId } from "../../core/ids.js"
+import { openHttpBody } from "../../http/read-body.js"
+import { emitClaudeSseChunks } from "./emit-stream.js"
 import {
   buildRequestBody,
   emptyUsage,
   parseAssistantText,
   promptToAnthropicMessages,
-} from "./prompt"
+} from "./prompt.js"
 
 export type ClaudeLanguageModelOptions = {
   readonly modelId: string

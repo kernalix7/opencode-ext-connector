@@ -1,7 +1,7 @@
-import { parseModelIdList } from "../../catalog/parse-ids"
-import type { HttpTransport } from "../../core/http"
-import type { AdapterModel } from "../../core/models"
-import { createClaudeCompatibilityHeaders } from "./compat-request"
+import { parseModelIdList } from "../../catalog/parse-ids.js"
+import type { HttpTransport } from "../../core/http.js"
+import type { AdapterModel } from "../../core/models.js"
+import { createClaudeCompatibilityHeaders } from "./compat-request.js"
 
 export type ClaudeModelListOptions = {
   readonly transport: HttpTransport
