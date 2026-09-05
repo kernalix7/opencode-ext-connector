@@ -1,8 +1,8 @@
 // Derived from Rahularya01/pi-cursor protobuf Value handling. Licensed under MIT.
 // See THIRD_PARTY_NOTICES.md.
 
-import { CursorProtocolDriftError, CursorProtocolError } from "./proto/errors"
-import { assertKnownFields, repeatedFields, requiredField, requiredString } from "./proto/fields"
+import { CursorProtocolDriftError, CursorProtocolError } from "./proto/errors.js"
+import { assertKnownFields, repeatedFields, requiredField, requiredString } from "./proto/fields.js"
 import {
   concatBytes,
   decodeFields,
@@ -15,7 +15,7 @@ import {
   encodeBytesField,
   encodeDoubleField,
   encodeStringField,
-} from "./proto-wire"
+} from "./proto-wire.js"
 
 function encodeStruct(value: Record<string, unknown>): Uint8Array {
   const entries: Uint8Array[] = []
