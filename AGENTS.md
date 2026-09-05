@@ -23,7 +23,7 @@ src/server.ts                  catalog/auth composition and process-level depend
 src/core/                      frozen provider-agnostic contracts; see AGENTS.md
 src/opencode/                  auth store, registry, V1 hooks, catalog/language wiring
 src/providers/claude/          credentials and compatibility path; see AGENTS.md
-src/providers/command-code/    CLI metadata, /alpha/generate, provider-local NDJSON
+src/providers/command-code/    client version, /alpha/generate, provider-local NDJSON
 src/providers/cursor/          private Node bridge and direct Run runtime; see AGENTS.md
 src/providers/ollama/          localhost daemon and catalog runtime; see AGENTS.md
 src/{catalog,http,logging}/    small shared boundary implementations
@@ -58,6 +58,11 @@ tests/                         unit/integration/e2e suites and fakes; see AGENTS
 - `src/opencode/providers.ts` owns cross-provider registration; protocol code
   stays inside its provider directory.
 - Command Code uses `/alpha/generate` and provider-local NDJSON handling.
+- No vendor CLI is required at runtime. Claude/Command Code client versions
+  resolve from an env override, an installed binary, or the npm registry via
+  `src/http/package-version.ts`; never pin a version constant.
+- `credentialRefresh` (`auto` | `never`, `leadMs`) governs Claude token refresh
+  so one machine can own refresh while file copies stay read-only.
 - Provider snapshots, health, and failures remain isolated.
 
 ## CONVENTIONS
