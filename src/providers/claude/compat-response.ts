@@ -1,7 +1,7 @@
 // Derived from griffinmartin/opencode-claude-auth@0f0ff6f12c367339130cbfd250393863ed2c8d9e.
 // Licensed under MIT. See THIRD_PARTY_NOTICES.md.
 
-import { stripClaudeToolPrefix } from "./compat-transform"
+import { stripClaudeToolPrefix } from "./compat-transform.js"
 
 export function transformClaudeResponse(response: Response): Response {
   if (response.body === null) {
