@@ -1,14 +1,19 @@
 // Derived from Rahularya01/pi-cursor proto/agent.proto InteractionUpdate fields. Licensed under MIT.
 // See THIRD_PARTY_NOTICES.md.
 
-import { concatBytes, decodeFieldsStrict, encodeBytesField, encodeStringField } from "../proto-wire"
+import {
+  concatBytes,
+  decodeFieldsStrict,
+  encodeBytesField,
+  encodeStringField,
+} from "../proto-wire.js"
 import {
   assertKnownFields,
   oneofField,
   optionalField,
   requiredField,
   requiredString,
-} from "./fields"
+} from "./fields.js"
 import {
   decodeMcpArgs,
   decodeMcpToolResult,
@@ -16,7 +21,7 @@ import {
   encodeMcpToolResult,
   type McpArgs,
   type McpToolResult,
-} from "./mcp"
+} from "./mcp.js"
 
 export type ToolUpdate = {
   readonly callId: string

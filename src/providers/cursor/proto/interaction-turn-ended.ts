@@ -1,8 +1,8 @@
 // Derived from Rahularya01/pi-cursor proto/agent.proto TurnEndedUpdate. Licensed under MIT.
 // See THIRD_PARTY_NOTICES.md.
 
-import { decodeFieldsStrict } from "../proto-wire"
-import { assertKnownFields, optionalField } from "./fields"
+import { decodeFieldsStrict } from "../proto-wire.js"
+import { assertKnownFields, optionalField } from "./fields.js"
 
 export type TurnEndedUpdate = {
   readonly kind: "turn-ended"
