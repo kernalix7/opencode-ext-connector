@@ -1,13 +1,13 @@
-import type { ProviderAdapter } from "../../core/adapter"
-import { OperationCancelledError } from "../../core/errors"
-import type { ModelId } from "../../core/ids"
-import { parseProviderId } from "../../core/ids"
-import { createAsyncDisposable } from "../../core/lifecycle"
-import type { AdapterModel, ProviderSnapshot } from "../../core/models"
-import type { OllamaCatalogState } from "./catalog-state"
-import { OllamaCatalogError } from "./errors"
-import type { OllamaFetch } from "./http"
-import { listLocalOllamaModels } from "./local-catalog"
+import type { ProviderAdapter } from "../../core/adapter.js"
+import { OperationCancelledError } from "../../core/errors.js"
+import type { ModelId } from "../../core/ids.js"
+import { parseProviderId } from "../../core/ids.js"
+import { createAsyncDisposable } from "../../core/lifecycle.js"
+import type { AdapterModel, ProviderSnapshot } from "../../core/models.js"
+import type { OllamaCatalogState } from "./catalog-state.js"
+import { OllamaCatalogError } from "./errors.js"
+import type { OllamaFetch } from "./http.js"
+import { listLocalOllamaModels } from "./local-catalog.js"
 
 export type OllamaAdapterOptions = {
   readonly fetch: OllamaFetch

@@ -1,10 +1,10 @@
 import { z } from "zod"
 
-import type { AdapterModel } from "../../core/models"
-import { parseAdapterModel } from "../../core/models"
-import { OllamaCatalogError } from "./errors"
-import { extractOfficialLibraryPaths } from "./html-links"
-import { type OllamaFetch, requestOllamaCatalog } from "./http"
+import type { AdapterModel } from "../../core/models.js"
+import { parseAdapterModel } from "../../core/models.js"
+import { OllamaCatalogError } from "./errors.js"
+import { extractOfficialLibraryPaths } from "./html-links.js"
+import { type OllamaFetch, requestOllamaCatalog } from "./http.js"
 
 const CLOUD_SEARCH_URL = "https://ollama.com/search?c=cloud"
 const FAMILY_CONCURRENCY = 4
