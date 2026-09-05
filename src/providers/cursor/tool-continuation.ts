@@ -4,9 +4,9 @@ import type {
   LanguageModelV3ToolResultPart,
 } from "@ai-sdk/provider"
 
-import { encodeCursorClientFrame } from "./exec-reply"
-import type { McpResult, McpResultContent } from "./proto/mcp"
-import type { ParkedMcpCall } from "./server-dispatch"
+import { encodeCursorClientFrame } from "./exec-reply.js"
+import type { McpResult, McpResultContent } from "./proto/mcp.js"
+import type { ParkedMcpCall } from "./server-dispatch.js"
 
 export type CursorToolContinuation = {
   readonly callId: string
