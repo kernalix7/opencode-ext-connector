@@ -8,7 +8,7 @@ import { createOpencodeClient } from "@opencode-ai/sdk"
 import { z } from "zod"
 
 import { type OpenCodeProcess, startOpenCode } from "../support/opencode-process"
-import { packCleanSource } from "../support/packed-package"
+import { packCleanSource, readPackageManifest } from "../support/packed-package"
 
 const projectRoot = join(import.meta.dir, "..", "..")
 const rootExportsSchema = z.object({
@@ -89,14 +89,15 @@ describe("packed package installation", () => {
     const registryUrl = `http://${registry.hostname}:${registry.port}`
     const env = isolatedEnvironment(home, registryUrl)
     const binary = process.env["OPENCODE_BIN"] ?? "opencode"
+    const manifest = await readPackageManifest(projectRoot)
     const cacheProjectRoot = join(
       env["XDG_CACHE_HOME"] ?? "",
       "opencode",
       "packages",
-      "opencode-ext-connector@0.2.0",
+      `${manifest.name}@${manifest.version}`,
     )
     const cacheNodeModules = join(cacheProjectRoot, "node_modules")
-    const packageDirectory = join(cacheNodeModules, "opencode-ext-connector")
+    const packageDirectory = join(cacheNodeModules, manifest.name)
     let opencode: OpenCodeProcess | undefined
     let packed: Awaited<ReturnType<typeof packCleanSource>> | undefined
     try {

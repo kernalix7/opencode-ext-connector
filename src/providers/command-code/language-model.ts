@@ -15,7 +15,7 @@ import { AdapterError, OperationCancelledError } from "../../core/errors"
 import type { HttpTransport } from "../../core/http"
 import { parseProviderId } from "../../core/ids"
 import { type HttpBodyStream, openHttpBody } from "../../http/read-body"
-import { readCommandCodeCliVersion } from "./cli-version"
+import { type CommandCodeVersionResolver, createCommandCodeVersionResolver } from "./cli-version"
 import { emitCommandCodeChunks } from "./emit-stream"
 import { commandCodeMissingBodyError } from "./errors"
 import { type BuildBodyOptions, type BuildHeadersOptions, buildBody, buildHeaders } from "./request"
@@ -30,7 +30,8 @@ export type CommandCodeLanguageModelOptions = {
   readonly modelId: string
   readonly transport: HttpTransport
   readonly readAccessToken: (signal: AbortSignal) => Promise<string | null>
-  readonly readCliVersion?: () => string | null
+  readonly env?: Readonly<Record<string, string | undefined>>
+  readonly readCliVersion?: CommandCodeVersionResolver
   readonly baseURL?: string
   readonly headers?: Readonly<Record<string, string>>
   readonly timeoutMs?: number
@@ -39,27 +40,19 @@ export type CommandCodeLanguageModelOptions = {
 
 type CommandCodeModelRuntime = CommandCodeLanguageModelOptions & {
   readonly sessionId: CommandCodeSessionId
+  readonly readCliVersion: CommandCodeVersionResolver
 }
 
 function buildRequestOptions(
   options: CommandCodeModelRuntime,
   call: LanguageModelV3CallOptions,
   token: string,
+  cliVersion: string,
 ): { readonly url: string; readonly headers: Record<string, string>; readonly body: Uint8Array } {
   const bodyOptions: BuildBodyOptions = {
     modelId: options.modelId,
     call,
     sessionId: options.sessionId,
-  }
-  const cliVersion =
-    options.readCliVersion === undefined ? readCommandCodeCliVersion() : options.readCliVersion()
-  if (cliVersion === null) {
-    throw new AdapterError({
-      operation: "command-code-cli-version",
-      retryable: false,
-      cause: null,
-      providerId: parseProviderId("command-code"),
-    })
   }
   const headerOptions: BuildHeadersOptions = {
     token,
@@ -118,7 +111,17 @@ async function streamCommandCode(
       providerId: parseProviderId("command-code"),
     })
   }
-  const requestOptions = buildRequestOptions(options, call, token)
+  const cliVersion = await options.readCliVersion(lifecycle.signal)
+  if (cliVersion === null) {
+    lifecycle.dispose()
+    throw new AdapterError({
+      operation: "command-code-cli-version",
+      retryable: false,
+      cause: null,
+      providerId: parseProviderId("command-code"),
+    })
+  }
+  const requestOptions = buildRequestOptions(options, call, token, cliVersion)
   let opened: HttpBodyStream
   try {
     opened = await openHttpBody(
@@ -185,7 +188,13 @@ export function createCommandCodeLanguageModel(
 ): LanguageModelV3 {
   const provider = parseProviderId("command-code")
   const sessionId = createCommandCodeSessionId(options.generateSessionId)
-  const runtime: CommandCodeModelRuntime = { ...options, sessionId }
+  const readCliVersion =
+    options.readCliVersion ??
+    createCommandCodeVersionResolver({
+      env: options.env ?? process.env,
+      transport: options.transport,
+    })
+  const runtime: CommandCodeModelRuntime = { ...options, sessionId, readCliVersion }
   return {
     specificationVersion: "v3",
     provider,

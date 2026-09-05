@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.0 - 2026-09-05
+
+- Publish releases to npm from GitHub Actions when a `v*` tag is pushed; the
+  tag must match `package.json`
+- Claude and Command Code no longer require their vendor CLI where OpenCode
+  runs: the client version comes from `ANTHROPIC_CLI_VERSION` /
+  `COMMAND_CODE_CLI_VERSION`, an installed binary, or the latest version
+  published on the npm registry; nothing is pinned in the package
+- The Claude auth loader now takes over the `anthropic` provider whenever
+  credentials exist instead of silently yielding when `claude` is missing
+- Added `credentialRefresh: { mode: "auto" | "never", leadMs }` so one machine
+  can own Claude token refresh while copies of the credential file stay
+  read-only and re-read the file after a 401
+
 ## 0.2.0 - 2026-09-04
 
 - Added Ollama as a fourth provider using the local daemon and existing

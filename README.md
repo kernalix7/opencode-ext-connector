@@ -19,7 +19,7 @@
 
 ## Status
 
-> Independent unofficial community plugin, version **0.2.0**. Package E2E tests exercise the legacy multi-function loader with the OpenCode CLI installed in CI. `@opencode-ai/plugin@1.18.18` is the compile-time plugin API target, not a runtime pin. Source is BSD-3-Clause. This project is not affiliated with, endorsed by, sponsored by, or authorized by OpenCode or any provider. Full terms are in [License and Disclaimer](#license-and-disclaimer).
+> Independent unofficial community plugin, version **0.3.0**. Package E2E tests exercise the legacy multi-function loader with the OpenCode CLI installed in CI. `@opencode-ai/plugin@1.18.18` is the compile-time plugin API target, not a runtime pin. Source is BSD-3-Clause. This project is not affiliated with, endorsed by, sponsored by, or authorized by OpenCode or any provider. Full terms are in [License and Disclaimer](#license-and-disclaimer).
 
 Reuse the Claude, Cursor, Command Code, and Ollama sessions you already have. One `opencode.json` plugin entry publishes live catalogs into OpenCode. Claude and Cursor stay disconnected until OpenCode has a marker or OAuth record and the vendor session is present. Command Code may use an OpenCode-stored direct API key or an existing CLI session/key. Ollama requires the exact session marker plus a responsive localhost daemon.
 
@@ -30,10 +30,12 @@ Reuse the Claude, Cursor, Command Code, and Ollama sessions you already have. On
 | [Bun](https://bun.sh) | 1.3.14 or later |
 | Node.js | 22 or later, for Cursor direct generation only |
 | OpenCode | Runtime with the legacy multi-function plugin loader; package E2E tests the CLI installed in CI. `@opencode-ai/plugin@1.18.18` is the compile-time API target. |
-| Claude | Existing Claude Code credentials (`~/.claude/.credentials.json` and/or macOS Keychain) |
+| Claude | Existing Claude Code credentials (`~/.claude/.credentials.json` and/or macOS Keychain). The `claude` binary is optional. |
 | Cursor | Existing Cursor CLI login (`~/.config/cursor/auth.json` or `CURSOR_ACCESS_TOKEN`) |
-| Command Code | Existing API key (`COMMAND_CODE_API_KEY` or `~/.commandcode/auth.json`); `command-code` CLI on PATH for generation and version metadata |
+| Command Code | Existing API key (`COMMAND_CODE_API_KEY` or `~/.commandcode/auth.json`). The `command-code` binary is optional. |
 | Ollama | Installed local daemon running on `localhost:11434`; trust that process; run `ollama signin` separately for Cloud |
+
+No vendor CLI has to be installed where OpenCode runs. Claude and Command Code requests carry a client version: the connector takes `ANTHROPIC_CLI_VERSION` / `COMMAND_CODE_CLI_VERSION` when set, otherwise an installed `claude` / `command-code` binary, otherwise the latest version published on the npm registry (`@anthropic-ai/claude-code`, `command-code`). Nothing is pinned in the package.
 
 ## Quick Install
 
@@ -69,6 +71,8 @@ Omitted `providers` enables all four. An explicit list is a strict allow-list. E
 | --- | --- | --- |
 | `providers` | all four | Provider ids to register: `claude`, `cursor`, `command-code`, `ollama`; explicit `[]` disables all |
 | `writeBackCredentials` | `false` | After Claude OAuth refresh, write tokens to Claude files, Keychain (macOS), and OpenCode `auth.json` |
+| `credentialRefresh.mode` | `"auto"` | `"auto"` refreshes Claude tokens before expiry; `"never"` sends only what the credential file contains and re-reads that file after a 401 |
+| `credentialRefresh.leadMs` | `60000` | How long before expiry `"auto"` starts refreshing |
 | `catalogReloadMs` | `300000` | Re-run catalog snapshots on this interval; `0` disables |
 | `snapshotTimeoutMs` | `30000` | Per-provider snapshot deadline |
 | `health.initialBackoffMs` | `1000` | Health backoff after a failed snapshot |
@@ -98,10 +102,20 @@ OpenCode builds its active provider registry during instance setup. Periodic ref
 
 With writeback off, refreshed Claude tokens stay in memory only. A stored refresh token that rotates can then stop working on the next process start — set `writeBackCredentials: true` if you want the files updated too.
 
+### Sharing one Claude login across machines
+
+Anthropic rotates the refresh token on every refresh and invalidates the previous one. Two copies of `~/.claude/.credentials.json` that both refresh will therefore break each other. Copying the file works only if exactly one machine refreshes and every other machine receives the result before its own copy expires:
+
+- **Owner** (where you log in): `writeBackCredentials: true` and a lead time large enough to publish the file before the copies expire, for example `credentialRefresh: { mode: "auto", leadMs: 1800000 }`.
+- **Every copy**: `credentialRefresh: { mode: "never" }`. That machine never contacts the OAuth endpoint; when a request returns 401 it re-reads the file and retries once with whatever the owner pushed.
+- Push `~/.claude/.credentials.json` from the owner to each copy whenever it changes (a file watcher is enough). OpenCode's own `auth.json` only needs the `anthropic` record once; leave its other providers alone.
+
+Machines that refresh on their own — including a Claude Code install that is used interactively — must not share the file. Log in separately there.
+
 ## First-Time Connection
 
 1. **Fully restart OpenCode** after adding the plugin URL. Quit the process and start it again so the named legacy auth hooks load. A reload or periodic catalog refresh is not instance reconstruction.
-2. **Confirm local prerequisites** for the providers you enabled. Claude and Cursor need their vendor sessions. Command Code needs either an API key you will store in OpenCode or an existing CLI session/key, plus `command-code` on PATH for generation. Ollama needs a process you trust on `http://localhost:11434`; Cloud still requires a separate `ollama signin`.
+2. **Confirm local prerequisites** for the providers you enabled. Claude and Cursor need their vendor sessions. Command Code needs either an API key you will store in OpenCode or an existing CLI session/key. Ollama needs a process you trust on `http://localhost:11434`; Cloud still requires a separate `ollama signin`.
 3. **Run `/connect`** for each provider you want. Claude and Cursor record a marker or OAuth entry only after the vendor session is available. Command Code can store a direct API key in OpenCode or reuse an existing CLI session/key. Ollama stores the exact session marker only when the localhost daemon responds. Models publish only after that provider-specific rule is met.
 4. **Verify the catalogs.** Confirm Claude, Cursor, and Command Code models appear in OpenCode. For Ollama, run `opencode models ollama` and confirm locally pulled models plus Cloud tags discovered unauthenticated, without connector-supplied credentials.
 
@@ -113,7 +127,7 @@ Ollama `/connect` probes the local daemon and stores the exact session marker. I
 | --- | --- |
 | **Claude** | Reuses existing Claude Code credentials. Does not mint OAuth. Compatibility fetch sends CLI-compatible request metadata and streams Anthropic SSE on the built-in `anthropic` path. `writeBackCredentials` defaults to `false` (in-memory refresh only); `true` writes refreshed tokens to Claude files, macOS Keychain, and OpenCode `auth.json`. |
 | **Cursor** | Calls Cursor's unpublished client protocol (`api2.cursor.sh` `AgentService`, Connect+protobuf over HTTP/2) with the CLI access token. A plugin-owned Node child communicates over private stdio, keeps tool results on the same bidi Run, never replays parked calls, opens no user-facing daemon, and never spawns `cursor-agent` for generation. Unofficial; not a public Cursor API. After protocol drift there is no implicit fallback — that provider fails. Requires Node.js 22 or later. Live catalog ids are used when present; otherwise the documented fallback is `default`. |
-| **Command Code** | Calls `/alpha/generate` with CLI-compatible request metadata and streams provider-local NDJSON text and tool events. Generation and version metadata require the `command-code` CLI on PATH. Request metadata includes Node.js version, platform, architecture, and the absolute working directory. Live catalog ids are used when present; otherwise the documented fallback is `Qwen/Qwen3.8-Max`. |
+| **Command Code** | Calls `/alpha/generate` with CLI-compatible request metadata and streams provider-local NDJSON text and tool events. The client version comes from `COMMAND_CODE_CLI_VERSION`, an installed `command-code` binary, or the npm registry. Request metadata includes Node.js version, platform, architecture, and the absolute working directory. Live catalog ids are used when present; otherwise the documented fallback is `Qwen/Qwen3.8-Max`. |
 | **Ollama** | Uses only the local daemon at `http://localhost:11434` with fixed `/api/tags`, `/api/pull`, and `/api/chat`. Trust the process bound to that port. Publishes models already pulled locally, plus exact Cloud tags discovered unauthenticated from Ollama's official Cloud search and library pages, without connector-supplied credentials. Local entries win exact duplicates. Incomplete Cloud refreshes retain the last complete list. Selecting an absent authorized Cloud tag pulls its lightweight remote reference on first use; concurrent pulls of the same tag share one in-flight request, and a failed pull can be retried later. The local daemon may then proxy Cloud-tag prompts under the user's Ollama Cloud subscription. The connector never uses an Ollama API key, the usage-billed direct Cloud API, `OLLAMA_HOST`, or a remote Cloud generation endpoint. |
 
 Provider health is isolated: one provider failing does not remove the others.
@@ -127,8 +141,10 @@ The standalone SDK entry is `opencode-ext-connector/ollama`. It can generate wit
 | `/connect` methods missing | The plugin URL must be a trusted, user-owned `file:///absolute/path/to/opencode-ext-connector/dist/index.js`. A package-directory URL does not load named legacy auth hooks. Fully restart OpenCode after changing it. |
 | Provider enabled but no models | Omitted `providers` enables all four; an explicit list is a strict allow-list. Claude and Cursor need a marker or OAuth record plus the vendor session; Command Code may use an OpenCode-stored API key or a CLI session/key; Ollama needs the exact marker plus a responsive localhost daemon. Fully restart after `/connect` so instance reconstruction picks up new membership. |
 | Claude works until the next start | Default `writeBackCredentials: false` keeps refreshed tokens in memory. A rotated refresh token then fails on the next process start unless writeback is enabled. |
+| Claude reports `invalid_grant` on a copied credential file | Another copy of the same login already refreshed and rotated the refresh token. Give one machine ownership of refresh and set `credentialRefresh: { mode: "never" }` on the others, or log in separately. |
+| `Claude Code client version is unavailable` | No `ANTHROPIC_CLI_VERSION`, no `claude` binary, and `registry.npmjs.org` was unreachable. Set the variable or allow registry access. |
 | Cursor generation fails | Node.js 22 or later is required. Generation uses the unpublished protocol through a private Node child, not `cursor-agent`. Protocol drift fails that provider; there is no implicit fallback. |
-| Command Code generation fails | The `command-code` CLI must be on PATH so the connector can read version metadata. Request metadata includes Node.js version, platform, architecture, and the absolute working directory. |
+| Command Code generation fails | The client version could not be resolved: set `COMMAND_CODE_CLI_VERSION`, install `command-code`, or allow access to `registry.npmjs.org`. Request metadata includes Node.js version, platform, architecture, and the absolute working directory. |
 | Ollama missing from `opencode models ollama` | Start a process you trust on `localhost:11434`, then `/connect` so the exact session marker can be stored. Cloud tags are unauthenticated catalog entries without connector-supplied credentials; the local daemon may proxy Cloud-tag prompts. `OLLAMA_HOST`, API keys, and direct Cloud generation are not used. |
 | One provider is down | Failures are isolated. Transient snapshot failures keep the last-known catalog; an unavailable snapshot removes only that connector-owned provider. |
 

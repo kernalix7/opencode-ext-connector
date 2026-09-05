@@ -37,7 +37,7 @@ describe("createAnthropicCliAuth", () => {
       }),
       readAccessToken: async () => "access-1",
       forceRefreshAccessToken: async () => "access-2",
-      cliVersion: "2.1.217",
+      readVersion: async () => "2.1.217",
     })
     const method = auth.methods[0]
     // When
@@ -67,7 +67,7 @@ describe("createAnthropicCliAuth", () => {
       readCredentials: async () => null,
       readAccessToken: async () => null,
       forceRefreshAccessToken: async () => null,
-      cliVersion: "2.1.217",
+      readVersion: async () => "2.1.217",
     })
     const method = auth.methods[0]
     // When
@@ -93,7 +93,7 @@ describe("createAnthropicCliAuth", () => {
       }),
       readAccessToken: async () => "access-1",
       forceRefreshAccessToken: async () => "access-2",
-      cliVersion: "2.1.217",
+      readVersion: async () => "2.1.217",
     })
 
     // When / Then
