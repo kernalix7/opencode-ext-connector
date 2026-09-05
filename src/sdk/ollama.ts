@@ -1,6 +1,6 @@
 import type { LanguageModelV3 } from "@ai-sdk/provider"
 
-import { languageForV1Provider } from "../opencode/v1-language"
+import { languageForV1Provider } from "../opencode/v1-language.js"
 
 export type OllamaProvider = {
   readonly languageModel: (modelId: string) => LanguageModelV3
