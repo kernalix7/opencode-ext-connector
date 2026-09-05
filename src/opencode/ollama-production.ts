@@ -1,9 +1,9 @@
 import {
   createOllamaCatalogState,
   type OllamaCatalogState,
-} from "../providers/ollama/catalog-state"
-import { productionOllamaFetch } from "../providers/ollama/http"
-import { createOllamaRuntime, type OllamaRuntime } from "../providers/ollama/runtime"
+} from "../providers/ollama/catalog-state.js"
+import { productionOllamaFetch } from "../providers/ollama/http.js"
+import { createOllamaRuntime, type OllamaRuntime } from "../providers/ollama/runtime.js"
 
 export const productionOllamaCatalog: OllamaCatalogState = createOllamaCatalogState({
   fetch: productionOllamaFetch,

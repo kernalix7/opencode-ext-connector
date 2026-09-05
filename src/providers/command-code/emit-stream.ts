@@ -8,8 +8,8 @@ import type {
 } from "@ai-sdk/provider"
 import { z } from "zod"
 
-import { commandCodeNdjsonError } from "./errors"
-import { commandCodeRecords } from "./record-stream"
+import { commandCodeNdjsonError } from "./errors.js"
+import { commandCodeRecords } from "./record-stream.js"
 
 const tokenDetailsSchema = z
   .object({

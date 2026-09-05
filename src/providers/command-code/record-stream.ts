@@ -1,4 +1,4 @@
-import { commandCodeStreamRecordTooLargeError } from "./errors"
+import { commandCodeStreamRecordTooLargeError } from "./errors.js"
 
 const MAX_STREAM_RECORD_BYTES = 1024 * 1024
 const CARRIAGE_RETURN = 13

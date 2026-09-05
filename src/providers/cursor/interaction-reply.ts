@@ -1,9 +1,9 @@
 // Derived from Rahularya01/pi-cursor src/stream/interaction-query.ts. Licensed under MIT.
 // See THIRD_PARTY_NOTICES.md.
 
-import { unreachableVariant } from "./proto/errors"
-import type { InteractionQuery, InteractionResponse } from "./proto/interaction-query"
-import { encodeBytesField, encodeStringField } from "./proto-wire"
+import { unreachableVariant } from "./proto/errors.js"
+import type { InteractionQuery, InteractionResponse } from "./proto/interaction-query.js"
+import { encodeBytesField, encodeStringField } from "./proto-wire.js"
 
 const REJECT_REASON =
   "Not available through the Pi Cursor provider. Use Pi tools (web_search, fetch, bash, etc.) instead."

@@ -3,24 +3,24 @@
 
 import { randomUUID } from "node:crypto"
 
-import { AdapterError } from "../../core/errors"
-import { parseProviderId } from "../../core/ids"
+import { AdapterError } from "../../core/errors.js"
+import { parseProviderId } from "../../core/ids.js"
 import {
   decodeConnectFrames,
   decodeConnectFramesWithRest,
   encodeConnectFrame,
-} from "./connect-frame"
-import { cursorServerReplies } from "./exec-reply"
-import { type CursorHttp2Post, cursorHttp2Post, cursorHttp2Stream } from "./http2"
-import { type CursorMcpTool, encodeCursorMcpTools } from "./mcp-tools"
+} from "./connect-frame.js"
+import { cursorServerReplies } from "./exec-reply.js"
+import { type CursorHttp2Post, cursorHttp2Post, cursorHttp2Stream } from "./http2.js"
+import { type CursorMcpTool, encodeCursorMcpTools } from "./mcp-tools.js"
 import {
   concatBytes,
   decodeUtf8,
   encodeBytesField,
   encodeInt32Field,
   encodeStringField,
-} from "./proto-wire"
-import { extractCursorRunEvents } from "./run-events"
+} from "./proto-wire.js"
+import { extractCursorRunEvents } from "./run-events.js"
 
 export function buildCursorRunMessage(
   modelId: string,

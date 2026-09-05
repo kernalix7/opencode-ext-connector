@@ -1,8 +1,8 @@
 import { access, readFile } from "node:fs/promises"
 import { delimiter, join } from "node:path"
 
-import { OperationCancelledError } from "../../core/errors"
-import { type CursorCredentials, parseCursorCredentials } from "./credentials"
+import { OperationCancelledError } from "../../core/errors.js"
+import { type CursorCredentials, parseCursorCredentials } from "./credentials.js"
 
 export type CursorAuthLookup = {
   readonly readAuthFile?: (path: string, signal: AbortSignal) => Promise<CursorCredentials | null>

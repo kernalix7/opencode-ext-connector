@@ -11,20 +11,25 @@ import type {
   LanguageModelV3Usage,
 } from "@ai-sdk/provider"
 
-import { AdapterError, OperationCancelledError } from "../../core/errors"
-import type { HttpTransport } from "../../core/http"
-import { parseProviderId } from "../../core/ids"
-import { type HttpBodyStream, openHttpBody } from "../../http/read-body"
-import { type CommandCodeVersionResolver, createCommandCodeVersionResolver } from "./cli-version"
-import { emitCommandCodeChunks } from "./emit-stream"
-import { commandCodeMissingBodyError } from "./errors"
-import { type BuildBodyOptions, type BuildHeadersOptions, buildBody, buildHeaders } from "./request"
+import { AdapterError, OperationCancelledError } from "../../core/errors.js"
+import type { HttpTransport } from "../../core/http.js"
+import { parseProviderId } from "../../core/ids.js"
+import { type HttpBodyStream, openHttpBody } from "../../http/read-body.js"
+import { type CommandCodeVersionResolver, createCommandCodeVersionResolver } from "./cli-version.js"
+import { emitCommandCodeChunks } from "./emit-stream.js"
+import { commandCodeMissingBodyError } from "./errors.js"
+import {
+  type BuildBodyOptions,
+  type BuildHeadersOptions,
+  buildBody,
+  buildHeaders,
+} from "./request.js"
 import {
   commandCodeHttpError,
   createCommandCodeRequestLifecycle,
   readCommandCodeErrorBody,
-} from "./request-lifecycle"
-import { type CommandCodeSessionId, createCommandCodeSessionId } from "./session"
+} from "./request-lifecycle.js"
+import { type CommandCodeSessionId, createCommandCodeSessionId } from "./session.js"
 
 export type CommandCodeLanguageModelOptions = {
   readonly modelId: string
@@ -84,10 +89,6 @@ function createUsage(): LanguageModelV3Usage {
     },
     outputTokens: { total: undefined, text: undefined, reasoning: undefined },
   }
-}
-
-function createFinishReason(): LanguageModelV3FinishReason {
-  return { unified: "stop", raw: "stop" }
 }
 
 async function streamCommandCode(
@@ -205,7 +206,7 @@ export function createCommandCodeLanguageModel(
       const content: LanguageModelV3Content[] = []
       const text: string[] = []
       const reasoning: string[] = []
-      let finish = createFinishReason()
+      let finish: LanguageModelV3FinishReason = { unified: "stop", raw: "stop" }
       let usage = createUsage()
       const reader = stream.getReader()
       try {

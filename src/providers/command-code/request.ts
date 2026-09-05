@@ -5,7 +5,7 @@ import { randomBytes } from "node:crypto"
 
 import type { LanguageModelV3CallOptions, LanguageModelV3ToolResultOutput } from "@ai-sdk/provider"
 
-import type { CommandCodeSessionId } from "./session"
+import type { CommandCodeSessionId } from "./session.js"
 
 export type BuildHeadersOptions = {
   readonly token: string

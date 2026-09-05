@@ -3,16 +3,16 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 
 import type { Hooks, Plugin as V1Plugin } from "@opencode-ai/plugin"
 
-import { createAsyncDisposable } from "./core/lifecycle"
-import { parseConnectorOptions } from "./core/options"
-import { createFetchHttpTransport } from "./http/fetch-transport"
-import { createConsoleLogger } from "./logging/logger"
-import { createOpenCodeAuthStore } from "./opencode/auth-store"
-import { pickConnectorOptionsInput } from "./opencode/host-options"
-import { createProviderRegistry, selectConfiguredProviders } from "./opencode/providers"
-import { disposeV1LanguageRuntime } from "./opencode/v1-language"
-import { createV1AuthServer, createV1Server } from "./opencode/v1-module"
-import { writeClaudeCredentials } from "./providers/claude/writeback"
+import { createAsyncDisposable } from "./core/lifecycle.js"
+import { parseConnectorOptions } from "./core/options.js"
+import { createFetchHttpTransport } from "./http/fetch-transport.js"
+import { createConsoleLogger } from "./logging/logger.js"
+import { createOpenCodeAuthStore } from "./opencode/auth-store.js"
+import { pickConnectorOptionsInput } from "./opencode/host-options.js"
+import { createProviderRegistry, selectConfiguredProviders } from "./opencode/providers.js"
+import { disposeV1LanguageRuntime } from "./opencode/v1-language.js"
+import { createV1AuthServer, createV1Server } from "./opencode/v1-module.js"
+import { writeClaudeCredentials } from "./providers/claude/writeback.js"
 
 const env = process.env
 const transport = createFetchHttpTransport()

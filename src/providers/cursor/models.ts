@@ -1,10 +1,10 @@
 import { spawn } from "node:child_process"
 
-import { parseModelIdList } from "../../catalog/parse-ids"
-import { OperationCancelledError } from "../../core/errors"
-import type { AdapterModel } from "../../core/models"
-import { type CursorHttp2Post, cursorHttp2Post } from "./http2"
-import { decodeFields, decodeUtf8 } from "./proto-wire"
+import { parseModelIdList } from "../../catalog/parse-ids.js"
+import { OperationCancelledError } from "../../core/errors.js"
+import type { AdapterModel } from "../../core/models.js"
+import { type CursorHttp2Post, cursorHttp2Post } from "./http2.js"
+import { decodeFields, decodeUtf8 } from "./proto-wire.js"
 
 function stripAnsi(text: string): string {
   let output = ""

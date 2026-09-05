@@ -1,4 +1,4 @@
-import type { HttpRequest, HttpResponse, HttpStreamResponse, HttpTransport } from "../core/http"
+import type { HttpRequest, HttpResponse, HttpStreamResponse, HttpTransport } from "../core/http.js"
 
 export function createFetchHttpTransport(): HttpTransport {
   return {

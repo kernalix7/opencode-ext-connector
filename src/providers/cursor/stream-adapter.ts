@@ -1,7 +1,7 @@
 import type { LanguageModelV3StreamPart } from "@ai-sdk/provider"
-import type { CursorReplayState } from "./recovery"
-import type { CursorDispatchOutcome } from "./server-dispatch"
-import { emptyCursorUsage } from "./usage"
+import type { CursorReplayState } from "./recovery.js"
+import type { CursorDispatchOutcome } from "./server-dispatch.js"
+import { emptyCursorUsage } from "./usage.js"
 
 type EmittableOutcome = Extract<
   CursorDispatchOutcome,

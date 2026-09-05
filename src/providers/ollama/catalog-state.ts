@@ -1,9 +1,9 @@
-import { ResourceDisposedError } from "../../core/errors"
-import type { AsyncDisposableHandle } from "../../core/lifecycle"
-import { createAsyncDisposable } from "../../core/lifecycle"
-import type { AdapterModel } from "../../core/models"
-import { discoverOllamaCloudModels } from "./cloud-catalog"
-import { type OllamaFetch, productionOllamaFetch } from "./http"
+import { ResourceDisposedError } from "../../core/errors.js"
+import type { AsyncDisposableHandle } from "../../core/lifecycle.js"
+import { createAsyncDisposable } from "../../core/lifecycle.js"
+import type { AdapterModel } from "../../core/models.js"
+import { discoverOllamaCloudModels } from "./cloud-catalog.js"
+import { type OllamaFetch, productionOllamaFetch } from "./http.js"
 
 export interface OllamaCatalogLease extends AsyncDisposableHandle {
   refresh(signal: AbortSignal): Promise<readonly AdapterModel[]>

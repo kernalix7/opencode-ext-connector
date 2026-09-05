@@ -1,18 +1,18 @@
-import { OperationCancelledError, ResourceDisposedError } from "../../core/errors"
-import { createAsyncDisposable } from "../../core/lifecycle"
+import { OperationCancelledError, ResourceDisposedError } from "../../core/errors.js"
+import { createAsyncDisposable } from "../../core/lifecycle.js"
 import {
   type CursorBridgeProcess,
   CursorBridgeProcessError,
   type CursorBridgeProcessFactory,
   createNodeCursorBridgeProcessFactory,
-} from "./bridge-process"
+} from "./bridge-process.js"
 import {
   type BridgeCommand,
   type BridgeEvent,
   CursorBridgeProtocolError,
   createBridgeEventLineDecoder,
   serializeBridgeCommand,
-} from "./bridge-protocol"
+} from "./bridge-protocol.js"
 
 export type CursorBridgeSessionErrorReason = "duplicate-stream" | "stream-closed"
 

@@ -1,10 +1,15 @@
 // Derived from Rahularya01/pi-cursor proto/agent.proto request-context fields. Licensed under MIT.
 // See THIRD_PARTY_NOTICES.md.
 
-import { concatBytes, decodeFieldsStrict, encodeBytesField, encodeStringField } from "../proto-wire"
-import { CursorProtocolDriftError, unreachableVariant } from "./errors"
-import { assertKnownFields, oneofField, repeatedFields, requiredString } from "./fields"
-import { decodeMcpToolDefinition, encodeMcpToolDefinition, type McpToolDefinition } from "./mcp"
+import {
+  concatBytes,
+  decodeFieldsStrict,
+  encodeBytesField,
+  encodeStringField,
+} from "../proto-wire.js"
+import { CursorProtocolDriftError, unreachableVariant } from "./errors.js"
+import { assertKnownFields, oneofField, repeatedFields, requiredString } from "./fields.js"
+import { decodeMcpToolDefinition, encodeMcpToolDefinition, type McpToolDefinition } from "./mcp.js"
 
 export type RequestContext = {
   readonly tools: readonly McpToolDefinition[]

@@ -4,11 +4,11 @@ import type {
   LanguageModelV3Usage,
 } from "@ai-sdk/provider"
 
-import { OperationCancelledError } from "../../core/errors"
-import { cursorResultError, cursorTextFromUnknown } from "./ndjson"
-import { cursorIncrementalPrompt, cursorPromptText, cursorSessionKey } from "./prompt"
-import { cursorToolParts } from "./tool-stream"
-import { cursorUsage, emptyCursorUsage } from "./usage"
+import { OperationCancelledError } from "../../core/errors.js"
+import { cursorResultError, cursorTextFromUnknown } from "./ndjson.js"
+import { cursorIncrementalPrompt, cursorPromptText, cursorSessionKey } from "./prompt.js"
+import { cursorToolParts } from "./tool-stream.js"
+import { cursorUsage, emptyCursorUsage } from "./usage.js"
 
 export type CursorNdjsonStream = (
   prompt: string,

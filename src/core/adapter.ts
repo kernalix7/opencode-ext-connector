@@ -1,7 +1,7 @@
-import { AdapterError, OperationCancelledError } from "./errors"
-import type { ProviderId } from "./ids"
-import type { AsyncDisposableHandle } from "./lifecycle"
-import type { ProviderSnapshot } from "./models"
+import { AdapterError, OperationCancelledError } from "./errors.js"
+import type { ProviderId } from "./ids.js"
+import type { AsyncDisposableHandle } from "./lifecycle.js"
+import type { ProviderSnapshot } from "./models.js"
 
 export interface ProviderAdapter extends AsyncDisposableHandle {
   readonly providerId: ProviderId

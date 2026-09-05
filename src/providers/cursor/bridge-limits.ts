@@ -1,4 +1,4 @@
-import { MAX_CONNECT_FRAME_BYTES } from "./connect-frame"
+import { MAX_CONNECT_FRAME_BYTES } from "./connect-frame.js"
 
 const MAX_BRIDGE_ID_CHARACTERS = 128
 const MAX_BRIDGE_WIRE_OVERHEAD = '{"kind":"write-frame","id":"","payload":""}'.length
