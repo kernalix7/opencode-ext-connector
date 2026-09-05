@@ -7,8 +7,8 @@ import {
   encodeBytesField,
   encodeInt32Field,
   encodeStringField,
-} from "../proto-wire"
-import { CursorProtocolDriftError, unreachableVariant } from "./errors"
+} from "../proto-wire.js"
+import { CursorProtocolDriftError, unreachableVariant } from "./errors.js"
 import {
   assertKnownFields,
   oneofField,
@@ -17,7 +17,7 @@ import {
   requiredField,
   requiredString,
   requiredUint32,
-} from "./fields"
+} from "./fields.js"
 
 export type KvServerMessage =
   | {
