@@ -1,7 +1,9 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 - 2026-09-05
 
+- Publish releases to npm from GitHub Actions when a `v*` tag is pushed; the
+  tag must match `package.json`
 - Claude and Command Code no longer require their vendor CLI where OpenCode
   runs: the client version comes from `ANTHROPIC_CLI_VERSION` /
   `COMMAND_CODE_CLI_VERSION`, an installed binary, or the latest version
