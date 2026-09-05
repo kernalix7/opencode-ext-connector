@@ -7,8 +7,8 @@ import {
   encodeBoolField,
   encodeBytesField,
   encodeStringField,
-} from "../proto-wire"
-import { assertKnownFields, optionalBool, optionalString, repeatedFields } from "./fields"
+} from "../proto-wire.js"
+import { assertKnownFields, optionalBool, optionalString, repeatedFields } from "./fields.js"
 
 export type RequestedModelParameter = {
   readonly id: string

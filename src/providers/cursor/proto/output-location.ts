@@ -1,10 +1,10 @@
 // Derived from Rahularya01/pi-cursor proto/agent.proto OutputLocation fields. Licensed under MIT.
 // See THIRD_PARTY_NOTICES.md.
 
-import { concatBytes, decodeFieldsStrict, encodeStringField } from "../proto-wire"
-import { CursorProtocolError } from "./errors"
-import { assertKnownFields, optionalField, optionalString } from "./fields"
-import { encodeUnknownField } from "./unknown-field"
+import { concatBytes, decodeFieldsStrict, encodeStringField } from "../proto-wire.js"
+import { CursorProtocolError } from "./errors.js"
+import { assertKnownFields, optionalField, optionalString } from "./fields.js"
+import { encodeUnknownField } from "./unknown-field.js"
 
 export type OutputLocation = {
   readonly filePath: string
