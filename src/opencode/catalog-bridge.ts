@@ -1,7 +1,7 @@
-import type { CatalogPublisher } from "../core/adapter"
-import { InvalidArgumentError, OperationCancelledError } from "../core/errors"
-import type { ProviderSnapshot } from "../core/models"
-import type { CatalogDraft, ModelV2Info, ProviderV2Info } from "./beta-api"
+import type { CatalogPublisher } from "../core/adapter.js"
+import { InvalidArgumentError, OperationCancelledError } from "../core/errors.js"
+import type { ProviderSnapshot } from "../core/models.js"
+import type { CatalogDraft, ModelV2Info, ProviderV2Info } from "./beta-api.js"
 
 function assertNever(_value: never): never {
   throw new InvalidArgumentError("snapshot.status")

@@ -1,4 +1,4 @@
-import type { ConnectorOptionsInput } from "../core/options"
+import type { ConnectorOptionsInput } from "../core/options.js"
 
 function positiveInteger(value: unknown): number | undefined {
   return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : undefined
