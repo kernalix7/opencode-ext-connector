@@ -9,7 +9,7 @@ import type {
   LanguageModelV3ToolResultPart,
 } from "@ai-sdk/provider"
 
-import { type RequestBody, repairOrphanToolUses } from "./transform"
+import { type RequestBody, repairOrphanToolUses } from "./transform.js"
 
 const CLAUDE_IDENTITY = "You are Claude Code, Anthropic's official CLI for Claude."
 
