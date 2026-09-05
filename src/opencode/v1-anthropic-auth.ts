@@ -7,7 +7,7 @@ export function createAnthropicCliAuth(options: {
   readonly readCredentials: (signal: AbortSignal) => Promise<ClaudeCredentials | null>
   readonly readAccessToken: (signal: AbortSignal) => Promise<string | null>
   readonly forceRefreshAccessToken: (signal: AbortSignal) => Promise<string | null>
-  readonly cliVersion: string | null
+  readonly readVersion: (signal: AbortSignal) => Promise<string | null>
   readonly provider?: string
 }): AuthHook {
   const provider = options.provider ?? "anthropic"
@@ -22,15 +22,11 @@ export function createAnthropicCliAuth(options: {
       if (credentials === null) {
         return {}
       }
-      const version = options.cliVersion
-      if (version === null) {
-        return {}
-      }
       return {
         apiKey: "",
         baseURL: "https://api.anthropic.com/v1",
         fetch: createClaudeCompatibilityFetch({
-          version,
+          readVersion: options.readVersion,
           readAccessToken: options.readAccessToken,
           forceRefreshAccessToken: options.forceRefreshAccessToken,
         }),
@@ -41,26 +37,19 @@ export function createAnthropicCliAuth(options: {
         type: "oauth",
         label: "Claude Code subscription",
         authorize: async () => {
-          if (options.cliVersion === null) {
-            return {
-              url: "",
-              instructions: "Claude CLI was not found. Install `claude`, log in, then retry.",
-              method: "auto",
-              callback: async () => ({ type: "failed" }),
-            }
-          }
           const credentials = await options.readCredentials(new AbortController().signal)
           if (credentials === null) {
             return {
               url: "",
-              instructions: "Run `claude` to log in, then retry this method.",
+              instructions:
+                "No Claude Code credentials were found. Log in with Claude Code once or copy an existing `~/.claude/.credentials.json` here, then retry.",
               method: "auto",
               callback: async () => ({ type: "failed" }),
             }
           }
           return {
             url: "",
-            instructions: "Using existing Claude Code CLI credentials.",
+            instructions: "Using existing Claude Code credentials.",
             method: "auto",
             callback: async () => ({
               type: "success",

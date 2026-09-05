@@ -3,7 +3,7 @@ import { describe, expect, it } from "bun:test"
 import { createCommandCodeLanguageModel } from "../../../../src/providers/command-code/language-model"
 import { FakeHttpTransport } from "../../../support/http"
 
-const readCliVersion = (): string => "1.27.1"
+const readCliVersion = async (): Promise<string> => "1.27.1"
 
 describe("createCommandCodeLanguageModel doStream", () => {
   it("parses upstream NDJSON text and delta fields incrementally", async () => {
