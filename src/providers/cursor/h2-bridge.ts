@@ -10,9 +10,9 @@ import {
   CursorBridgeProtocolError,
   createBridgeCommandLineDecoder,
   serializeBridgeEvent,
-} from "./bridge-protocol"
-import { type CursorH2BridgeOutput, CursorH2BridgeSession } from "./h2-bridge-session"
-import { CURSOR_API_URL } from "./http2"
+} from "./bridge-protocol.js"
+import { type CursorH2BridgeOutput, CursorH2BridgeSession } from "./h2-bridge-session.js"
+import { CURSOR_API_URL } from "./http2.js"
 
 const EndpointSchema = z
   .url()
