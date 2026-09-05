@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process"
 
-import type { HttpTransport } from "../../core/http"
-import { createPackageVersionResolver } from "../../http/package-version"
+import type { HttpTransport } from "../../core/http.js"
+import { createPackageVersionResolver } from "../../http/package-version.js"
 
 const CLAUDE_CODE_PACKAGE = "@anthropic-ai/claude-code"
 
