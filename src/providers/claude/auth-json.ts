@@ -1,4 +1,4 @@
-import type { ClaudeCredentials } from "./credentials"
+import type { ClaudeCredentials } from "./credentials.js"
 
 export function mergeOpencodeAuthJson(existing: unknown, credentials: ClaudeCredentials): string {
   const root =
