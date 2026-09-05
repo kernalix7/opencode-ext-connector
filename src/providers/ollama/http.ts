@@ -1,5 +1,5 @@
-import { OperationCancelledError } from "../../core/errors"
-import { OllamaCatalogError, type OllamaCatalogErrorKind } from "./errors"
+import { OperationCancelledError } from "../../core/errors.js"
+import { OllamaCatalogError, type OllamaCatalogErrorKind } from "./errors.js"
 
 export type OllamaFetch = (url: string, init?: RequestInit) => Promise<Response>
 export type OllamaCatalogOperation = "cloud-family" | "cloud-search" | "local-tags"
