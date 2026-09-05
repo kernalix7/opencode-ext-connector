@@ -1,9 +1,9 @@
 import type { AuthHook } from "@opencode-ai/plugin"
 
-import { readCommandCodeAccessToken } from "../providers/command-code/auth"
-import { readCursorAccessToken } from "../providers/cursor/auth"
-import { type OllamaFetch, productionOllamaFetch } from "../providers/ollama/http"
-import { probeLocalOllama } from "./ollama-probe"
+import { readCommandCodeAccessToken } from "../providers/command-code/auth.js"
+import { readCursorAccessToken } from "../providers/cursor/auth.js"
+import { type OllamaFetch, productionOllamaFetch } from "../providers/ollama/http.js"
+import { probeLocalOllama } from "./ollama-probe.js"
 
 const CURSOR_SESSION_MARKER = "cli-session:cursor"
 const COMMAND_CODE_SESSION_MARKER = "cli-session:command-code"
