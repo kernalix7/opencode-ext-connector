@@ -1,12 +1,12 @@
 // Derived from Rahularya01/pi-cursor v1.4.26 request-build.ts. Licensed under MIT.
 // See THIRD_PARTY_NOTICES.md.
 
-import type { CursorBlobId, CursorBlobStore } from "./blob-store"
-import type { UserMessage } from "./proto/context"
-import { encodeMcpArgs, encodeMcpResult } from "./proto/mcp"
-import { concatBytes, encodeBytesField, encodeStringField } from "./proto-wire"
-import type { CursorRequestBlobCollector } from "./request-blob-ownership"
-import type { CursorRunMessage, CursorRunStep, CursorRunTurn } from "./request-input"
+import type { CursorBlobId, CursorBlobStore } from "./blob-store.js"
+import type { UserMessage } from "./proto/context.js"
+import { encodeMcpArgs, encodeMcpResult } from "./proto/mcp.js"
+import { concatBytes, encodeBytesField, encodeStringField } from "./proto-wire.js"
+import type { CursorRequestBlobCollector } from "./request-blob-ownership.js"
+import type { CursorRunMessage, CursorRunStep, CursorRunTurn } from "./request-input.js"
 
 export type CursorRequestIds = { readonly create: () => string }
 export type CursorStoredHistory = {

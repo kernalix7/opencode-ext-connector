@@ -1,8 +1,8 @@
 // Derived from Rahularya01/pi-cursor AgentServerMessage interaction updates.
 // Licensed under MIT. See THIRD_PARTY_NOTICES.md.
 
-import type { InteractionUpdate } from "./proto/interaction"
-import { decodeAgentServerMessage } from "./proto/server"
+import type { InteractionUpdate } from "./proto/interaction.js"
+import { decodeAgentServerMessage } from "./proto/server.js"
 
 export type CursorRunEvent =
   | { readonly kind: "text"; readonly text: string }
