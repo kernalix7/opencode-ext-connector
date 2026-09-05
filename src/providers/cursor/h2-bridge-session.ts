@@ -5,13 +5,13 @@ import { randomUUID } from "node:crypto"
 import { once } from "node:events"
 import http2, { type ClientHttp2Session, type ClientHttp2Stream } from "node:http2"
 
-import type { BridgeCommand, BridgeEvent } from "./bridge-protocol"
+import type { BridgeCommand, BridgeEvent } from "./bridge-protocol.js"
 import {
   attachCursorH2ResponseBody,
   bridgeResponseHeaders,
   responseStatus,
-} from "./h2-bridge-response"
-import { CURSOR_CLIENT_VERSION } from "./http2"
+} from "./h2-bridge-response.js"
+import { CURSOR_CLIENT_VERSION } from "./http2.js"
 
 const PING_INTERVAL_MS = 20_000
 const FORCE_CLOSE_MS = 1_000
