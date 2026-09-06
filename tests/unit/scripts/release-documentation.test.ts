@@ -104,3 +104,28 @@ it("binds v0.3.3 publication evidence to its documented roles", async () => {
     }
   }
 })
+
+it("keeps repository-only release records reachable from packaged docs", async () => {
+  // Given
+  const packagedDocuments = [
+    new URL("../../../README.md", import.meta.url),
+    new URL("../../../docs/README.ko.md", import.meta.url),
+    new URL("../../../CHANGELOG.md", import.meta.url),
+  ]
+  const releaseRecordLinks = [
+    "https://github.com/kernalix7/opencode-ext-connector/blob/main/docs/releases/v0.3.3.md",
+    "https://github.com/kernalix7/opencode-ext-connector/blob/main/docs/releases/v0.3.3.ko.md",
+  ]
+
+  // When
+  const packagedContents = await Promise.all(
+    packagedDocuments.map((documentUrl) => Bun.file(documentUrl).text()),
+  )
+
+  // Then
+  for (const content of packagedContents) {
+    for (const releaseRecordLink of releaseRecordLinks) {
+      expect(content).toContain(releaseRecordLink)
+    }
+  }
+})

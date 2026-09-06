@@ -21,6 +21,8 @@
 
 > 독립적인 비공식 커뮤니티 플러그인, 버전 **0.3.3**. CI에 설치된 OpenCode CLI를 대상으로 legacy multi-function 로더를 패키지 E2E 테스트로 검증합니다. `@opencode-ai/plugin@1.18.18`은 컴파일 시 사용하는 플러그인 API 대상이며 OpenCode 런타임 버전 고정이 아닙니다. 소스는 BSD-3-Clause입니다. 이 프로젝트는 OpenCode 또는 어떤 프로바이더와도 제휴, 보증, 후원, 승인 관계가 없습니다. 전체 조건은 [라이선스 및 면책 조항](#라이선스-및-면책-조항)에 있습니다.
 
+버전 0.3.3은 npm에 공개되었습니다. 릴리스 및 복구 상세는 [영문 릴리스 기록](https://github.com/kernalix7/opencode-ext-connector/blob/main/docs/releases/v0.3.3.md) 또는 [한국어 릴리스 기록](https://github.com/kernalix7/opencode-ext-connector/blob/main/docs/releases/v0.3.3.ko.md)을 참조하십시오.
+
 이미 가지고 있는 Claude, Cursor, Command Code, Ollama 세션을 재사용합니다. `opencode.json` 플러그인 항목 하나가 라이브 카탈로그를 OpenCode에 공개합니다. Claude와 Cursor는 OpenCode에 마커 또는 OAuth 레코드가 있고 벤더 세션이 있을 때까지 연결되지 않은 상태로 유지됩니다. Command Code는 OpenCode에 저장된 직접 API 키 또는 기존 CLI 세션/키를 사용할 수 있습니다. Ollama는 정확한 세션 마커와 응답하는 localhost 데몬이 필요합니다.
 
 ## 요구 사항
@@ -59,7 +61,9 @@ OpenCode는 시작 시 Bun으로 설정된 npm 플러그인을 설치하고 캐�
 }
 ```
 
-항목을 추가하거나 변경한 뒤 OpenCode를 완전히 종료하고 다시 시작하십시오. 리로드만으로는 충분하지 않습니다.
+설치, 버전, 설정 또는 인증을 추가하거나 변경한 뒤 OpenCode를 완전히 종료하고 다시 시작하십시오. 리로드만으로는 충분하지 않습니다.
+
+이것은 안정된 OpenCode V1 설정입니다. <https://opencode.ai/docs/plugins/>에 문서화된 단수 `plugin` 필드를 사용하십시오. OpenCode V2는 복수 `plugins`와 변경된 플러그인 API를 사용하며, 버전 0.3.3은 V2 호환성을 주장하거나 지원하지 않습니다. [V2 플러그인 문서](https://opencode.ai/v2/docs/plugins/)와 [V1 플러그인 마이그레이션 안내](https://opencode.ai/v2/docs/migrate-v1/#plugins)를 참조하십시오.
 
 패키지 항목 하나가 카탈로그 플러그인과 Claude, Cursor, Command Code, Ollama 인증 hook을 노출합니다. 프로바이더 id: `claude`, `cursor`, `command-code`, `ollama`. 모델 id는 각 프로바이더의 라이브 카탈로그에서 가져오며, 라이브 목록이 비어 있으면 문서화된 fallback은 Cursor의 `default`와 Command Code의 `Qwen/Qwen3.8-Max`입니다.
 
@@ -133,10 +137,10 @@ npm view opencode-ext-connector version
 
 ## 최초 연결
 
-1. npm 패키지 항목 또는 버전 spec을 추가한 뒤 **OpenCode를 완전히 재시작**하십시오. 프로세스를 종료한 다음 다시 시작해야 named legacy auth hook이 로드됩니다. 리로드나 주기적 카탈로그 갱신은 인스턴스 재생성이 아닙니다.
+1. npm 패키지 항목, 버전 spec, 설정 또는 인증을 추가하거나 변경한 뒤 **OpenCode를 완전히 재시작**하십시오. 프로세스를 종료한 다음 다시 시작해야 named legacy auth hook이 로드됩니다. 리로드나 주기적 카탈로그 갱신은 인스턴스 재생성이 아닙니다.
 2. 활성화한 프로바이더의 **로컬 전제 조건을 확인**하십시오. Claude와 Cursor는 벤더 세션이 필요합니다. Command Code는 OpenCode에 저장할 API 키 또는 기존 CLI 세션/키가 필요합니다. Ollama는 `http://localhost:11434`에서 신뢰하는 프로세스가 필요하며, Cloud는 별도로 `ollama signin`이 여전히 필요합니다.
 3. 원하는 각 프로바이더에 대해 **`/connect`를 실행**하십시오. Claude와 Cursor는 벤더 세션이 사용 가능할 때만 마커 또는 OAuth 항목을 기록합니다. Command Code는 OpenCode에 직접 API 키를 저장하거나 기존 CLI 세션/키를 재사용할 수 있습니다. Ollama는 localhost 데몬이 응답할 때만 정확한 세션 마커를 저장합니다. 모델은 그 프로바이더별 규칙이 충족된 뒤에만 공개됩니다.
-4. **카탈로그를 확인**하십시오. Claude, Cursor, Command Code 모델이 OpenCode에 나타나는지 확인합니다. Ollama는 `opencode models ollama`를 실행하여 로컬로 pull된 모델과, 커넥터가 자격 증명을 제공하지 않은 채 비인증으로 발견된 Cloud 태그를 확인하십시오.
+4. **카탈로그를 확인**하십시오. `/models`를 실행하여 예상한 프로바이더 모델이 나타나는지 확인합니다. Ollama는 추가로 `opencode models ollama`를 실행하여 로컬로 pull된 모델과, 커넥터가 자격 증명을 제공하지 않은 채 비인증으로 발견된 Cloud 태그를 확인하십시오.
 
 Ollama `/connect`는 로컬 데몬을 조사하고 정확한 세션 마커를 저장합니다. `ollama signin`을 실행하거나 Ollama 자격 증명을 다루지 않습니다.
 
@@ -173,6 +177,8 @@ Ollama `/connect`는 로컬 데몬을 조사하고 정확한 세션 마커를 �
 | --- | --- |
 | [../README.md](../README.md) | 영어 README |
 | [../CHANGELOG.md](../CHANGELOG.md) | 릴리스 노트 |
+| [releases/v0.3.3.md](https://github.com/kernalix7/opencode-ext-connector/blob/main/docs/releases/v0.3.3.md) | v0.3.3 영문 릴리스 기록 |
+| [releases/v0.3.3.ko.md](https://github.com/kernalix7/opencode-ext-connector/blob/main/docs/releases/v0.3.3.ko.md) | v0.3.3 한국어 릴리스 기록 |
 | [../LICENSE](../LICENSE) | BSD 3-Clause 라이선스 |
 | [../THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) | 파생 업스트림 작업 |
 

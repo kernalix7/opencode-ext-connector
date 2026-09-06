@@ -2,6 +2,13 @@
 
 ## 0.3.3 - 2026-09-06
 
+### Release status
+
+- npm `0.3.3` is published with an npm signature and SLSA provenance.
+- The initial publish-only run failed because it used the bare tarball path; [recovery PR #6](https://github.com/kernalix7/opencode-ext-connector/pull/6) recovered the release. The workflow permanently uses `npm publish "./${{ steps.artifact.outputs.tarball }}" --provenance --access public`.
+- [Cleanup PR #7](https://github.com/kernalix7/opencode-ext-connector/pull/7) restored the tag-only `v*` workflow with only verify and publish jobs.
+- Detailed records: [English](https://github.com/kernalix7/opencode-ext-connector/blob/main/docs/releases/v0.3.3.md) and [한국어](https://github.com/kernalix7/opencode-ext-connector/blob/main/docs/releases/v0.3.3.ko.md). There is no separate GitHub Release object; the npm package, `v0.3.3` tag, and release workflow are authoritative.
+
 - Document official npm package installation through OpenCode's `plugin` field,
   including pinned installs, deterministic updates, and removal guidance
 - Maintain active branch history by removing obsolete commit attribution
