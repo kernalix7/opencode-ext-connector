@@ -35,21 +35,18 @@ const jobSchema = z
   })
   .loose()
 
-const workflowSchema = z.object({
-  jobs: z
-    .object({
-      publish: jobSchema,
-      "recover-v0-3-3-publish": z.unknown(),
-      "recover-v0-3-3-verify": z.unknown(),
-      verify: jobSchema,
-    })
-    .strict(),
-  on: z.object({
-    push: z.object({ tags: z.tuple([z.literal("v*")]) }),
-    workflow_dispatch: z.object({}).strict(),
-  }),
-  permissions: z.record(z.string(), z.string()),
-})
+const triggerSchema = z
+  .object({ push: z.object({ tags: z.tuple([z.literal("v*")]) }).strict() })
+  .strict()
+
+const workflowSchema = z
+  .object({
+    jobs: z.object({ publish: jobSchema, verify: jobSchema }).strict(),
+    name: z.literal("release"),
+    on: triggerSchema,
+    permissions: z.record(z.string(), z.string()),
+  })
+  .strict()
 
 type Job = z.infer<typeof jobSchema>
 
@@ -69,6 +66,20 @@ function runScripts(job: Job): readonly string[] {
 }
 
 describe("release workflow", () => {
+  it("rejects additional release events and push filters", () => {
+    // Given
+    const triggers = [
+      { push: { tags: ["v*"] }, workflow_dispatch: {} },
+      { push: { branches: ["main"], tags: ["v*"] } },
+    ]
+
+    // When
+    const results = triggers.map((trigger) => triggerSchema.safeParse(trigger).success)
+
+    // Then
+    expect(results).toEqual([false, false])
+  })
+
   it("restricts the release trigger and OIDC permission to the publish job", async () => {
     // Given
     const workflow = await readWorkflow()
@@ -77,7 +88,7 @@ describe("release workflow", () => {
     const { publish, verify } = workflow.jobs
 
     // Then
-    expect(workflow.on).toEqual({ push: { tags: ["v*"] }, workflow_dispatch: {} })
+    expect(workflow.on).toEqual({ push: { tags: ["v*"] } })
     expect(workflow.permissions).toEqual({ contents: "read" })
     expect(verify.permissions).toEqual({ contents: "read" })
     expect(publish.permissions).toEqual({ "id-token": "write" })
@@ -85,7 +96,7 @@ describe("release workflow", () => {
     for (const job of [verify, publish]) {
       expect(job["runs-on"]).toBe("ubuntu-latest")
       expect(job.strategy).toBeUndefined()
-      expect(job.if).toBe("github.event_name == 'push'")
+      expect(job.if).toBeUndefined()
       expect(job["continue-on-error"]).not.toBe(true)
       expect(job.steps.every((step) => step["continue-on-error"] !== true)).toBe(true)
     }
