@@ -36,8 +36,11 @@ const jobSchema = z
   .loose()
 
 const workflowSchema = z.object({
-  jobs: z.object({ publish: jobSchema, verify: jobSchema }).strict(),
-  on: z.object({ push: z.object({ tags: z.tuple([z.literal("v*")]) }) }),
+  jobs: z.object({ publish: jobSchema, "recover-v0-3-3": z.unknown(), verify: jobSchema }).strict(),
+  on: z.object({
+    push: z.object({ tags: z.tuple([z.literal("v*")]) }),
+    workflow_dispatch: z.object({}).strict(),
+  }),
   permissions: z.record(z.string(), z.string()),
 })
 
@@ -67,7 +70,7 @@ describe("release workflow", () => {
     const { publish, verify } = workflow.jobs
 
     // Then
-    expect(workflow.on).toEqual({ push: { tags: ["v*"] } })
+    expect(workflow.on).toEqual({ push: { tags: ["v*"] }, workflow_dispatch: {} })
     expect(workflow.permissions).toEqual({ contents: "read" })
     expect(verify.permissions).toEqual({ contents: "read" })
     expect(publish.permissions).toEqual({ "id-token": "write" })
@@ -75,7 +78,7 @@ describe("release workflow", () => {
     for (const job of [verify, publish]) {
       expect(job["runs-on"]).toBe("ubuntu-latest")
       expect(job.strategy).toBeUndefined()
-      expect(job.if).toBeUndefined()
+      expect(job.if).toBe("github.event_name == 'push'")
       expect(job["continue-on-error"]).not.toBe(true)
       expect(job.steps.every((step) => step["continue-on-error"] !== true)).toBe(true)
     }
@@ -147,7 +150,7 @@ describe("release workflow", () => {
     expect(positions).toEqual([...positions].sort((left, right) => left - right))
     expect(scripts.filter((run) => run.includes("bun pm pack")).length).toBe(1)
     expect(scripts.every((run) => !run.includes("--dry-run"))).toBe(true)
-    expect(JSON.stringify(workflow)).not.toContain("bun run verify:package")
+    expect(JSON.stringify(workflow.jobs.verify)).not.toContain("bun run verify:package")
     expect(upload?.with).toEqual({
       "if-no-files-found": "error",
       name: "npm-package",
