@@ -2,7 +2,6 @@ import { describe, expect, it } from "bun:test"
 import { mkdir, mkdtemp, readdir, rm, symlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { pathToFileURL } from "node:url"
 
 import { createOpencodeClient } from "@opencode-ai/sdk"
 import { z } from "zod"
@@ -77,7 +76,7 @@ async function runPackageCommand(packageCommand: PackageCommand): Promise<string
 }
 
 describe("packed package installation", () => {
-  it("loads the package and lists providers with stored custom-provider markers", async () => {
+  it("loads a cached npm package spec and lists providers with stored custom-provider markers", async () => {
     // Given
     const requests: string[] = []
     const registry = Bun.serve({
@@ -142,7 +141,7 @@ describe("packed package installation", () => {
         join(directory, "opencode.json"),
         JSON.stringify({
           autoupdate: false,
-          plugin: [pathToFileURL(join(packageDirectory, "dist", "index.js")).href],
+          plugin: [`${manifest.name}@${manifest.version}`],
           share: "disabled",
         }),
         "utf8",
