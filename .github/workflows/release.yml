@@ -4,14 +4,12 @@ on:
   push:
     tags:
       - "v*"
-  workflow_dispatch: {}
 
 permissions:
   contents: read
 
 jobs:
   verify:
-    if: github.event_name == 'push'
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -55,7 +53,6 @@ jobs:
 
   publish:
     needs: verify
-    if: github.event_name == 'push'
     permissions:
       id-token: write
     runs-on: ubuntu-latest
@@ -96,111 +93,3 @@ jobs:
           npm install -g npm@11.10.0
           npm --version
       - run: npm publish "./${{ steps.artifact.outputs.tarball }}" --provenance --access public
-
-  recover-v0-3-3-verify:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
-    permissions:
-      contents: read
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          ref: edf38582784dbc809c4126b42eb9238f65603710
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Verify immutable v0.3.3 source
-        run: |
-          set -euo pipefail
-          test "$(git rev-parse HEAD)" = "edf38582784dbc809c4126b42eb9238f65603710"
-          test "$(git rev-parse refs/tags/v0.3.3)" = "db7bdb9369c2db8b972fde4b006b6526bb2398e5"
-          test "$(git cat-file -t db7bdb9369c2db8b972fde4b006b6526bb2398e5)" = "tag"
-          test "$(git rev-parse 'refs/tags/v0.3.3^{}')" = "edf38582784dbc809c4126b42eb9238f65603710"
-          test "$(jq -er '.name' package.json)" = "opencode-ext-connector"
-          test "$(jq -er '.version' package.json)" = "0.3.3"
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version: "1.3.14"
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: "24.20.0"
-      - name: Require exact release tools
-        run: |
-          set -euo pipefail
-          npm install -g npm@11.10.0
-          test "$(npm --version)" = "11.10.0"
-          test "$(node --version)" = "v24.20.0"
-          test "$(bun --version)" = "1.3.14"
-      - name: Require unpublished v0.3.3
-        run: |
-          set -euo pipefail
-          versions="$(npm view opencode-ext-connector versions --json --prefer-online)"
-          published="$(jq -r --arg version "0.3.3" 'if type == "array" then index($version) != null elif type == "string" then . == $version else error("unexpected versions response") end' <<<"$versions")"
-          test "$published" = "false"
-          test "$(npm view opencode-ext-connector dist-tags.latest --prefer-online)" = "0.3.2"
-      - name: Install OpenCode CLI
-        run: |
-          npm install -g opencode-ai@1.18.27
-          opencode --version
-      - run: bun install --frozen-lockfile
-      - run: bun run check
-      - run: bun run build
-      - run: bun test
-      - run: bun run test:provider
-      - run: bun run test:integration
-      - run: bun run test:e2e
-      - run: bun run verify:package
-      - name: Archive the verified source
-        run: |
-          set -euo pipefail
-          mkdir -p release
-          tar --exclude='./node_modules' --exclude='./release' -czf release/opencode-ext-connector-v0.3.3-source.tgz .
-          sha256sum release/opencode-ext-connector-v0.3.3-source.tgz > release/opencode-ext-connector-v0.3.3-source.tgz.sha256
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: recovery-source-v0.3.3
-          path: |
-            release/*.tgz
-            release/*.tgz.sha256
-          if-no-files-found: error
-
-  recover-v0-3-3-publish:
-    needs: recover-v0-3-3-verify
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
-    concurrency:
-      group: recover-opencode-ext-connector-v0.3.3
-      cancel-in-progress: false
-    permissions:
-      id-token: write
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          name: recovery-source-v0.3.3
-          path: release
-      - name: Verify the recovery source
-        run: |
-          set -euo pipefail
-          sha256sum --check release/opencode-ext-connector-v0.3.3-source.tgz.sha256
-          mkdir source
-          tar -xzf release/opencode-ext-connector-v0.3.3-source.tgz -C source
-          test "$(git -C source rev-parse HEAD)" = "edf38582784dbc809c4126b42eb9238f65603710"
-          test "$(git -C source rev-parse refs/tags/v0.3.3)" = "db7bdb9369c2db8b972fde4b006b6526bb2398e5"
-          test "$(git -C source rev-parse 'refs/tags/v0.3.3^{}')" = "edf38582784dbc809c4126b42eb9238f65603710"
-          test "$(jq -er '.name' source/package.json)" = "opencode-ext-connector"
-          test "$(jq -er '.version' source/package.json)" = "0.3.3"
-          test -f source/dist/index.js
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: "24.20.0"
-      - name: Require npm with trusted publishing support
-        run: |
-          npm install -g npm@11.10.0
-          test "$(npm --version)" = "11.10.0"
-      - name: Recheck unpublished v0.3.3
-        run: |
-          set -euo pipefail
-          versions="$(npm view opencode-ext-connector versions --json --prefer-online)"
-          published="$(jq -r --arg version "0.3.3" 'if type == "array" then index($version) != null elif type == "string" then . == $version else error("unexpected versions response") end' <<<"$versions")"
-          test "$published" = "false"
-          test "$(npm view opencode-ext-connector dist-tags.latest --prefer-online)" = "0.3.2"
-      - run: npm publish ./source --ignore-scripts --provenance --access public
