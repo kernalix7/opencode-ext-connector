@@ -13,7 +13,7 @@
 
 [English](../README.md) · **한국어** · [문서](#문서)
 
-[상태](#상태) · [요구 사항](#요구-사항) · [빠른 설치](#빠른-설치) · [설정](#설정) · [최초 연결](#최초-연결) · [프로바이더](#프로바이더) · [문제 해결](#문제-해결) · [문서](#문서) · [테스트](#테스트) · [라이선스 및 면책 조항](#라이선스-및-면책-조항)
+[상태](#상태) · [요구 사항](#요구-사항) · [빠른 설치](#빠른-설치) · [설정](#설정) · [업데이트 및 제거](#업데이트-및-제거) · [최초 연결](#최초-연결) · [프로바이더](#프로바이더) · [문제 해결](#문제-해결) · [문서](#문서) · [테스트](#테스트) · [라이선스 및 면책 조항](#라이선스-및-면책-조항)
 
 </div>
 
@@ -39,31 +39,33 @@ OpenCode가 실행되는 곳에 벤더 CLI를 설치할 필요가 없습니다. 
 
 ## 빠른 설치
 
-이 저장소를 빌드한 뒤, 컴파일된 모듈을 OpenCode에 지정합니다:
-
-```bash
-bun install
-bun run build
-```
-
-`opencode.json` / `opencode.jsonc` (공식 `plugin` 필드):
+전역 `~/.config/opencode/opencode.json` 또는 프로젝트 수준 `opencode.json` 중 하나를 선택한 뒤, 공식 단수 `plugin` 필드에 패키지를 추가하십시오:
 
 ```jsonc
 {
   "$schema": "https://opencode.ai/config.json",
   "plugin": [
-    "file:///absolute/path/to/opencode-ext-connector/dist/index.js"
+    "opencode-ext-connector"
   ]
 }
 ```
 
-신뢰할 수 있는, 사용자가 소유한 `file://` 빌드의 직접 `dist/index.js` URL을 사용하십시오. 패키지 디렉터리 URL은 이 커넥터의 named legacy auth hook을 로드하지 않습니다.
+OpenCode는 시작 시 Bun으로 설정된 npm 플러그인을 설치하고 캐시합니다. 재현 가능한 설치가 필요하면 정확한 공개 버전을 대신 사용하십시오:
+
+```jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["opencode-ext-connector@0.3.3"]
+}
+```
+
+항목을 추가하거나 변경한 뒤 OpenCode를 완전히 종료하고 다시 시작하십시오. 리로드만으로는 충분하지 않습니다.
 
 패키지 항목 하나가 카탈로그 플러그인과 Claude, Cursor, Command Code, Ollama 인증 hook을 노출합니다. 프로바이더 id: `claude`, `cursor`, `command-code`, `ollama`. 모델 id는 각 프로바이더의 라이브 카탈로그에서 가져오며, 라이브 목록이 비어 있으면 문서화된 fallback은 Cursor의 `default`와 Command Code의 `Qwen/Qwen3.8-Max`입니다.
 
 ## 설정
 
-OpenCode는 플러그인 옵션을 두 요소 튜플의 두 번째 항목으로 전달합니다.
+OpenCode는 플러그인 옵션을 두 요소 튜플의 두 번째 항목으로 전달합니다. 첫 번째 항목에는 npm 패키지 이름을 사용하십시오.
 
 `providers`를 생략하면 네 프로바이더가 모두 활성화됩니다. 명시적 목록은 엄격한 allow-list입니다. 명시적 `[]`는 모두 비활성화합니다.
 
@@ -85,7 +87,7 @@ writeback은 기본적으로 꺼져 있어, 요청하지 않는 한 이 플러�
   "$schema": "https://opencode.ai/config.json",
   "plugin": [
     [
-      "file:///absolute/path/to/opencode-ext-connector/dist/index.js",
+      "opencode-ext-connector",
       {
         "writeBackCredentials": true
       }
@@ -112,9 +114,26 @@ Anthropic은 갱신할 때마다 refresh 토큰을 회전시키고 이전 토큰
 
 대화형으로 사용하는 Claude Code 설치처럼 스스로 갱신하는 머신은 파일을 공유하면 안 됩니다. 그곳에서는 별도로 로그인하십시오.
 
+## 업데이트 및 제거
+
+결정론적으로 업데이트하려면 원하는 공개 버전을 확인하고 `plugin` 항목을 해당 정확한 spec으로 바꾼 뒤 OpenCode를 완전히 재시작하십시오:
+
+```bash
+npm view opencode-ext-connector version
+```
+
+```jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["opencode-ext-connector@<version>"]
+}
+```
+
+고정하지 않은 항목이 재시작 시 캐시된 패키지를 자동으로 갱신한다고 기대하지 마십시오. 커넥터를 제거하려면 `plugin`에서 해당 항목을 삭제하고 OpenCode를 완전히 재시작하십시오. 패키지가 설정되어 있지 않으면 캐시된 패키지 파일은 비활성입니다.
+
 ## 최초 연결
 
-1. 플러그인 URL을 추가한 뒤 **OpenCode를 완전히 재시작**하십시오. 프로세스를 종료한 다음 다시 시작해야 named legacy auth hook이 로드됩니다. 리로드나 주기적 카탈로그 갱신은 인스턴스 재생성이 아닙니다.
+1. npm 패키지 항목 또는 버전 spec을 추가한 뒤 **OpenCode를 완전히 재시작**하십시오. 프로세스를 종료한 다음 다시 시작해야 named legacy auth hook이 로드됩니다. 리로드나 주기적 카탈로그 갱신은 인스턴스 재생성이 아닙니다.
 2. 활성화한 프로바이더의 **로컬 전제 조건을 확인**하십시오. Claude와 Cursor는 벤더 세션이 필요합니다. Command Code는 OpenCode에 저장할 API 키 또는 기존 CLI 세션/키가 필요합니다. Ollama는 `http://localhost:11434`에서 신뢰하는 프로세스가 필요하며, Cloud는 별도로 `ollama signin`이 여전히 필요합니다.
 3. 원하는 각 프로바이더에 대해 **`/connect`를 실행**하십시오. Claude와 Cursor는 벤더 세션이 사용 가능할 때만 마커 또는 OAuth 항목을 기록합니다. Command Code는 OpenCode에 직접 API 키를 저장하거나 기존 CLI 세션/키를 재사용할 수 있습니다. Ollama는 localhost 데몬이 응답할 때만 정확한 세션 마커를 저장합니다. 모델은 그 프로바이더별 규칙이 충족된 뒤에만 공개됩니다.
 4. **카탈로그를 확인**하십시오. Claude, Cursor, Command Code 모델이 OpenCode에 나타나는지 확인합니다. Ollama는 `opencode models ollama`를 실행하여 로컬로 pull된 모델과, 커넥터가 자격 증명을 제공하지 않은 채 비인증으로 발견된 Cloud 태그를 확인하십시오.
@@ -138,7 +157,7 @@ Ollama `/connect`는 로컬 데몬을 조사하고 정확한 세션 마커를 �
 
 | 증상 | 확인할 것 |
 | --- | --- |
-| `/connect` 메서드가 없음 | 플러그인 URL은 신뢰할 수 있는, 사용자가 소유한 `file:///absolute/path/to/opencode-ext-connector/dist/index.js`여야 합니다. 패키지 디렉터리 URL은 named legacy auth hook을 로드하지 않습니다. 변경한 뒤 OpenCode를 완전히 재시작하십시오. |
+| `/connect` 메서드가 없음 | `plugin`에 `"opencode-ext-connector"` 또는 정확한 공개 `"opencode-ext-connector@<version>"` spec이 있는지 확인한 뒤 OpenCode를 완전히 재시작하십시오. |
 | 프로바이더가 활성화됐지만 모델이 없음 | `providers`를 생략하면 네 프로바이더가 모두 활성화됩니다. 명시적 목록은 엄격한 allow-list입니다. Claude와 Cursor는 마커 또는 OAuth 레코드와 벤더 세션이 필요하고, Command Code는 OpenCode에 저장된 API 키 또는 CLI 세션/키를 사용할 수 있으며, Ollama는 정확한 마커와 응답하는 localhost 데몬이 필요합니다. `/connect` 후 완전히 재시작해야 인스턴스 재생성이 새 소속을 반영합니다. |
 | Claude가 다음 시작 전까지만 동작함 | 기본 `writeBackCredentials: false`는 갱신된 토큰을 메모리에만 둡니다. 회전된 refresh 토큰은 writeback을 켜지 않으면 다음 프로세스 시작에서 실패합니다. |
 | 복사한 자격 증명 파일에서 Claude가 `invalid_grant`를 보고함 | 같은 로그인의 다른 사본이 이미 갱신해서 refresh 토큰이 회전됐습니다. 한 머신에만 갱신 소유권을 주고 나머지에는 `credentialRefresh: { mode: "never" }`를 설정하거나, 별도로 로그인하십시오. |
