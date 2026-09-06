@@ -173,7 +173,9 @@ describe("release workflow", () => {
     expect(artifact?.run).toContain('tar -xOf "$tarball" package/package.json')
     expect(artifact?.run).toContain(`"$GITHUB_REF_NAME" != "v${versionExpression}"`)
     expect(artifact?.run).toContain('echo "tarball=$tarball" >> "$GITHUB_OUTPUT"')
-    expect(runs.at(-1)?.trim()).toBe(`npm publish "${tarballOutput}" --provenance --access public`)
+    expect(runs.at(-1)?.trim()).toBe(
+      `npm publish "./${tarballOutput}" --provenance --access public`,
+    )
     const publishValues = JSON.stringify(publish)
     for (const forbidden of ["actions/checkout", "git ", "bun ", "opencode ", "npm install --"]) {
       expect(publishValues).not.toContain(forbidden)

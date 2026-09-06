@@ -92,4 +92,4 @@ jobs:
         run: |
           npm install -g npm@11.10.0
           npm --version
-      - run: npm publish "${{ steps.artifact.outputs.tarball }}" --provenance --access public
+      - run: npm publish "./${{ steps.artifact.outputs.tarball }}" --provenance --access public
