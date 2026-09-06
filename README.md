@@ -13,13 +13,13 @@
 
 **English** · [한국어](docs/README.ko.md) · [Documentation](#documentation)
 
-[Status](#status) · [Requirements](#requirements) · [Quick Install](#quick-install) · [Configuration](#configuration) · [First-Time Connection](#first-time-connection) · [Providers](#providers) · [Troubleshooting](#troubleshooting) · [Documentation](#documentation) · [Testing](#testing) · [License and Disclaimer](#license-and-disclaimer)
+[Status](#status) · [Requirements](#requirements) · [Quick Install](#quick-install) · [Configuration](#configuration) · [Update and Remove](#update-and-remove) · [First-Time Connection](#first-time-connection) · [Providers](#providers) · [Troubleshooting](#troubleshooting) · [Documentation](#documentation) · [Testing](#testing) · [License and Disclaimer](#license-and-disclaimer)
 
 </div>
 
 ## Status
 
-> Independent unofficial community plugin, version **0.3.2**. Package E2E tests exercise the legacy multi-function loader with the OpenCode CLI installed in CI. `@opencode-ai/plugin@1.18.18` is the compile-time plugin API target, not a runtime pin. Source is BSD-3-Clause. This project is not affiliated with, endorsed by, sponsored by, or authorized by OpenCode or any provider. Full terms are in [License and Disclaimer](#license-and-disclaimer).
+> Independent unofficial community plugin, version **0.3.3**. Package E2E tests exercise the legacy multi-function loader with the OpenCode CLI installed in CI. `@opencode-ai/plugin@1.18.18` is the compile-time plugin API target, not a runtime pin. Source is BSD-3-Clause. This project is not affiliated with, endorsed by, sponsored by, or authorized by OpenCode or any provider. Full terms are in [License and Disclaimer](#license-and-disclaimer).
 
 Reuse the Claude, Cursor, Command Code, and Ollama sessions you already have. One `opencode.json` plugin entry publishes live catalogs into OpenCode. Claude and Cursor stay disconnected until OpenCode has a marker or OAuth record and the vendor session is present. Command Code may use an OpenCode-stored direct API key or an existing CLI session/key. Ollama requires the exact session marker plus a responsive localhost daemon.
 
@@ -39,31 +39,33 @@ No vendor CLI has to be installed where OpenCode runs. Claude and Command Code r
 
 ## Quick Install
 
-Build this repository, then point OpenCode at the compiled module:
-
-```bash
-bun install
-bun run build
-```
-
-In `opencode.json` / `opencode.jsonc` (official `plugin` field):
+Choose either the global `~/.config/opencode/opencode.json` or project-level `opencode.json`, then add the package to the official singular `plugin` field:
 
 ```jsonc
 {
   "$schema": "https://opencode.ai/config.json",
   "plugin": [
-    "file:///absolute/path/to/opencode-ext-connector/dist/index.js"
+    "opencode-ext-connector"
   ]
 }
 ```
 
-Use that direct `dist/index.js` URL from a trusted, user-owned `file://` build. A package-directory URL does not load this connector's named legacy auth hooks.
+OpenCode installs configured npm plugins with Bun at startup and caches them. For a reproducible installation, use an exact published version instead:
+
+```jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["opencode-ext-connector@0.3.3"]
+}
+```
+
+Fully quit and restart OpenCode after adding or changing the entry; a reload is not enough.
 
 The one package entry exposes the catalog plugin plus the Claude, Cursor, Command Code, and Ollama auth hooks. Provider ids: `claude`, `cursor`, `command-code`, `ollama`. Model ids come from each provider's live catalog, with documented fallbacks `default` (Cursor) and `Qwen/Qwen3.8-Max` (Command Code) when a live list is empty.
 
 ## Configuration
 
-OpenCode passes plugin options as the second item of a two-element tuple.
+OpenCode passes plugin options as the second item of a two-element tuple. Use the npm package name as the first item.
 
 Omitted `providers` enables all four. An explicit list is a strict allow-list. Explicit `[]` disables all.
 
@@ -85,7 +87,7 @@ Writeback is off by default so this plugin does not mutate credential stores unl
   "$schema": "https://opencode.ai/config.json",
   "plugin": [
     [
-      "file:///absolute/path/to/opencode-ext-connector/dist/index.js",
+      "opencode-ext-connector",
       {
         "writeBackCredentials": true
       }
@@ -112,9 +114,26 @@ Anthropic rotates the refresh token on every refresh and invalidates the previou
 
 Machines that refresh on their own — including a Claude Code install that is used interactively — must not share the file. Log in separately there.
 
+## Update and Remove
+
+To update deterministically, check the desired published version, replace the `plugin` entry with that exact spec, then fully restart OpenCode:
+
+```bash
+npm view opencode-ext-connector version
+```
+
+```jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["opencode-ext-connector@<version>"]
+}
+```
+
+Do not rely on an unpinned entry to refresh its cached package automatically on restart. To remove the connector, remove its entry from `plugin` and fully restart OpenCode. Cached package files are inert when the package is not configured.
+
 ## First-Time Connection
 
-1. **Fully restart OpenCode** after adding the plugin URL. Quit the process and start it again so the named legacy auth hooks load. A reload or periodic catalog refresh is not instance reconstruction.
+1. **Fully restart OpenCode** after adding the npm package entry or version spec. Quit the process and start it again so the named legacy auth hooks load. A reload or periodic catalog refresh is not instance reconstruction.
 2. **Confirm local prerequisites** for the providers you enabled. Claude and Cursor need their vendor sessions. Command Code needs either an API key you will store in OpenCode or an existing CLI session/key. Ollama needs a process you trust on `http://localhost:11434`; Cloud still requires a separate `ollama signin`.
 3. **Run `/connect`** for each provider you want. Claude and Cursor record a marker or OAuth entry only after the vendor session is available. Command Code can store a direct API key in OpenCode or reuse an existing CLI session/key. Ollama stores the exact session marker only when the localhost daemon responds. Models publish only after that provider-specific rule is met.
 4. **Verify the catalogs.** Confirm Claude, Cursor, and Command Code models appear in OpenCode. For Ollama, run `opencode models ollama` and confirm locally pulled models plus Cloud tags discovered unauthenticated, without connector-supplied credentials.
@@ -138,7 +157,7 @@ The standalone SDK entry is `opencode-ext-connector/ollama`. It can generate wit
 
 | Symptom | What to check |
 | --- | --- |
-| `/connect` methods missing | The plugin URL must be a trusted, user-owned `file:///absolute/path/to/opencode-ext-connector/dist/index.js`. A package-directory URL does not load named legacy auth hooks. Fully restart OpenCode after changing it. |
+| `/connect` methods missing | Confirm `plugin` contains `"opencode-ext-connector"` or an exact published `"opencode-ext-connector@<version>"` spec, then fully restart OpenCode. |
 | Provider enabled but no models | Omitted `providers` enables all four; an explicit list is a strict allow-list. Claude and Cursor need a marker or OAuth record plus the vendor session; Command Code may use an OpenCode-stored API key or a CLI session/key; Ollama needs the exact marker plus a responsive localhost daemon. Fully restart after `/connect` so instance reconstruction picks up new membership. |
 | Claude works until the next start | Default `writeBackCredentials: false` keeps refreshed tokens in memory. A rotated refresh token then fails on the next process start unless writeback is enabled. |
 | Claude reports `invalid_grant` on a copied credential file | Another copy of the same login already refreshed and rotated the refresh token. Give one machine ownership of refresh and set `credentialRefresh: { mode: "never" }` on the others, or log in separately. |
