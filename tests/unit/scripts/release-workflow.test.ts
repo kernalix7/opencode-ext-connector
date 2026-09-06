@@ -36,7 +36,14 @@ const jobSchema = z
   .loose()
 
 const workflowSchema = z.object({
-  jobs: z.object({ publish: jobSchema, "recover-v0-3-3": z.unknown(), verify: jobSchema }).strict(),
+  jobs: z
+    .object({
+      publish: jobSchema,
+      "recover-v0-3-3-publish": z.unknown(),
+      "recover-v0-3-3-verify": z.unknown(),
+      verify: jobSchema,
+    })
+    .strict(),
   on: z.object({
     push: z.object({ tags: z.tuple([z.literal("v*")]) }),
     workflow_dispatch: z.object({}).strict(),
