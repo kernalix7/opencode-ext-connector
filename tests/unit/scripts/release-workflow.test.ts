@@ -168,7 +168,7 @@ describe("release workflow", () => {
     expect(positions).toEqual([...positions].sort((left, right) => left - right))
     expect(scripts.filter((run) => run.includes("bun pm pack")).length).toBe(1)
     expect(scripts.every((run) => !run.includes("--dry-run"))).toBe(true)
-    expect(JSON.stringify(workflow.jobs.verify)).not.toContain("bun run verify:package")
+    expect(JSON.stringify(workflow)).not.toContain("bun run verify:package")
     expect(upload?.with).toEqual({
       "if-no-files-found": "error",
       name: "npm-package",
