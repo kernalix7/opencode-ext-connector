@@ -7,6 +7,10 @@
 - Maintain active branch history by removing obsolete commit attribution
   trailers while preserving source trees; existing published tags and
   provenance remain unchanged
+- Exercise package loading through the exact npm package spec from an isolated
+  offline OpenCode cache with no registry access
+- Harden npm publishing with immutable action and toolchain pins, a no-OIDC
+  verification job, and a checksummed tarball-only OIDC publish job
 - Keep provider and runtime behavior unchanged
 
 ## 0.3.2 - 2026-09-06
