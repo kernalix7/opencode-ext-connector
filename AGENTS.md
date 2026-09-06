@@ -106,8 +106,9 @@ policy foundation tests. `bun run verify:package` is a dry-run package pack.
 
 - `.github/workflows/release.yml` publishes to npm when a `v*` tag is pushed
   and fails if the tag differs from `package.json`.
-- The first publish of a new package needs the `NPM_TOKEN` repository secret;
-  afterwards configure npm trusted publishing for `release.yml` and remove it.
+- Configure npm trusted publishing for this repository and `release.yml` before
+  tagging; releases use GitHub Actions OIDC and must not use `NPM_TOKEN` or
+  token-bearing `.npmrc` configuration.
 - Bump `package.json`, both READMEs, `CHANGELOG.md`, and
   `tests/unit/index/package-export.test.ts` together.
 

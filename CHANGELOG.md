@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.2 - 2026-09-06
+
+- Remove the obsolete npm token fallback so releases publish only through
+  GitHub Actions OIDC trusted publishing
+- Keep provider behavior unchanged
+
 ## 0.3.1 - 2026-09-05
 
 - Fix Node ESM compatibility for root and SDK subpath imports by using explicit
