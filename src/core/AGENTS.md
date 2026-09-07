@@ -18,7 +18,7 @@ Pull-based adapter + catalog snapshot primitives shared by provider implementati
 | `deadline.ts` | `createDeadline` | Parent abort + clock expiry; dispose cancels schedule |
 | `lifecycle.ts` | `createAsyncDisposable` | Second `dispose()` returns the same promise |
 | `health.ts` | `reduceHealth` | Pure reducer; backoff from `event.atMs`, not wall clock |
-| `options.ts` | `parseConnectorOptions` | Present `undefined` defaults (30_000 / 1_000 / 60_000); initial ≤ max |
+| `options.ts` | `parseConnectorOptions` | `credentialManagement` is input-only and normalizes to existing refresh/writeback fields; conflicts with present legacy options; omission preserves defaults. Present `undefined` defaults (30_000 / 1_000 / 60_000); initial ≤ max |
 | `logger.ts` | `createConnectorLogger` | Sink only; recursive key + URL query redaction |
 | `http.ts` | `HttpTransport` | Interface; body is `Uint8Array` |
 | `process.ts` | `ProcessSupervisor` / `SupervisedProcess` | Interface only; provider runtimes own process boundaries |

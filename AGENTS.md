@@ -61,8 +61,16 @@ tests/                         unit/integration/e2e suites and fakes; see AGENTS
 - No vendor CLI is required at runtime. Claude/Command Code client versions
   resolve from an env override, an installed binary, or the npm registry via
   `src/http/package-version.ts`; never pin a version constant.
-- `credentialRefresh` (`auto` | `never`, `leadMs`) governs Claude token refresh
-  so one machine can own refresh while file copies stay read-only.
+- Prefer `credentialManagement: "connector" | "external"`; behavior is
+  capability-gated, so Cursor/Command Code stay read-only and Ollama is
+  unaffected.
+- Claude maps `connector` to auto/`60_000` + writeback and `external` to
+  never/no-write with a credential re-read after 401; omitting all policy
+  options preserves legacy auto/`60_000` + no-write, while legacy options still
+  control behavior when supplied without `credentialManagement`.
+- `credentialRefresh` and `writeBackCredentials` remain deprecated but accepted
+  alone for one migration cycle (custom lead times require the legacy config);
+  combining either with `credentialManagement` is rejected.
 - Provider snapshots, health, and failures remain isolated.
 
 ## CONVENTIONS
