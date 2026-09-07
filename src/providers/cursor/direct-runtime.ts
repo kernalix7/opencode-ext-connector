@@ -82,7 +82,10 @@ export function createCursorDirectRuntime(
     return bridgeClient
   }
   const doStream = async (call: LanguageModelV3CallOptions, modelId: string) => {
-    const signal = call.abortSignal ?? new AbortController().signal
+    const signal =
+      call.abortSignal === undefined
+        ? lifecycle.signal
+        : AbortSignal.any([lifecycle.signal, call.abortSignal])
     if (signal.aborted) throw new OperationCancelledError("cursor-direct-stream")
     const resultCallIds: string[] = []
     for (let index = call.prompt.length - 1; index >= 0; index -= 1) {
@@ -103,42 +106,29 @@ export function createCursorDirectRuntime(
       await existing.writeContinuations(continuations, signal)
       return { stream: await consumeCursorDirectSession({ session: existing, signal, registry }) }
     }
-    const setup = new AbortController()
-    const cancel = (): void => {
-      if (!setup.signal.aborted) {
-        setup.abort(new OperationCancelledError("cursor-direct-stream"))
-      }
-    }
-    lifecycle.signal.addEventListener("abort", cancel, { once: true })
-    call.abortSignal?.addEventListener("abort", cancel, { once: true })
-    if (lifecycle.signal.aborted || signal.aborted) cancel()
-    try {
-      const token = await options.readAccessToken(setup.signal)
-      if (setup.signal.aborted) throw new OperationCancelledError("cursor-direct-stream")
-      if (token === null) throw cursorFailure("cursor-auth-unavailable")
-      return await startCursorDirectRun({
-        bridge: await bridge(),
-        call,
-        clock: options.clock,
-        createId,
-        idleTimeoutMs: options.idleTimeoutMs ?? 60_000,
-        modelId,
-        registry,
-        signal,
-        token,
-        tools: toolsFromCall(call),
-        ttlMs: options.ttlMs ?? 300_000,
-        ...(options.createSetupCleanup === undefined
-          ? {}
-          : { createSetupCleanup: options.createSetupCleanup }),
-      })
-    } finally {
-      lifecycle.signal.removeEventListener("abort", cancel)
-      call.abortSignal?.removeEventListener("abort", cancel)
-    }
+    const token = await options.readAccessToken(signal)
+    if (signal.aborted) throw new OperationCancelledError("cursor-direct-stream")
+    if (token === null) throw cursorFailure("cursor-auth-unavailable")
+    return await startCursorDirectRun({
+      bridge: await bridge(),
+      call,
+      clock: options.clock,
+      createId,
+      idleTimeoutMs: options.idleTimeoutMs ?? 60_000,
+      modelId,
+      reloadAccessToken: options.readAccessToken,
+      registry,
+      signal,
+      token,
+      tools: toolsFromCall(call),
+      ttlMs: options.ttlMs ?? 300_000,
+      ...(options.createSetupCleanup === undefined
+        ? {}
+        : { createSetupCleanup: options.createSetupCleanup }),
+    })
   }
   const disposal = createAsyncDisposable(async () => {
-    lifecycle.abort()
+    lifecycle.abort(new OperationCancelledError("cursor-direct-stream"))
     await settleCursorCleanup([
       registry.dispose,
       async () => {
