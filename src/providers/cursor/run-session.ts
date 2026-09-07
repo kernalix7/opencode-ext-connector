@@ -209,12 +209,12 @@ export function createCursorRunSessionRegistry(_options: {
       retireForRetry: async (): Promise<void> => {
         if (resources.dispatcher.parkedCalls.size > 0 || reserved.size > 0)
           throw new CursorRunSessionError("retry-boundary")
-        retired = true
         cancelTimer()
         sessions.delete(identity.sessionId)
         removeOwnership(identity.sessionId)
         resources.dispatcher.parkedCalls.clear()
         await settleCursorCleanup([resources.stream.abort, resources.ownership.release])
+        retired = true
       },
       dispose: disposal.dispose,
     }
