@@ -8,6 +8,7 @@ import {
   cursorAuthServer,
   ollamaAuthServer,
 } from "../../../src/index"
+import { createCommandCode } from "../../../src/sdk/command-code"
 import { createCursor } from "../../../src/sdk/cursor"
 import { createOllama } from "../../../src/sdk/ollama"
 
@@ -42,17 +43,37 @@ describe("plugin export", () => {
     expect(model.modelId).toBe("auto")
   })
 
-  it("exposes Ollama as an AI SDK factory without forwarding provider options", () => {
-    // Given / When
-    const provider = createOllama({
-      apiKey: "must-not-forward",
-      baseURL: "https://must-not-forward.invalid",
-      headers: { authorization: "must-not-forward" },
-    })
-    const model = provider.languageModel("local-model")
+  it("ignores malformed Ollama options when constructing a Cursor model", () => {
+    // Given
+    const provider = createCursor({ ollamaBaseURL: null })
+
+    // When
+    const model = provider.languageModel("auto")
 
     // Then
-    expect(model.provider).toBe("ollama")
-    expect(model.modelId).toBe("local-model")
+    expect(model.provider).toBe("cursor")
+    expect(model.modelId).toBe("auto")
+  })
+
+  it("ignores malformed Ollama options when constructing a Command Code model", () => {
+    // Given
+    const provider = createCommandCode({ ollamaBaseURL: null })
+
+    // When
+    const model = provider.languageModel("Qwen/Qwen3.8-Max")
+
+    // Then
+    expect(model.provider).toBe("command-code")
+    expect(model.modelId).toBe("Qwen/Qwen3.8-Max")
+  })
+
+  it("rejects an invalid Ollama SDK base URL before model construction", () => {
+    // Given / When
+    const construct = (): void => {
+      createOllama({ ollamaBaseURL: "https://ollama.com" }).languageModel("local-model")
+    }
+
+    // Then
+    expect(construct).toThrow()
   })
 })

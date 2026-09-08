@@ -2,11 +2,9 @@ import { describe, expect, it } from "bun:test"
 import type { LanguageModelV3Prompt } from "@ai-sdk/provider"
 
 import type { OllamaCatalogState, OllamaFetch } from "../../src/providers/ollama"
-import { createOllamaLanguageModel } from "../../src/providers/ollama"
+import { createOllamaLanguageModel, parseOllamaEndpoints } from "../../src/providers/ollama"
+import { createOllama } from "../../src/sdk/ollama"
 
-const TAGS_URL = "http://localhost:11434/api/tags"
-const PULL_URL = "http://localhost:11434/api/pull"
-const CHAT_URL = "http://localhost:11434/api/chat"
 const prompt: LanguageModelV3Prompt = [{ role: "user", content: [{ type: "text", text: "hello" }] }]
 
 type LoopbackOptions = {
@@ -39,6 +37,7 @@ function fragmentedNdjson(lines: readonly unknown[]): Response {
 class LoopbackOllama implements AsyncDisposable {
   public readonly originalRequests: Request[] = []
   public readonly networkRequests: NetworkRequest[] = []
+  public readonly baseURL: string
   private readonly server: ReturnType<typeof Bun.serve>
 
   public constructor(private readonly options: LoopbackOptions) {
@@ -53,11 +52,11 @@ class LoopbackOllama implements AsyncDisposable {
           hasCookie: request.headers.has("cookie"),
         })
         switch (new URL(request.url).pathname) {
-          case "/api/tags":
+          case "/daemon/api/tags":
             return Response.json({ models: this.options.localModels.map((name) => ({ name })) })
-          case "/api/pull":
+          case "/daemon/api/pull":
             return fragmentedNdjson([{ status: "pulling manifest" }, { status: "success" }])
-          case "/api/chat":
+          case "/daemon/api/chat":
             return fragmentedNdjson([
               { message: { role: "assistant", content: this.options.chatText }, done: false },
               { message: { role: "assistant", content: "" }, done: true, done_reason: "stop" },
@@ -67,12 +66,12 @@ class LoopbackOllama implements AsyncDisposable {
         }
       },
     })
+    this.baseURL = new URL("daemon", this.server.url).href.replace(/\/$/u, "")
   }
 
   public readonly fetch: OllamaFetch = async (url, init): Promise<Response> => {
     this.originalRequests.push(new Request(url, init))
-    const mappedUrl = new URL(new URL(url).pathname, this.server.url)
-    return fetch(new Request(mappedUrl.href, init))
+    return fetch(new Request(url, init))
   }
 
   public async [Symbol.asyncDispose](): Promise<void> {
@@ -99,6 +98,7 @@ async function generate(
     modelId,
     catalog: catalog(authorized),
     fetch: server.fetch,
+    endpoints: parseOllamaEndpoints(server.baseURL),
   })
   const parts = await Array.fromAsync((await model.doStream({ prompt })).stream)
   return parts.flatMap((part) => (part.type === "text-delta" ? [part.delta] : []))
@@ -120,10 +120,13 @@ describe("Ollama real-network generation", () => {
     const text = await generate(server, "local:latest", [])
 
     // Then
-    expect(server.originalRequests.map(({ url }) => url)).toEqual([TAGS_URL, CHAT_URL])
+    expect(server.originalRequests.map(({ url }) => new URL(url).pathname)).toEqual([
+      "/daemon/api/tags",
+      "/daemon/api/chat",
+    ])
     expect(server.networkRequests.map(({ url }) => new URL(url).pathname)).toEqual([
-      "/api/tags",
-      "/api/chat",
+      "/daemon/api/tags",
+      "/daemon/api/chat",
     ])
     expect(text).toEqual(["hello"])
     expectCredentialFree(server.originalRequests)
@@ -139,11 +142,34 @@ describe("Ollama real-network generation", () => {
     const text = await generate(server, "cloud:cloud", ["cloud:cloud"])
 
     // Then
-    expect(server.originalRequests.map(({ url }) => url)).toEqual([TAGS_URL, PULL_URL, CHAT_URL])
+    expect(server.originalRequests.map(({ url }) => new URL(url).pathname)).toEqual([
+      "/daemon/api/tags",
+      "/daemon/api/pull",
+      "/daemon/api/chat",
+    ])
     expect(server.networkRequests.map(({ method }) => method)).toEqual(["GET", "POST", "POST"])
     expect(text).toEqual(["cloud"])
     expectCredentialFree(server.originalRequests)
     expect(server.networkRequests.every(({ hasAuthorization }) => !hasAuthorization)).toBe(true)
     expect(server.networkRequests.every(({ hasCookie }) => !hasCookie)).toBe(true)
+  })
+
+  it("routes the standalone SDK through a prefixed loopback daemon without credentials", async () => {
+    // Given
+    await using server = new LoopbackOllama({ localModels: ["sdk:latest"], chatText: "sdk" })
+    const model = createOllama({ ollamaBaseURL: server.baseURL }).languageModel("sdk:latest")
+
+    // When
+    const parts = await Array.fromAsync((await model.doStream({ prompt })).stream)
+
+    // Then
+    expect(parts.flatMap((part) => (part.type === "text-delta" ? [part.delta] : []))).toEqual([
+      "sdk",
+    ])
+    expect(server.networkRequests.map(({ url }) => new URL(url).pathname)).toEqual([
+      "/daemon/api/tags",
+      "/daemon/api/chat",
+    ])
+    expectCredentialFree(server.originalRequests)
   })
 })
