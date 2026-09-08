@@ -73,15 +73,16 @@ OpenCode는 플러그인 옵션을 두 요소 튜플의 두 번째 항목으로 
 | --- | --- | --- |
 | `providers` | 네 프로바이더 모두 | 등록할 프로바이더 id: `claude`, `cursor`, `command-code`, `ollama`; 명시적 `[]`는 모두 비활성화 |
 | `ollamaBaseURL` | `"http://localhost:11434"` | 신뢰하는 Ollama 데몬의 절대 `http` 또는 `https` base; 경로 prefix를 보존 |
-| `writeBackCredentials` | `false` | Claude OAuth 갱신 후 토큰을 Claude 파일, Keychain(macOS), OpenCode `auth.json`에 기록 |
-| `credentialRefresh.mode` | `"auto"` | `"auto"`는 만료 전에 Claude 토큰을 갱신; `"never"`는 자격 증명 파일의 내용만 보내고 401 이후 그 파일을 다시 읽음 |
-| `credentialRefresh.leadMs` | `60000` | `"auto"`가 만료 얼마 전부터 갱신을 시작할지 |
+| `credentialManagement` | 생략 | 권장 권한 정책: `"connector"`는 어댑터가 갱신과 writeback을 모두 지원할 때 이를 허용하고, `"external"`은 커넥터의 갱신과 writeback을 금지 |
+| `writeBackCredentials` | `false` | **사용 중단 예정:** 한 번의 마이그레이션 주기 동안 단독 사용 시 허용되며, 갱신 후 Claude writeback을 제어 |
+| `credentialRefresh.mode` | `"auto"` | **사용 중단 예정:** 한 번의 마이그레이션 주기 동안 단독 사용 시 허용되며, Claude의 `"auto"` 또는 `"never"` 갱신 동작을 제어 |
+| `credentialRefresh.leadMs` | `60000` | **사용 중단 예정:** 한 번의 마이그레이션 주기 동안 단독 사용 시 허용되며, 사용자 지정 리드 타임에는 여전히 이 레거시 설정이 필요 |
 | `catalogReloadMs` | `300000` | 이 간격으로 카탈로그 스냅샷을 다시 실행; `0`이면 비활성화 |
 | `snapshotTimeoutMs` | `30000` | 프로바이더별 스냅샷 기한 |
 | `health.initialBackoffMs` | `1000` | 스냅샷 실패 후 health backoff |
 | `health.maximumBackoffMs` | `60000` | health backoff 상한 |
 
-writeback은 기본적으로 꺼져 있어, 요청하지 않는 한 이 플러그인은 자격 증명 저장소를 변경하지 않습니다. 명시적으로 켜십시오:
+`credentialManagement: "connector"`는 프로바이더 어댑터가 갱신과 writeback을 모두 지원하는 경우 커넥터에 그 권한을 부여합니다. 현재 이 기능을 지원하는 것은 Claude뿐이며, 만료 `60_000`ms 전 자동 갱신과 writeback 활성화로 매핑됩니다:
 
 ```jsonc
 {
@@ -90,12 +91,32 @@ writeback은 기본적으로 꺼져 있어, 요청하지 않는 한 이 플러�
     [
       "opencode-ext-connector",
       {
-        "writeBackCredentials": true
+        "credentialManagement": "connector"
       }
     ]
   ]
 }
 ```
+
+다른 프로세스가 자격 증명을 관리한다면 외부 권한을 사용하십시오:
+
+```jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    [
+      "opencode-ext-connector",
+      {
+        "credentialManagement": "external"
+      }
+    ]
+  ]
+}
+```
+
+`credentialManagement: "external"`은 커넥터의 갱신과 writeback을 금지합니다. 현재 Claude에서는 갱신 안 함/writeback 안 함으로 매핑되며, 401 이후 외부에서 관리되는 자격 증명을 다시 읽을 수 있습니다. 모든 자격 증명 정책 옵션을 생략하면 Claude는 레거시 기본 동작을 유지합니다. 즉, `60_000`ms 리드 타임으로 자동 갱신하지만 writeback하지 않습니다. `credentialManagement`만 생략한 경우에는 제공된 사용 중단 예정 `credentialRefresh` 또는 `writeBackCredentials` 옵션이 계속 동작을 제어합니다. 두 모드 모두 Cursor direct 생성과 Command Code는 읽기 전용입니다. 정확한 HTTP 401이 출력이나 효과 전에 발생하면 null이 아니며 변경된 자격 증명을 다시 읽고 한 번만 재시도합니다. 이 안전한 다시 읽기는 갱신이나 writeback이 아니므로 두 모드에서 모두 허용되며, Cursor legacy/compatibility 생성은 한 번만 시도합니다. Ollama에는 영향이 없습니다. 이 옵션은 로그인하거나 OAuth를 발급하지 않고, 머신 간 동기화를 수행하지 않으며, 자격 증명이 파일에 저장된다는 의미도 아닙니다.
+
+한 번의 마이그레이션 주기 동안 `writeBackCredentials`와 `credentialRefresh.*`는 `credentialManagement` 없이 사용할 때 계속 허용됩니다. 사용자 지정 `credentialRefresh.leadMs` 값에는 여전히 레거시 설정이 필요합니다. 새 옵션을 레거시 옵션 중 하나와 함께 사용하면 다음 정확한 메시지와 함께 거부됩니다: `` `credentialManagement` cannot be combined with deprecated `credentialRefresh` or `writeBackCredentials` ``.
 
 활성화된 프로바이더는 프로바이더별 인증 규칙이 충족될 때까지 연결되지 않은 상태로 유지됩니다. Claude와 Cursor는 OpenCode 마커 또는 OAuth 레코드와 벤더 세션이 필요하고, Command Code는 OpenCode에 저장된 직접 API 키 또는 기존 CLI 세션/키를 사용할 수 있으며, Ollama는 정확한 세션 마커와 응답하는 설정된 데몬이 필요합니다.
 
@@ -113,15 +134,15 @@ writeback은 기본적으로 꺼져 있어, 요청하지 않는 한 이 플러�
 
 OpenCode는 인스턴스 구성 중에 활성 프로바이더 레지스트리를 만듭니다. 주기적 갱신은 커넥터가 유지하는 카탈로그와 health 상태를 갱신하지만, 새 인증이나 변경된 모델 소속은 정상적인 OpenCode 인스턴스 재생성 후에 표시됩니다. 커넥터는 재생성을 강제하지 않으며 생성된 프로바이더 설정을 기록하지 않습니다. `@opencode-ai/plugin@1.18.18` 패키지는 이 커넥터가 대상으로 하는 플러그인 API이며, OpenCode 런타임 고정이 아닙니다.
 
-writeback이 꺼져 있으면 갱신된 Claude 토큰은 메모리에만 남습니다. 저장된 refresh 토큰이 회전하면 다음 프로세스 시작 때 동작하지 않을 수 있습니다 — 파일까지 갱신하려면 `writeBackCredentials: true`를 설정하십시오.
+모든 자격 증명 정책 옵션을 생략하면 갱신된 Claude 토큰은 메모리에만 남습니다. 저장된 refresh 토큰이 회전하면 다음 프로세스 시작 때 동작하지 않을 수 있습니다. 커넥터가 갱신 내용을 기록할 권한을 가져야 한다면 `credentialManagement: "connector"`를 선택하십시오. `credentialManagement`만 생략한 경우에는 제공된 사용 중단 예정 옵션이 갱신과 writeback을 계속 제어합니다.
 
 ### 여러 머신에서 하나의 Claude 로그인 공유
 
 Anthropic은 갱신할 때마다 refresh 토큰을 회전시키고 이전 토큰을 무효화합니다. 따라서 `~/.claude/.credentials.json` 사본 두 개가 각자 갱신하면 서로를 깨뜨립니다. 파일 복사는 정확히 한 머신만 갱신하고, 나머지 머신이 자기 사본이 만료되기 전에 그 결과를 받을 때만 동작합니다:
 
-- **소유자** (로그인한 곳): `writeBackCredentials: true`와 사본이 만료되기 전에 파일을 배포할 만큼 충분한 리드 타임, 예: `credentialRefresh: { mode: "auto", leadMs: 1800000 }`.
-- **모든 사본**: `credentialRefresh: { mode: "never" }`. 그 머신은 OAuth 엔드포인트에 절대 접속하지 않으며, 요청이 401을 반환하면 파일을 다시 읽고 소유자가 push한 내용으로 한 번 재시도합니다.
-- 소유자의 `~/.claude/.credentials.json`이 바뀔 때마다 각 사본으로 push하십시오(파일 watcher면 충분합니다). OpenCode 자체 `auth.json`은 `anthropic` 레코드만 한 번 있으면 되며, 다른 프로바이더 레코드는 건드리지 마십시오.
+- **갱신 권한 머신** (로그인한 곳): `credentialManagement: "connector"`. 사용자 지정 배포 여유 시간이 필요하면 이번 마이그레이션 주기에는 사용 중단 예정인 레거시 옵션만 사용하십시오. 예: `writeBackCredentials: true`와 `credentialRefresh: { mode: "auto", leadMs: 1800000 }`.
+- **외부 권한 머신**: `credentialManagement: "external"`. OAuth 엔드포인트에 접속하지 않으며, 요청이 401을 반환하면 외부에서 관리되는 자격 증명을 다시 읽고 한 번 재시도합니다.
+- 갱신 권한 머신의 외부 관리 자격 증명 자료가 바뀔 때마다 동기화하십시오. 이 옵션 자체는 머신을 동기화하거나 파일 저장을 요구하지 않습니다. `~/.claude/.credentials.json`을 복사하는 경우 OpenCode 자체 `auth.json`에는 `anthropic` 레코드만 한 번 있으면 되며 다른 프로바이더는 건드리지 마십시오.
 
 대화형으로 사용하는 Claude Code 설치처럼 스스로 갱신하는 머신은 파일을 공유하면 안 됩니다. 그곳에서는 별도로 로그인하십시오.
 
@@ -133,7 +154,7 @@ OpenCode가 컨테이너, VM 또는 다른 샌드박스에서 실행될 때 그 
 
 | 프로바이더 | 호스트 | 게스트 |
 | --- | --- | --- |
-| Claude | Claude Code 로그인을 소유하고 갱신 | Claude 자격 증명 디렉터리를 read-only로 mount하고 `CLAUDE_CONFIG_DIR`을 그 게스트 경로로 설정하며 `credentialRefresh.mode: "never"`를 사용; 호스트 macOS Keychain은 Linux 게스트 안에서 사용할 수 없음; `ANTHROPIC_CLI_VERSION`, 설치된 `claude` 바이너리 또는 npm registry 접근으로 클라이언트 버전 확인 |
+| Claude | Claude Code 로그인을 소유하고 갱신 | Claude 자격 증명 디렉터리를 read-only로 mount하고 `CLAUDE_CONFIG_DIR`을 그 게스트 경로로 설정하며 `credentialManagement: "external"`을 사용; 호스트 macOS Keychain은 Linux 게스트 안에서 사용할 수 없음; `ANTHROPIC_CLI_VERSION`, 설치된 `claude` 바이너리 또는 npm registry 접근으로 클라이언트 버전 확인 |
 | Cursor | Cursor CLI 로그인을 소유 | 자격 증명 파일을 게스트의 `${HOME}/.config/cursor/auth.json`에 read-only로 mount하거나 샌드박스 secret 기능으로 `CURSOR_ACCESS_TOKEN` 주입; 게스트에 Node.js 22 이상 설치 |
 | Command Code | CLI 로그인 또는 API 키를 소유 | `${HOME}/.commandcode/auth.json`을 read-only로 mount하거나 `COMMAND_CODE_API_KEY` 주입; `COMMAND_CODE_CLI_VERSION`, 설치된 `command-code` 바이너리 또는 npm registry 접근으로 클라이언트 버전 확인 |
 | Ollama | 신뢰하는 데몬을 실행하고 Cloud 접근이 필요하면 그곳에서 `ollama signin` 실행 | Ollama 자격 증명을 복사하지 않고 `ollamaBaseURL`로 선택한 데몬에만 연결 |
@@ -163,11 +184,7 @@ COMMAND_CODE_CLI_VERSION=<optional-compatible-version>
       {
         "providers": ["claude", "cursor", "command-code", "ollama"],
         "ollamaBaseURL": "http://host.docker.internal:11434",
-        "writeBackCredentials": false,
-        "credentialRefresh": {
-          "mode": "never",
-          "leadMs": 60000
-        },
+        "credentialManagement": "external",
         "catalogReloadMs": 300000,
         "snapshotTimeoutMs": 30000,
         "health": {
@@ -180,7 +197,7 @@ COMMAND_CODE_CLI_VERSION=<optional-compatible-version>
 }
 ```
 
-`ollamaBaseURL`은 OpenCode 프로바이더 옵션이 아니라 패키지 tuple에 넣는 flat 커넥터 옵션입니다. 위 숫자 값은 커넥터 기본값이고, `credentialRefresh.mode: "never"`와 호스트 데몬 URL은 read-only 호스트 소유 자격 증명을 위한 의도적인 override입니다. `opencode.json`에 벤더 토큰을 넣지 말고 read-only mount 또는 샌드박스 secret 주입 기능을 사용하십시오.
+`ollamaBaseURL`은 OpenCode 프로바이더 옵션이 아니라 패키지 tuple에 넣는 flat 커넥터 옵션입니다. 위 숫자 값은 커넥터 기본값이고, `credentialManagement: "external"`과 호스트 데몬 URL은 read-only 호스트 소유 자격 증명을 위한 의도적인 override입니다. `opencode.json`에 벤더 토큰을 넣지 말고 read-only mount 또는 샌드박스 secret 주입 기능을 사용하십시오.
 
 Docker Desktop에서는 보통 `host.docker.internal`이 호스트로 resolve됩니다. Linux Docker bridge에는 `--add-host=host.docker.internal:host-gateway` 또는 다음 Compose 설정이 추가로 필요할 수 있습니다:
 
@@ -191,7 +208,7 @@ extra_hosts:
 
 Ollama는 보통 호스트 loopback에서 수신합니다. Bridge networking에서는 호스트가 `OLLAMA_HOST=0.0.0.0:11434`로 시작해야 할 수 있으며, 노출된 port를 호스트 firewall과 샌드박스 network policy로 제한하십시오. `OLLAMA_HOST`는 호스트 데몬을 설정하고 `ollamaBaseURL`은 게스트의 이 커넥터를 설정합니다. Host networking을 사용하면 게스트 `localhost`가 호스트에 도달하지만 격리가 약해지므로 명시적으로 선택해야 합니다. 다른 샌드박스 런타임도 이에 해당하는 호스트 route가 필요하며, 활성화한 각 프로바이더로 outbound 접근을 허용해야 합니다. Claude 또는 Command Code가 환경 값이나 설치된 바이너리에서 클라이언트 버전을 확인할 수 없을 때만 `registry.npmjs.org` 접근을 허용하십시오.
 
-대신 게스트가 persistent guest storage에서 자체 벤더 로그인을 소유할 수도 있습니다. 이 모드에서는 호스트 자격 증명을 mount하지 말고 게스트에서 벤더 로그인 flow를 실행하십시오. 게스트가 유일한 Claude 갱신 소유자라면 `credentialRefresh.mode: "auto"`와 `writeBackCredentials: true`를 사용할 수 있습니다. 호스트와 게스트가 같은 Claude refresh token에서 파생된 자격 증명을 각자 갱신하게 해서는 안 됩니다.
+대신 게스트가 persistent guest storage에서 자체 벤더 로그인을 소유할 수도 있습니다. 이 모드에서는 호스트 자격 증명을 mount하지 말고 게스트에서 벤더 로그인 flow를 실행하십시오. 게스트가 유일한 Claude 갱신 소유자라면 `credentialManagement: "connector"`를 사용할 수 있습니다. 호스트와 게스트가 같은 Claude refresh token에서 파생된 자격 증명을 각자 갱신하게 해서는 안 됩니다.
 
 ## 업데이트 및 제거
 
@@ -225,10 +242,10 @@ Ollama `/connect`는 설정된 데몬을 조사하고 정확한 세션 마커를
 
 | 프로바이더 | 하는 일 |
 | --- | --- |
-| **Claude** | 기존 Claude Code 자격 증명을 재사용합니다. OAuth를 발급하지 않습니다. 호환 fetch가 CLI 호환 요청 메타데이터를 보내고, 내장 `anthropic` 경로에서 Anthropic SSE를 스트림합니다. `writeBackCredentials` 기본값은 `false`(메모리 내 갱신만); `true`는 갱신된 토큰을 Claude 파일, macOS Keychain, OpenCode `auth.json`에 기록합니다. |
-| **Cursor** | CLI 액세스 토큰으로 Cursor의 미공개 클라이언트 프로토콜(`api2.cursor.sh` `AgentService`, HTTP/2 위의 Connect+protobuf)을 호출합니다. 플러그인이 소유한 Node 자식 프로세스가 private stdio로 통신하고, 툴 결과를 같은 bidi Run에 유지하며, parked call을 절대 재실행하지 않고, 사용자 대면 데몬을 열지 않으며, 생성에 `cursor-agent`를 절대 spawn하지 않습니다. 비공식이며 공개 Cursor API가 아닙니다. 프로토콜이 어긋난 뒤에는 암시적 fallback이 없습니다 — 해당 프로바이더가 실패합니다. Node.js 22 이상이 필요합니다. 라이브 카탈로그 id가 있으면 그것을 쓰고, 없으면 문서화된 fallback은 `default`입니다. |
-| **Command Code** | CLI 호환 요청 메타데이터와 함께 `/alpha/generate`를 호출하고, 프로바이더 로컬 NDJSON 텍스트와 툴 이벤트를 스트림합니다. 클라이언트 버전은 `COMMAND_CODE_CLI_VERSION`, 설치된 `command-code` 바이너리, 또는 npm registry에서 가져옵니다. 요청 메타데이터에는 Node.js 버전, 플랫폼, 아키텍처, 절대 작업 디렉터리가 포함됩니다. 라이브 카탈로그 id가 있으면 그것을 쓰고, 없으면 문서화된 fallback은 `Qwen/Qwen3.8-Max`입니다. |
-| **Ollama** | `ollamaBaseURL`로 선택한 신뢰된 데몬(기본값 `http://localhost:11434`)의 `/api/tags`, `/api/pull`, `/api/chat`을 사용하며 경로 prefix를 보존합니다. 이미 pull된 모델과, 커넥터 자격 증명 없이 Ollama 공식 Cloud 검색 및 library 페이지에서 익명으로 발견한 정확한 Cloud 태그를 공개합니다. 정확히 중복되는 항목은 로컬이 이깁니다. 불완전한 Cloud 갱신은 마지막 완전한 목록을 유지합니다. 없는 인가된 Cloud 태그를 선택하면 최초 사용 시 lightweight remote reference를 pull합니다. 같은 정규화 base와 태그의 동시 pull은 하나의 in-flight 요청을 공유하며 실패한 pull은 재시도할 수 있습니다. 데몬은 사용자의 Ollama Cloud 구독으로 Cloud 태그 프롬프트를 proxy할 수 있습니다. 커넥터는 Ollama API 키, 사용량 과금 direct Cloud API, `OLLAMA_HOST`, 자격 증명/custom header, cookie, direct Cloud 생성 endpoint를 사용하지 않습니다. |
+| **Claude** | 기존 Claude Code 자격 증명을 재사용합니다. OAuth를 발급하지 않습니다. 호환 fetch가 CLI 호환 요청 메타데이터를 보내고, 내장 `anthropic` 경로에서 Anthropic SSE를 스트림합니다. `credentialManagement: "connector"`는 `60_000`ms 리드 타임의 자동 갱신과 writeback으로, `"external"`은 갱신 안 함/writeback 안 함 및 401 이후 자격 증명 다시 읽기로 매핑됩니다. 모든 자격 증명 정책 옵션을 생략하면 레거시 자동 갱신/`60_000` 동작과 writeback 안 함이 유지되며, `credentialManagement`만 생략하면 제공된 사용 중단 예정 옵션이 계속 동작을 제어합니다. |
+| **Cursor** | CLI 액세스 토큰으로 Cursor의 미공개 클라이언트 프로토콜(`api2.cursor.sh` `AgentService`, HTTP/2 위의 Connect+protobuf)을 호출합니다. 두 자격 증명 관리 모드 모두 자격 증명은 읽기 전용입니다. direct 생성은 정확한 HTTP 401이 출력이나 효과 전에 발생할 때만 null이 아니며 변경된 자격 증명을 다시 읽고 한 번 재시도할 수 있으며, 이는 갱신이나 writeback이 아닙니다. legacy/compatibility 생성은 한 번만 시도합니다. 플러그인이 소유한 Node 자식 프로세스가 private stdio로 통신하고, 툴 결과를 같은 bidi Run에 유지하며, parked call을 절대 재실행하지 않고, 사용자 대면 데몬을 열지 않으며, 생성에 `cursor-agent`를 절대 spawn하지 않습니다. 비공식이며 공개 Cursor API가 아닙니다. 프로토콜이 어긋난 뒤에는 암시적 fallback이 없습니다 — 해당 프로바이더가 실패합니다. Node.js 22 이상이 필요합니다. 라이브 카탈로그 id가 있으면 그것을 쓰고, 없으면 문서화된 fallback은 `default`입니다. |
+| **Command Code** | CLI 호환 요청 메타데이터와 함께 `/alpha/generate`를 호출하고, 프로바이더 로컬 NDJSON 텍스트와 툴 이벤트를 스트림합니다. 두 자격 증명 관리 모드 모두 자격 증명은 읽기 전용입니다. 정확한 HTTP 401이 출력이나 효과 전에 발생하면 null이 아니며 변경된 자격 증명을 다시 읽고 한 번만 재시도할 수 있으며, 이는 갱신이나 writeback이 아닙니다. 클라이언트 버전은 `COMMAND_CODE_CLI_VERSION`, 설치된 `command-code` 바이너리, 또는 npm registry에서 가져옵니다. 요청 메타데이터에는 Node.js 버전, 플랫폼, 아키텍처, 절대 작업 디렉터리가 포함됩니다. 라이브 카탈로그 id가 있으면 그것을 쓰고, 없으면 문서화된 fallback은 `Qwen/Qwen3.8-Max`입니다. |
+| **Ollama** | `credentialManagement`의 영향을 받지 않습니다. `ollamaBaseURL`로 선택한 신뢰된 데몬(기본값 `http://localhost:11434`)의 `/api/tags`, `/api/pull`, `/api/chat`을 사용하며 경로 prefix를 보존합니다. 이미 pull된 모델과, 커넥터 자격 증명 없이 Ollama 공식 Cloud 검색 및 library 페이지에서 익명으로 발견한 정확한 Cloud 태그를 공개합니다. 정확히 중복되는 항목은 로컬이 이깁니다. 불완전한 Cloud 갱신은 마지막 완전한 목록을 유지합니다. 없는 인가된 Cloud 태그를 선택하면 최초 사용 시 lightweight remote reference를 pull합니다. 같은 정규화 base와 태그의 동시 pull은 하나의 in-flight 요청을 공유하며 실패한 pull은 재시도할 수 있습니다. 데몬은 사용자의 Ollama Cloud 구독으로 Cloud 태그 프롬프트를 proxy할 수 있습니다. 커넥터는 Ollama API 키, 사용량 과금 direct Cloud API, `OLLAMA_HOST`, 자격 증명/custom header, cookie, direct Cloud 생성 endpoint를 사용하지 않습니다. |
 
 프로바이더 health는 격리됩니다. 한 프로바이더가 실패해도 나머지는 제거되지 않습니다.
 
@@ -240,8 +257,9 @@ Ollama `/connect`는 설정된 데몬을 조사하고 정확한 세션 마커를
 | --- | --- |
 | `/connect` 메서드가 없음 | `plugin`에 `"opencode-ext-connector"` 또는 정확한 공개 `"opencode-ext-connector@<version>"` spec이 있는지 확인한 뒤 OpenCode를 완전히 재시작하십시오. |
 | 프로바이더가 활성화됐지만 모델이 없음 | `providers`를 생략하면 네 프로바이더가 모두 활성화됩니다. 명시적 목록은 엄격한 allow-list입니다. Claude와 Cursor는 마커 또는 OAuth 레코드와 벤더 세션이 필요하고, Command Code는 OpenCode에 저장된 API 키 또는 CLI 세션/키를 사용할 수 있으며, Ollama는 정확한 마커와 응답하는 설정된 데몬이 필요합니다. `/connect` 후 완전히 재시작해야 인스턴스 재생성이 새 소속을 반영합니다. |
-| Claude가 다음 시작 전까지만 동작함 | 기본 `writeBackCredentials: false`는 갱신된 토큰을 메모리에만 둡니다. 회전된 refresh 토큰은 writeback을 켜지 않으면 다음 프로세스 시작에서 실패합니다. |
-| 복사한 자격 증명 파일에서 Claude가 `invalid_grant`를 보고함 | 같은 로그인의 다른 사본이 이미 갱신해서 refresh 토큰이 회전됐습니다. 한 머신에만 갱신 소유권을 주고 나머지에는 `credentialRefresh: { mode: "never" }`를 설정하거나, 별도로 로그인하십시오. |
+| Claude가 다음 시작 전까지만 동작함 | 모든 자격 증명 정책 옵션을 생략하면 레거시의 메모리 내 갱신과 writeback 안 함이 유지됩니다. 회전된 refresh 토큰은 다음 프로세스 시작에서 실패할 수 있습니다. 커넥터가 갱신하고 기록해야 한다면 `credentialManagement: "connector"`를 사용하십시오. `credentialManagement`만 생략했다면 제공된 사용 중단 예정 갱신/writeback 옵션을 확인하십시오. |
+| 공유 자격 증명에서 Claude가 `invalid_grant`를 보고함 | 같은 로그인을 쓰는 다른 머신이 이미 갱신해서 refresh 토큰이 회전됐습니다. 한 머신에 `credentialManagement: "connector"`로 갱신 권한을 주고 나머지에는 `"external"`을 사용하거나, 별도로 로그인하십시오. |
+| 설정이 자격 증명 옵션을 거부함 | 새 옵션과 레거시 옵션을 함께 사용하지 마십시오. 정확한 오류는 다음과 같습니다: `` `credentialManagement` cannot be combined with deprecated `credentialRefresh` or `writeBackCredentials` ``. 레거시 옵션은 한 번의 마이그레이션 주기 동안 단독으로 계속 허용됩니다. |
 | `Claude Code client version is unavailable` | `ANTHROPIC_CLI_VERSION`도, `claude` 바이너리도 없고 `registry.npmjs.org`에 접근할 수 없었습니다. 변수를 설정하거나 registry 접근을 허용하십시오. |
 | Cursor 생성이 실패함 | Node.js 22 이상이 필요합니다. 생성은 `cursor-agent`가 아니라 private Node 자식 프로세스를 통한 미공개 프로토콜을 사용합니다. 프로토콜이 어긋나면 해당 프로바이더가 실패하며, 암시적 fallback은 없습니다. |
 | Command Code 생성이 실패함 | 클라이언트 버전을 확인할 수 없었습니다: `COMMAND_CODE_CLI_VERSION`을 설정하거나, `command-code`를 설치하거나, `registry.npmjs.org` 접근을 허용하십시오. 요청 메타데이터에는 Node.js 버전, 플랫폼, 아키텍처, 절대 작업 디렉터리가 포함됩니다. |

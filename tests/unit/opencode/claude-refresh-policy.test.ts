@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import type { Provider } from "@opencode-ai/sdk"
-import type { CredentialRefreshPolicy } from "../../../src/core/options"
+import type { ConnectorOptionsInput } from "../../../src/core/options"
 import { createProviderRegistry } from "../../../src/opencode/providers"
 import { buildV1AuthHooks } from "../../../src/opencode/v1-module"
 import { FakeClock } from "../../support/clock"
@@ -42,7 +42,7 @@ async function expiredCredentialsDir(): Promise<string> {
 
 async function fetchThroughAuthHook(
   transport: FakeHttpTransport,
-  credentialRefresh: CredentialRefreshPolicy,
+  connectorOptions: ConnectorOptionsInput,
 ): Promise<void> {
   const entry = createProviderRegistry().find((candidate) => candidate.id === "claude")
   if (entry === undefined) {
@@ -57,7 +57,7 @@ async function fetchThroughAuthHook(
       authStore: { matchAuth: async () => ({ kind: "oauth" }) },
       writeBackCredentials: false,
     },
-    { providers: ["claude"], credentialRefresh },
+    { providers: ["claude"], ...connectorOptions },
   )
   const loader = hooks.auth?.loader
   if (loader === undefined) {
@@ -87,7 +87,7 @@ describe("Claude credential refresh policy", () => {
     })
 
     // When
-    await fetchThroughAuthHook(transport, { mode: "auto", leadMs: 60_000 })
+    await fetchThroughAuthHook(transport, { credentialRefresh: { mode: "auto", leadMs: 60_000 } })
 
     // Then
     expect(transport.requests.map((request) => request.url)).toEqual([
@@ -100,7 +100,18 @@ describe("Claude credential refresh policy", () => {
     const transport = new FakeHttpTransport()
 
     // When
-    await fetchThroughAuthHook(transport, { mode: "never", leadMs: 60_000 })
+    await fetchThroughAuthHook(transport, { credentialRefresh: { mode: "never", leadMs: 60_000 } })
+
+    // Then
+    expect(transport.requests).toEqual([])
+  })
+
+  it("never contacts the OAuth endpoint in external mode", async () => {
+    // Given
+    const transport = new FakeHttpTransport()
+
+    // When
+    await fetchThroughAuthHook(transport, { credentialManagement: "external" })
 
     // Then
     expect(transport.requests).toEqual([])

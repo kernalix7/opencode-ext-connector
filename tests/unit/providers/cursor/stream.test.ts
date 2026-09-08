@@ -3,6 +3,26 @@ import { describe, expect, it } from "bun:test"
 import { createCursorLanguageModel } from "../../../../src/providers/cursor/language-model"
 
 describe("createCursorLanguageModel doStream", () => {
+  it("keeps the legacy NDJSON transport one-shot after an authentication failure", async () => {
+    // Given
+    let attempts = 0
+    const model = createCursorLanguageModel({
+      modelId: "auto",
+      runPrompt: async () => "should not be called",
+      streamNdjson: async function* () {
+        attempts += 1
+        yield await Promise.reject(new TypeError("legacy authentication failed"))
+      },
+    })
+
+    // When
+    const consume = Array.fromAsync((await model.doStream({ prompt: [] })).stream)
+
+    // Then
+    await expect(consume).rejects.toThrow("legacy authentication failed")
+    expect(attempts).toBe(1)
+  })
+
   it("emits stream-start before the first NDJSON line", async () => {
     // Given
     const gate = Promise.withResolvers<void>()

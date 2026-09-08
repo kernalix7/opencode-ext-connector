@@ -7,6 +7,21 @@
   the `opencode-ext-connector/ollama` SDK entry
 - Preserve daemon path prefixes, isolate process state by normalized base URL,
   and reject Cloud hosts, credentials, redirects, and ambiguous URL forms
+- Add the preferred connector-wide `credentialManagement: "connector" |
+  "external"` authority policy, capability-gated by each provider adapter
+- Map Claude `"connector"` to automatic refresh with a `60_000` ms lead and
+  writeback, and `"external"` to never-refresh/no-write with credential re-read
+  after 401; omitting all credential-policy options preserves automatic refresh
+  with a `60_000` ms lead and no writeback, while legacy options still control
+  behavior when supplied without `credentialManagement`
+- Keep Cursor direct generation and Command Code read-only under both modes:
+  on an exact HTTP 401 before output or effects, re-read only a changed,
+  non-null credential and retry once; this is neither refresh nor writeback.
+  Cursor legacy/compatibility generation remains one-shot; leave Ollama
+  unaffected
+- Reject combining `credentialManagement` with `credentialRefresh` or
+  `writeBackCredentials`; accept those legacy options alone as deprecated for
+  one migration cycle, with custom lead times still using the legacy config
 
 ## 0.3.3 - 2026-09-06
 

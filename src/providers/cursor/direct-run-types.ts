@@ -31,6 +31,7 @@ export type CursorDirectRunOptions = {
   ) => CursorDirectSetupCleanup
   readonly idleTimeoutMs: number
   readonly modelId: string
+  readonly reloadAccessToken: (signal: AbortSignal) => Promise<string | null>
   readonly registry: CursorRunSessionRegistry
   readonly signal: AbortSignal
   readonly token: string

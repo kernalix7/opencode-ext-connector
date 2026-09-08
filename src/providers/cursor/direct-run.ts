@@ -5,6 +5,8 @@ import type { CursorBridgeStream } from "./bridge-client.js"
 import type { CursorCheckpointStore } from "./checkpoint-store.js"
 import { createCursorCheckpointStore } from "./checkpoint-store.js"
 import { encodeConnectFrame } from "./connect-frame.js"
+import { createCursorCredentialRetry } from "./credential-retry.js"
+import { failCursorDirectRun, retireCursorSessionForRetry } from "./direct-run-failure.js"
 import type { CursorDirectRunOptions, CursorDirectSetupCleanup } from "./direct-run-types.js"
 import { consumeCursorDirectAttempt, isCursorRetryableStreamError } from "./direct-stream.js"
 import { cursorMcpDefinitions } from "./exec-reply.js"
@@ -101,14 +103,14 @@ function buildRequest(
 async function openAttempt(
   options: CursorDirectRunOptions,
   logical: LogicalRun,
-  mode: "initial" | "checkpoint" | "history",
+  attempt: { readonly mode: "initial" | "checkpoint" | "history"; readonly token: string },
 ): Promise<CursorRunSession> {
-  const request = buildRequest(options, logical, mode)
+  const request = buildRequest(options, logical, attempt.mode)
   let stream: CursorBridgeStream | null = null
   try {
     stream = await options.bridge.open({
       id: options.createId(),
-      accessToken: options.token,
+      accessToken: attempt.token,
       path: CURSOR_RUN_PATH,
       headers: { "content-type": "application/connect+proto", "connect-protocol-version": "1" },
       signal: options.signal,
@@ -146,33 +148,21 @@ async function openAttempt(
   }
 }
 
-async function failRun(
-  logical: LogicalRun,
-  session: CursorRunSession | null,
-  error: unknown,
-): Promise<void> {
-  try {
-    if (session === null) {
-      logical.cleanup.invalidateCheckpoint()
-      logical.cleanup.invalidateSession()
-    } else await session.abort()
-  } catch (cleanupError) {
-    logical.adapter.fail(
-      new AggregateError([error, cleanupError], "Cursor recovery cleanup failed"),
-    )
-    return
-  }
-  logical.adapter.fail(error)
-}
-
 export async function startCursorDirectRun(
   options: CursorDirectRunOptions,
 ): Promise<{ readonly stream: CursorStreamAdapter["stream"] }> {
   const logical = createLogicalRun(options)
   const planner = createCursorRecoveryPlanner()
+  const credential = createCursorCredentialRetry({
+    initialToken: options.token,
+    reloadAccessToken: options.reloadAccessToken,
+  })
   let session: CursorRunSession | null
   try {
-    session = await openAttempt(options, logical, "initial")
+    session = await openAttempt(options, logical, {
+      mode: "initial",
+      token: credential.currentToken(),
+    })
   } catch (error) {
     logical.cleanup.releaseOwnership()
     logical.cleanup.invalidateCheckpoint()
@@ -202,7 +192,31 @@ export async function startCursorDirectRun(
         const idle = watchdog.expired()
         watchdog.dispose()
         if (options.signal.aborted) {
-          await failRun(logical, session, new OperationCancelledError("cursor-direct-stream"))
+          await failCursorDirectRun(
+            logical,
+            session,
+            new OperationCancelledError("cursor-direct-stream"),
+          )
+          return
+        }
+        try {
+          const changed = await credential.reload(
+            error,
+            logical.adapter.replayState(),
+            options.signal,
+          )
+          if (options.signal.aborted) throw new OperationCancelledError("cursor-direct-stream")
+          if (changed) {
+            await retireCursorSessionForRetry(session, error)
+            session = null
+            session = await openAttempt(options, logical, {
+              mode: "initial",
+              token: credential.currentToken(),
+            })
+            continue
+          }
+        } catch (retryError) {
+          await failCursorDirectRun(logical, session, retryError)
           return
         }
         const decision = planner.next({
@@ -214,18 +228,20 @@ export async function startCursorDirectRun(
           try {
             planner.requireRetry(decision, error)
           } catch (recoveryError) {
-            await failRun(logical, session, recoveryError)
+            await failCursorDirectRun(logical, session, recoveryError)
           }
           return
         }
         try {
-          const retireForRetry = session.retireForRetry
-          if (retireForRetry === undefined) throw new TypeError("retry retirement is unavailable")
-          await retireForRetry()
+          await retireCursorSessionForRetry(session, error)
+          session = null
           logical.adapter.suspendForRetry()
-          session = await openAttempt(options, logical, decision.mode)
+          session = await openAttempt(options, logical, {
+            mode: decision.mode,
+            token: credential.currentToken(),
+          })
         } catch (retryError) {
-          await failRun(logical, session, retryError)
+          await failCursorDirectRun(logical, session, retryError)
           return
         }
       }

@@ -4,6 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import type { Provider } from "@opencode-ai/sdk"
+import type { ConnectorOptionsInput } from "../../../src/core/options"
 import { createProviderRegistry } from "../../../src/opencode/providers"
 import { buildV1AuthHooks } from "../../../src/opencode/v1-module"
 import type { ClaudeCredentials } from "../../../src/providers/claude/credentials"
@@ -19,7 +20,25 @@ const anthropicProvider: Provider = {
   models: {},
 }
 
-async function refreshWithWriteback(enabled: boolean): Promise<readonly ClaudeCredentials[]> {
+type RefreshResult = {
+  readonly oauthRequestUrls: readonly string[]
+  readonly writtenCredentials: readonly ClaudeCredentials[]
+}
+
+type CredentialManagementOptions = ConnectorOptionsInput & {
+  readonly credentialManagement: "connector" | "external"
+}
+
+const connectorManagementOptions: CredentialManagementOptions = {
+  credentialManagement: "connector",
+}
+const externalManagementOptions: CredentialManagementOptions = {
+  credentialManagement: "external",
+}
+
+async function refreshWithWriteback(
+  connectorOptions: ConnectorOptionsInput,
+): Promise<RefreshResult> {
   const root = await mkdtemp(join(tmpdir(), "claude-registry-writeback-"))
   const configDir = join(root, "claude")
   await mkdir(configDir, { recursive: true })
@@ -65,7 +84,7 @@ async function refreshWithWriteback(enabled: boolean): Promise<readonly ClaudeCr
         authStore: { matchAuth: async () => ({ kind: "oauth" }) },
         writeBackCredentials: false,
       },
-      { providers: ["claude"], writeBackCredentials: enabled },
+      { providers: ["claude"], ...connectorOptions },
     )
     const loader = hooks.auth?.loader
     if (loader === undefined) {
@@ -85,28 +104,53 @@ async function refreshWithWriteback(enabled: boolean): Promise<readonly ClaudeCr
       throw new Error("expected Claude compatibility fetch")
     }
     await compatibilityFetch("data:application/json,%7B%7D")
-    return written
+    return Object.freeze({
+      oauthRequestUrls: Object.freeze(transport.requests.map((request) => request.url)),
+      writtenCredentials: Object.freeze([...written]),
+    })
   } finally {
     await rm(root, { force: true, recursive: true })
   }
 }
 
 describe("Claude registry writeback", () => {
-  it.each([
-    { enabled: true, expectedWrites: 1 },
-    { enabled: false, expectedWrites: 0 },
-  ])(
-    "writes rotated credentials only when enabled=$enabled",
-    async ({ enabled, expectedWrites }) => {
-      // Given / When
-      const written = await refreshWithWriteback(enabled)
+  it("refreshes and writes credentials for connector management", async () => {
+    // Given / When
+    const result = await refreshWithWriteback(connectorManagementOptions)
 
-      // Then
-      expect(written).toHaveLength(expectedWrites)
-      if (enabled) {
-        expect(written[0]?.accessToken).toBe("rotated-access")
-        expect(written[0]?.refreshToken).toBe("rotated-refresh")
-      }
-    },
-  )
+    // Then
+    expect(result.oauthRequestUrls).toEqual(["https://claude.ai/v1/oauth/token"])
+    expect(result.writtenCredentials).toHaveLength(1)
+    expect(result.writtenCredentials[0]?.accessToken).toBe("rotated-access")
+    expect(result.writtenCredentials[0]?.refreshToken).toBe("rotated-refresh")
+  })
+
+  it("does not refresh or write credentials for external management", async () => {
+    // Given / When
+    const result = await refreshWithWriteback(externalManagementOptions)
+
+    // Then
+    expect(result.oauthRequestUrls).toEqual([])
+    expect(result.writtenCredentials).toHaveLength(0)
+  })
+
+  it("refreshes without writing when credential management is absent", async () => {
+    // Given / When
+    const result = await refreshWithWriteback({})
+
+    // Then
+    expect(result.oauthRequestUrls).toEqual(["https://claude.ai/v1/oauth/token"])
+    expect(result.writtenCredentials).toHaveLength(0)
+  })
+
+  it("preserves legacy writeback behavior", async () => {
+    // Given / When
+    const result = await refreshWithWriteback({ writeBackCredentials: true })
+
+    // Then
+    expect(result.oauthRequestUrls).toEqual(["https://claude.ai/v1/oauth/token"])
+    expect(result.writtenCredentials).toHaveLength(1)
+    expect(result.writtenCredentials[0]?.accessToken).toBe("rotated-access")
+    expect(result.writtenCredentials[0]?.refreshToken).toBe("rotated-refresh")
+  })
 })

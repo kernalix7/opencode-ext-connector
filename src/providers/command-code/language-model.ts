@@ -14,21 +14,17 @@ import type {
 import { AdapterError, OperationCancelledError } from "../../core/errors.js"
 import type { HttpTransport } from "../../core/http.js"
 import { parseProviderId } from "../../core/ids.js"
-import { type HttpBodyStream, openHttpBody } from "../../http/read-body.js"
 import { type CommandCodeVersionResolver, createCommandCodeVersionResolver } from "./cli-version.js"
 import { emitCommandCodeChunks } from "./emit-stream.js"
 import { commandCodeMissingBodyError } from "./errors.js"
+import { openCommandCodeGeneration } from "./open-generation.js"
 import {
   type BuildBodyOptions,
   type BuildHeadersOptions,
   buildBody,
   buildHeaders,
 } from "./request.js"
-import {
-  commandCodeHttpError,
-  createCommandCodeRequestLifecycle,
-  readCommandCodeErrorBody,
-} from "./request-lifecycle.js"
+import { createCommandCodeRequestLifecycle } from "./request-lifecycle.js"
 import { type CommandCodeSessionId, createCommandCodeSessionId } from "./session.js"
 
 export type CommandCodeLanguageModelOptions = {
@@ -48,34 +44,33 @@ type CommandCodeModelRuntime = CommandCodeLanguageModelOptions & {
   readonly readCliVersion: CommandCodeVersionResolver
 }
 
-function buildRequestOptions(
-  options: CommandCodeModelRuntime,
-  call: LanguageModelV3CallOptions,
-  token: string,
-  cliVersion: string,
-): { readonly url: string; readonly headers: Record<string, string>; readonly body: Uint8Array } {
-  const bodyOptions: BuildBodyOptions = {
-    modelId: options.modelId,
-    call,
-    sessionId: options.sessionId,
-  }
+type BuildRequestOptions = {
+  readonly runtime: CommandCodeModelRuntime
+  readonly call: LanguageModelV3CallOptions
+  readonly token: string
+  readonly cliVersion: string
+  readonly bodySnapshot: Uint8Array
+}
+
+function buildRequestOptions(options: BuildRequestOptions) {
+  const { runtime, call, token, cliVersion, bodySnapshot } = options
   const headerOptions: BuildHeadersOptions = {
     token,
     cliVersion,
-    sessionId: options.sessionId,
+    sessionId: runtime.sessionId,
+  }
+  const headers: Record<string, string> = {}
+  for (const source of [buildHeaders(headerOptions), runtime.headers ?? {}, call.headers ?? {}]) {
+    for (const [name, value] of Object.entries(source)) {
+      if (value !== undefined) {
+        headers[name.toLowerCase()] = value
+      }
+    }
   }
   return {
-    url: `${(options.baseURL ?? "https://api.commandcode.ai").replace(/\/+$/, "")}/alpha/generate`,
-    headers: {
-      ...buildHeaders(headerOptions),
-      ...options.headers,
-      ...Object.fromEntries(
-        Object.entries(call.headers ?? {}).filter(
-          (entry): entry is [string, string] => entry[1] !== undefined,
-        ),
-      ),
-    },
-    body: new TextEncoder().encode(JSON.stringify(buildBody(bodyOptions))),
+    url: `${(runtime.baseURL ?? "https://api.commandcode.ai").replace(/\/+$/, "")}/alpha/generate`,
+    headers,
+    body: new Uint8Array(bodySnapshot),
   }
 }
 
@@ -122,35 +117,40 @@ async function streamCommandCode(
       providerId: parseProviderId("command-code"),
     })
   }
-  const requestOptions = buildRequestOptions(options, call, token, cliVersion)
-  let opened: HttpBodyStream
+  const bodyOptions: BuildBodyOptions = {
+    modelId: options.modelId,
+    call,
+    sessionId: options.sessionId,
+  }
+  const bodySnapshot = new TextEncoder().encode(JSON.stringify(buildBody(bodyOptions)))
+  let generation: Awaited<ReturnType<typeof openCommandCodeGeneration>>
   try {
-    opened = await openHttpBody(
-      options.transport,
-      {
-        method: "POST",
-        url: requestOptions.url,
-        headers: requestOptions.headers,
-        body: requestOptions.body,
+    generation = await openCommandCodeGeneration({
+      transport: options.transport,
+      lifecycle,
+      initialToken: token,
+      readAccessToken: options.readAccessToken,
+      createRequest: (accessToken) => {
+        const request = buildRequestOptions({
+          runtime: options,
+          call,
+          token: accessToken,
+          cliVersion,
+          bodySnapshot,
+        })
+        return {
+          method: "POST",
+          url: request.url,
+          headers: request.headers,
+          body: request.body,
+        }
       },
-      lifecycle.signal,
-    )
+    })
   } catch (error) {
     lifecycle.dispose()
     throw error
   }
-  if (opened.status < 200 || opened.status >= 300) {
-    let errorBody: string
-    try {
-      errorBody = await readCommandCodeErrorBody(opened.chunks)
-    } catch (error) {
-      lifecycle.abort()
-      throw error
-    } finally {
-      lifecycle.dispose()
-    }
-    throw commandCodeHttpError(opened.status, errorBody)
-  }
+  const { opened, request } = generation
   if (!opened.bodyPresent) {
     lifecycle.dispose()
     throw commandCodeMissingBodyError(opened.status)
@@ -179,7 +179,7 @@ async function streamCommandCode(
   })
   return {
     stream,
-    request: { body: new TextDecoder().decode(requestOptions.body) },
+    request: { body: request.body === null ? undefined : new TextDecoder().decode(request.body) },
     response: { headers: opened.headers },
   }
 }
