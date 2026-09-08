@@ -1,6 +1,10 @@
 import { describe, expect, it } from "bun:test"
 
-import { listLocalOllamaModels, OllamaCatalogError } from "../../../../src/providers/ollama"
+import {
+  listLocalOllamaModels,
+  OllamaCatalogError,
+  parseOllamaEndpoints,
+} from "../../../../src/providers/ollama"
 import { FakeFetch, jsonResponse } from "./http-fake"
 
 const LOCAL_TAGS_URL = "http://localhost:11434/api/tags"
@@ -39,6 +43,17 @@ describe("listLocalOllamaModels", () => {
     const models = await listLocalOllamaModels(http.fetch, new AbortController().signal)
     // Then
     expect(models).toEqual([])
+  })
+
+  it("uses the configured daemon tags endpoint", async () => {
+    // Given
+    const http = new FakeFetch()
+    const endpoints = parseOllamaEndpoints("https://daemon.example.test/prefix")
+    http.enqueue(endpoints.tagsURL, jsonResponse({ models: [] }))
+    // When
+    await listLocalOllamaModels(http.fetch, new AbortController().signal, endpoints)
+    // Then
+    expect(http.requests[0]?.url).toBe("https://daemon.example.test/prefix/api/tags")
   })
 
   it("prefers model and falls back to name for daemon model IDs", async () => {

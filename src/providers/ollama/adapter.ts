@@ -5,6 +5,7 @@ import { parseProviderId } from "../../core/ids.js"
 import { createAsyncDisposable } from "../../core/lifecycle.js"
 import type { AdapterModel, ProviderSnapshot } from "../../core/models.js"
 import type { OllamaCatalogState } from "./catalog-state.js"
+import { type OllamaEndpoints, parseOllamaEndpoints } from "./endpoints.js"
 import { OllamaCatalogError } from "./errors.js"
 import type { OllamaFetch } from "./http.js"
 import { listLocalOllamaModels } from "./local-catalog.js"
@@ -12,6 +13,7 @@ import { listLocalOllamaModels } from "./local-catalog.js"
 export type OllamaAdapterOptions = {
   readonly fetch: OllamaFetch
   readonly catalog: OllamaCatalogState
+  readonly endpoints?: OllamaEndpoints
 }
 
 function mergeModels(
@@ -36,6 +38,7 @@ function catalogFailure(error: unknown): OllamaCatalogError {
 
 export function createOllamaAdapter(options: OllamaAdapterOptions): ProviderAdapter {
   const providerId = parseProviderId("ollama")
+  const endpoints = options.endpoints ?? parseOllamaEndpoints(undefined)
   const lease = options.catalog.acquire()
   const disposal = createAsyncDisposable(() => lease.dispose())
   let lastMergedModels: readonly AdapterModel[] | null = null
@@ -45,7 +48,7 @@ export function createOllamaAdapter(options: OllamaAdapterOptions): ProviderAdap
       if (signal.aborted) throw new OperationCancelledError("ollama-snapshot")
       let local: readonly AdapterModel[]
       try {
-        local = await listLocalOllamaModels(options.fetch, signal)
+        local = await listLocalOllamaModels(options.fetch, signal, endpoints)
       } catch (error) {
         const failure = catalogFailure(error)
         return lastMergedModels === null

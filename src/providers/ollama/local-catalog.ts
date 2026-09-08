@@ -2,10 +2,10 @@ import { z } from "zod"
 
 import type { AdapterModel } from "../../core/models.js"
 import { parseAdapterModel } from "../../core/models.js"
+import { type OllamaEndpoints, parseOllamaEndpoints } from "./endpoints.js"
 import { OllamaCatalogError } from "./errors.js"
 import { type OllamaFetch, requestOllamaCatalog } from "./http.js"
 
-const LOCAL_TAGS_URL = "http://localhost:11434/api/tags"
 const LocalModelSchema = z
   .object({ model: z.string().optional(), name: z.string().optional() })
   .superRefine((value, context) => {
@@ -24,9 +24,10 @@ const LocalTagsSchema = z.object({ models: z.array(LocalModelSchema) }).readonly
 export async function listLocalOllamaModels(
   fetch: OllamaFetch,
   signal: AbortSignal,
+  endpoints: OllamaEndpoints = parseOllamaEndpoints(undefined),
 ): Promise<readonly AdapterModel[]> {
   const text = await requestOllamaCatalog({
-    url: LOCAL_TAGS_URL,
+    url: endpoints.tagsURL,
     accept: "application/json",
     operation: "local-tags",
     fetch,
