@@ -25,7 +25,7 @@ src/opencode/                  auth store, registry, V1 hooks, catalog/language 
 src/providers/claude/          credentials and compatibility path; see AGENTS.md
 src/providers/command-code/    client version, /alpha/generate, provider-local NDJSON
 src/providers/cursor/          private Node bridge and direct Run runtime; see AGENTS.md
-src/providers/ollama/          localhost daemon and catalog runtime; see AGENTS.md
+src/providers/ollama/          trusted daemon endpoints and catalog runtime; see AGENTS.md
 src/{catalog,http,logging}/    small shared boundary implementations
 src/sdk/                       package subpath entry points
 scripts/                       build, source-policy, and pure-LOC checks
@@ -64,6 +64,8 @@ tests/                         unit/integration/e2e suites and fakes; see AGENTS
 - `credentialRefresh` (`auto` | `never`, `leadMs`) governs Claude token refresh
   so one machine can own refresh while file copies stay read-only.
 - Provider snapshots, health, and failures remain isolated.
+- `ollamaBaseURL` is provider-local, defaults to `http://localhost:11434`, and is
+  projected normalized into Ollama provider options; do not add it to core options.
 
 ## CONVENTIONS
 
@@ -86,6 +88,8 @@ tests/                         unit/integration/e2e suites and fakes; see AGENTS
 - Do not mix provider parsers, credentials, or protocol fallback into core.
 - Do not log credentials or move console calls outside the logging boundary.
 - Do not bypass provider auth/catalog readiness.
+- Do not read `OLLAMA_HOST` or add Ollama credentials, custom headers, redirect
+  following, custom CA handling, or TLS bypass.
 
 ## COMMANDS
 

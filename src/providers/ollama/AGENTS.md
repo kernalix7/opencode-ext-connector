@@ -8,20 +8,25 @@ The daemon remains the only generation endpoint.
 | Concern | Location | Contract |
 |---------|----------|----------|
 | Provider export surface | `index.ts` | Adapter, catalog state, runtime, and language model |
-| Local catalog | `local-catalog.ts` | Fixed localhost `/api/tags` parsing |
+| Daemon endpoints | `endpoints.ts` | Strict normalized trusted base plus `/api/*` routes |
+| Local catalog | `local-catalog.ts` | Configured daemon `/api/tags` parsing |
 | Cloud catalog | `cloud-catalog.ts`, `html-links.ts` | Official search/library HTML only |
 | Catalog lifetime | `catalog-state.ts` | Leases retain complete discovery and authorize pulls |
 | Snapshot merge | `adapter.ts` | Local models win duplicate IDs; retain stale complete data |
 | Local runtime | `runtime.ts` | Authorized `/api/pull`, then `/api/chat` |
 | V3 model | `language-model.ts`, `generate.ts`, `stream.ts` | Prompt mapping and NDJSON output |
 | Protocol boundary | `protocol.ts`, `ndjson.ts`, `errors.ts` | Strict response schemas and typed failures |
-| Fetch boundary | `http.ts` | Fixed endpoint policy and credential omission |
+| Fetch boundary | `http.ts` | Destination-agnostic fetch and credential omission |
 | Tests | `tests/unit/providers/ollama/`, `tests/integration/ollama-loopback.test.ts` | Catalog, pull, stream, and loopback |
 
 ## CONVENTIONS
 
-- Local daemon requests use `http://localhost:11434` and fixed `/api/tags`, `/api/pull`, and
-  `/api/chat` routes with credentials omitted and redirects rejected.
+- Daemon requests use one parsed immutable endpoint set. The default base is
+  `http://localhost:11434`; explicit remote/self-hosted bases preserve path prefixes.
+- Accept only literal absolute HTTP(S) bases. Reject credentials, queries, fragments,
+  direct `/api/*` bases, and `ollama.com` or its subdomains before network I/O.
+- Keep production fetch destination-agnostic; endpoint parsing owns destination policy.
+  Requests omit credentials and reject redirects.
 - Cloud discovery is catalog-only and anonymous. Parse exact Cloud tags from official Ollama
   search/library pages; do not derive arbitrary remote model IDs.
 - A catalog lease owns the last complete Cloud list and its authorized pull IDs. Releasing the
@@ -34,8 +39,9 @@ The daemon remains the only generation endpoint.
 
 ## ANTI-PATTERNS
 
-- Reading an Ollama API key, honoring `OLLAMA_HOST`, or selecting a remote generation host.
-- Calling the usage-billed direct Cloud API; generation always goes through the local daemon.
+- Reading an Ollama API key, honoring `OLLAMA_HOST`, or selecting an implicit generation host.
+- Adding auth/custom headers, cookies, custom CA configuration, or TLS bypass.
+- Calling the usage-billed direct Cloud API; generation always goes through the configured daemon.
 - Sending connector credentials to Cloud discovery or localhost requests.
 - Authorizing a pull from stale text, a caller-supplied ID, or catalog state without a lease.
 - Replacing strict route/schema handling with permissive endpoint or payload fallback.
