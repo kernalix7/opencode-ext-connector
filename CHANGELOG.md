@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Add explicit `ollamaBaseURL` support for trusted remote and self-hosted Ollama
+  daemons across plugin options, `/connect`, provider projection, runtime, and
+  the `opencode-ext-connector/ollama` SDK entry
+- Preserve daemon path prefixes, isolate process state by normalized base URL,
+  and reject Cloud hosts, credentials, redirects, and ambiguous URL forms
+
 ## 0.3.3 - 2026-09-06
 
 - Document official npm package installation through OpenCode's `plugin` field,
