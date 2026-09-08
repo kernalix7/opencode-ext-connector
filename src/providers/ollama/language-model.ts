@@ -6,6 +6,7 @@ import type {
 
 import { OperationCancelledError } from "../../core/errors.js"
 import type { OllamaCatalogState } from "./catalog-state.js"
+import { type OllamaEndpoints, parseOllamaEndpoints } from "./endpoints.js"
 import { generateFromOllamaStream } from "./generate.js"
 import type { OllamaFetch } from "./http.js"
 import { buildOllamaCall } from "./prompt.js"
@@ -17,6 +18,7 @@ export type OllamaLanguageModelOptions = {
   readonly runtime?: OllamaRuntime
   readonly catalog?: OllamaCatalogState
   readonly fetch?: OllamaFetch
+  readonly endpoints?: OllamaEndpoints
 }
 
 function runtimeFromOptions(options: OllamaLanguageModelOptions): OllamaRuntime {
@@ -24,6 +26,7 @@ function runtimeFromOptions(options: OllamaLanguageModelOptions): OllamaRuntime 
   if (options.catalog === undefined) throw new TypeError("Ollama catalog state is required")
   return createOllamaRuntime({
     catalog: options.catalog,
+    endpoints: options.endpoints ?? parseOllamaEndpoints(undefined),
     ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
   })
 }

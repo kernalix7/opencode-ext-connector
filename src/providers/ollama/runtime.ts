@@ -1,14 +1,13 @@
 import { OperationCancelledError } from "../../core/errors.js"
 import type { AdapterModel } from "../../core/models.js"
 import type { OllamaCatalogState } from "./catalog-state.js"
+import { type OllamaEndpoints, parseOllamaEndpoints } from "./endpoints.js"
 import { OllamaGenerationError } from "./errors.js"
 import { type OllamaFetch, productionOllamaFetch } from "./http.js"
 import { listLocalOllamaModels } from "./local-catalog.js"
 import { parseOllamaNdjson } from "./ndjson.js"
 import { type OllamaChatRequest, OllamaPullChunkSchema } from "./protocol.js"
 
-const PULL_URL = "http://localhost:11434/api/pull"
-const CHAT_URL = "http://localhost:11434/api/chat"
 const JSON_HEADERS = {
   accept: "application/x-ndjson",
   "content-type": "application/json",
@@ -16,6 +15,7 @@ const JSON_HEADERS = {
 
 export type OllamaRuntimeOptions = {
   readonly catalog: OllamaCatalogState
+  readonly endpoints?: OllamaEndpoints
   readonly fetch?: OllamaFetch
 }
 
@@ -63,6 +63,7 @@ type PullFlight = {
 
 export function createOllamaRuntime(options: OllamaRuntimeOptions): OllamaRuntime {
   const fetch = options.fetch ?? productionOllamaFetch
+  const endpoints = options.endpoints ?? parseOllamaEndpoints(undefined)
   const pulls = new Map<string, PullFlight>()
   const pull = (modelId: string): PullFlight => {
     const existing = pulls.get(modelId)
@@ -71,7 +72,7 @@ export function createOllamaRuntime(options: OllamaRuntimeOptions): OllamaRuntim
     const promise = (async (): Promise<void> => {
       const response = await post(
         fetch,
-        PULL_URL,
+        endpoints.pullURL,
         { model: modelId, stream: true },
         controller.signal,
         "pull",
@@ -133,7 +134,7 @@ export function createOllamaRuntime(options: OllamaRuntimeOptions): OllamaRuntim
     openChat: async (request, signal) => {
       let local: readonly AdapterModel[]
       try {
-        local = await listLocalOllamaModels(fetch, signal)
+        local = await listLocalOllamaModels(fetch, signal, endpoints)
       } catch (error) {
         if (error instanceof OperationCancelledError) throw error
         throw new OllamaGenerationError("tags")
@@ -144,7 +145,7 @@ export function createOllamaRuntime(options: OllamaRuntimeOptions): OllamaRuntim
         }
         await waitForPull(request.model, pull(request.model), signal)
       }
-      return post(fetch, CHAT_URL, request, signal, "chat")
+      return post(fetch, endpoints.chatURL, request, signal, "chat")
     },
   }
 }

@@ -2,7 +2,11 @@ import { describe, expect, it } from "bun:test"
 import type { LanguageModelV3Prompt } from "@ai-sdk/provider"
 
 import type { OllamaCatalogState } from "../../../../src/providers/ollama"
-import { createOllamaLanguageModel, type OllamaFetch } from "../../../../src/providers/ollama"
+import {
+  createOllamaLanguageModel,
+  type OllamaFetch,
+  parseOllamaEndpoints,
+} from "../../../../src/providers/ollama"
 import { FakeFetch, jsonResponse } from "./http-fake"
 
 const TAGS_URL = "http://localhost:11434/api/tags"
@@ -22,6 +26,29 @@ function ndjson(value: unknown): Response {
 }
 
 describe("Ollama pull coordination", () => {
+  it("uses one configured endpoint set for tags, pull, and chat", async () => {
+    // Given
+    const http = new FakeFetch()
+    const endpoints = parseOllamaEndpoints("https://daemon.example.test/prefix")
+    http.enqueue(endpoints.tagsURL, jsonResponse({ models: [] }))
+    http.enqueue(endpoints.pullURL, ndjson({ status: "success" }))
+    http.enqueue(endpoints.chatURL, ndjson({ message: { content: "ok" }, done: true }))
+    const model = createOllamaLanguageModel({
+      modelId: "m:cloud",
+      catalog,
+      fetch: http.fetch,
+      endpoints,
+    })
+    // When
+    await model.doStream({ prompt })
+    // Then
+    expect(http.requests.map(({ url }) => url)).toEqual([
+      endpoints.tagsURL,
+      endpoints.pullURL,
+      endpoints.chatURL,
+    ])
+  })
+
   it("shares one pull across concurrent callers for the same absent cloud model", async () => {
     // Given
     const http = new FakeFetch()
