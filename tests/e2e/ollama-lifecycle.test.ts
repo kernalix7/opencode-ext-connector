@@ -52,6 +52,7 @@ function expectHermeticEnvironment(env: Readonly<Record<string, string>>, home: 
 async function withOpenCode(
   providers: readonly string[],
   run: (url: string) => Promise<void>,
+  ollamaBaseURL?: string,
 ): Promise<void> {
   const directory = await mkdtemp(join(tmpdir(), "opencode-ollama-lifecycle-"))
   const home = join(directory, "home")
@@ -59,7 +60,11 @@ async function withOpenCode(
   const plugin = pathToFileURL(join(getTestPackageDist(), "index.js")).href
   await writeFile(
     join(directory, "opencode.json"),
-    JSON.stringify({ autoupdate: false, plugin: [[plugin, { providers }]], share: "disabled" }),
+    JSON.stringify({
+      autoupdate: false,
+      plugin: [[plugin, { providers, ...(ollamaBaseURL === undefined ? {} : { ollamaBaseURL }) }]],
+      share: "disabled",
+    }),
     "utf8",
   )
   const env = isolatedEnvironment(home)
@@ -83,16 +88,20 @@ describe("Ollama package and disconnected OpenCode lifecycle", () => {
     const providers = ["ollama"]
 
     // When
-    await withOpenCode(providers, async (url) => {
-      const client = createOpencodeClient({ baseUrl: url })
-      const auth = await client.provider.auth()
-      const catalog = await client.provider.list()
+    await withOpenCode(
+      providers,
+      async (url) => {
+        const client = createOpencodeClient({ baseUrl: url })
+        const auth = await client.provider.auth()
+        const catalog = await client.provider.list()
 
-      // Then
-      expect(Object.keys(auth.data ?? {})).toContain("ollama")
-      expect(catalog.data?.connected).not.toContain("ollama")
-      expect(catalog.data?.all.find(({ id }) => id === "ollama")).toBeUndefined()
-    })
+        // Then
+        expect(Object.keys(auth.data ?? {})).toContain("ollama")
+        expect(catalog.data?.connected).not.toContain("ollama")
+        expect(catalog.data?.all.find(({ id }) => id === "ollama")).toBeUndefined()
+      },
+      "https://daemon.example.test/prefix",
+    )
   }, 20_000)
 
   it("omits the Ollama auth hook and catalog when providers is explicitly empty", async () => {
@@ -112,11 +121,31 @@ describe("Ollama package and disconnected OpenCode lifecycle", () => {
     })
   }, 20_000)
 
+  it("starts without Ollama when an excluded daemon base is malformed", async () => {
+    // Given
+    const providers: readonly string[] = []
+
+    // When
+    await withOpenCode(
+      providers,
+      async (url) => {
+        const client = createOpencodeClient({ baseUrl: url })
+        const auth = await client.provider.auth()
+        const catalog = await client.provider.list()
+
+        // Then
+        expect(Object.keys(auth.data ?? {})).not.toContain("ollama")
+        expect(catalog.data?.all.find(({ id }) => id === "ollama")).toBeUndefined()
+      },
+      "https://ollama.com",
+    )
+  }, 20_000)
+
   it("resolves the built Ollama package export and constructs its SDK model", async () => {
     // Given
     const script = `
       import { createOllama } from "opencode-ext-connector/ollama"
-      const model = createOllama().languageModel("fixture:latest")
+       const model = createOllama({ ollamaBaseURL: "https://daemon.example.test/prefix" }).languageModel("fixture:latest")
       if (model.provider !== "ollama" || model.modelId !== "fixture:latest") process.exit(2)
     `
 
