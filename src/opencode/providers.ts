@@ -11,9 +11,10 @@ import { readCursorAccessToken } from "../providers/cursor/auth.js"
 import { listCursorUsableModels } from "../providers/cursor/models.js"
 import { createOllamaAdapter } from "../providers/ollama/adapter.js"
 import type { OllamaCatalogState } from "../providers/ollama/catalog-state.js"
+import type { OllamaEndpoints } from "../providers/ollama/endpoints.js"
 import { type OllamaFetch, productionOllamaFetch } from "../providers/ollama/http.js"
 import { probeLocalOllama } from "./ollama-probe.js"
-import { productionOllamaCatalog } from "./ollama-production.js"
+import { getProductionOllamaBundle } from "./ollama-production.js"
 import type { ProviderEntry, ProviderEntryDeps } from "./provider-entry.js"
 import { createAnthropicCliAuth } from "./v1-anthropic-auth.js"
 import {
@@ -34,6 +35,7 @@ export type ProviderRegistryOptions = {
   readonly ollama?: {
     readonly fetch: OllamaFetch
     readonly catalog: OllamaCatalogState
+    readonly endpoints?: OllamaEndpoints
   }
 }
 
@@ -80,9 +82,15 @@ export function createProviderRegistry(
   options: ProviderRegistryOptions = {},
 ): readonly ProviderEntry[] {
   const writeClaudeCredentials = options.writeClaudeCredentials
-  const ollama = options.ollama ?? {
+  const productionOllama = getProductionOllamaBundle()
+  const configuredOllama = options.ollama ?? {
     fetch: productionOllamaFetch,
-    catalog: productionOllamaCatalog,
+    catalog: productionOllama.catalog,
+    endpoints: productionOllama.endpoints,
+  }
+  const ollama = {
+    ...configuredOllama,
+    endpoints: configuredOllama.endpoints ?? productionOllama.endpoints,
   }
   return [
     {
@@ -169,11 +177,12 @@ export function createProviderRegistry(
       displayName: "Ollama",
       integrationId: "ollama",
       integrationMethod: { type: "env", names: ["OLLAMA_EXT_CONNECTOR_ENABLED"] },
+      providerOptions: Object.freeze({ ollamaBaseURL: ollama.endpoints.baseURL }),
       createAdapter: () => createOllamaAdapter(ollama),
-      createAuthHook: () => createOllamaSessionAuth(ollama.fetch),
+      createAuthHook: () => createOllamaSessionAuth(ollama.fetch, ollama.endpoints),
       isConnected: async (deps) => {
         if ((await deps.authStore.matchAuth("ollama")) === null) return false
-        return probeLocalOllama(ollama.fetch)
+        return probeLocalOllama(ollama.fetch, ollama.endpoints)
       },
     },
   ]
