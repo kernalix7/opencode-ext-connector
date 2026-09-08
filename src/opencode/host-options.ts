@@ -63,3 +63,9 @@ export function pickConnectorOptionsInput(input: unknown): ConnectorOptionsInput
     health: "health" in input ? pickHealth(input.health) : undefined,
   }
 }
+
+export function pickOllamaBaseURL(input: unknown): unknown {
+  return typeof input === "object" && input !== null && "ollamaBaseURL" in input
+    ? input.ollamaBaseURL
+    : undefined
+}
