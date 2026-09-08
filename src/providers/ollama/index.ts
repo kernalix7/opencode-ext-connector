@@ -7,6 +7,11 @@ export {
 } from "./catalog-state.js"
 export { discoverOllamaCloudModels } from "./cloud-catalog.js"
 export {
+  DEFAULT_OLLAMA_BASE_URL,
+  type OllamaEndpoints,
+  parseOllamaEndpoints,
+} from "./endpoints.js"
+export {
   OllamaCatalogError,
   type OllamaCatalogErrorKind,
   OllamaGenerationError,
