@@ -8,11 +8,13 @@ import { parseConnectorOptions } from "./core/options.js"
 import { createFetchHttpTransport } from "./http/fetch-transport.js"
 import { createConsoleLogger } from "./logging/logger.js"
 import { createOpenCodeAuthStore } from "./opencode/auth-store.js"
-import { pickConnectorOptionsInput } from "./opencode/host-options.js"
+import { pickConnectorOptionsInput, pickOllamaBaseURL } from "./opencode/host-options.js"
+import { getProductionOllamaBundle } from "./opencode/ollama-production.js"
 import { createProviderRegistry, selectConfiguredProviders } from "./opencode/providers.js"
 import { disposeV1LanguageRuntime } from "./opencode/v1-language.js"
-import { createV1AuthServer, createV1Server } from "./opencode/v1-module.js"
+import { buildV1AuthHooks, createV1AuthServer, createV1Server } from "./opencode/v1-module.js"
 import { writeClaudeCredentials } from "./providers/claude/writeback.js"
+import { productionOllamaFetch } from "./providers/ollama/http.js"
 
 const env = process.env
 const transport = createFetchHttpTransport()
@@ -51,7 +53,24 @@ const providerDeps = {
 
 export const connectorServer: V1Plugin = async (input, options): Promise<Hooks> => {
   const connectorOptions = parseConnectorOptions(pickConnectorOptionsInput(options))
-  const providers = selectConfiguredProviders(registry, connectorOptions.providers)
+  const ollama = connectorOptions.providers.includes("ollama")
+    ? getProductionOllamaBundle(pickOllamaBaseURL(options))
+    : undefined
+  const providers = selectConfiguredProviders(
+    createProviderRegistry({
+      writeClaudeCredentials,
+      ...(ollama === undefined
+        ? {}
+        : {
+            ollama: {
+              fetch: productionOllamaFetch,
+              catalog: ollama.catalog,
+              endpoints: ollama.endpoints,
+            },
+          }),
+    }),
+    connectorOptions.providers,
+  )
   const hooks = await createV1Server({
     clock,
     transport,
@@ -81,7 +100,6 @@ export const connectorServer: V1Plugin = async (input, options): Promise<Hooks> 
 const claudeEntry = registry.find((entry) => entry.id === "claude")
 const cursorEntry = registry.find((entry) => entry.id === "cursor")
 const commandCodeEntry = registry.find((entry) => entry.id === "command-code")
-const ollamaEntry = registry.find((entry) => entry.id === "ollama")
 
 export const claudeAuthServer: V1Plugin =
   claudeEntry === undefined
@@ -98,10 +116,19 @@ export const commandCodeAuthServer: V1Plugin =
     ? async (): Promise<Hooks> => ({})
     : createV1AuthServer(commandCodeEntry, providerDeps)
 
-export const ollamaAuthServer: V1Plugin =
-  ollamaEntry === undefined
-    ? async (): Promise<Hooks> => ({})
-    : createV1AuthServer(ollamaEntry, providerDeps)
+export const ollamaAuthServer: V1Plugin = async (_input, options): Promise<Hooks> => {
+  const connectorOptions = parseConnectorOptions(pickConnectorOptionsInput(options))
+  if (!connectorOptions.providers.includes("ollama")) return {}
+  const ollama = getProductionOllamaBundle(pickOllamaBaseURL(options))
+  const entry = createProviderRegistry({
+    ollama: {
+      fetch: productionOllamaFetch,
+      catalog: ollama.catalog,
+      endpoints: ollama.endpoints,
+    },
+  }).find((candidate) => candidate.id === "ollama")
+  return entry === undefined ? {} : buildV1AuthHooks(entry, providerDeps, options)
+}
 
 export type ConnectorPluginModule = {
   readonly id: "opencode-ext-connector"

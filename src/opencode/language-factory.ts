@@ -14,7 +14,7 @@ export type ConnectorLanguageDeps = {
   readonly transport: HttpTransport
   readonly readClaudeToken: (signal: AbortSignal) => Promise<string | null>
   readonly cursorRuntime: CursorDirectRuntime
-  readonly ollamaRuntime: OllamaRuntime
+  readonly ollamaRuntime?: OllamaRuntime
   readonly commandCodeApiKey?: string
 }
 
@@ -48,6 +48,9 @@ export function createConnectorLanguage(
       })
     }
     if (providerID === "ollama") {
+      if (deps.ollamaRuntime === undefined) {
+        return null
+      }
       return createOllamaLanguageModel({ modelId, runtime: deps.ollamaRuntime })
     }
     return null

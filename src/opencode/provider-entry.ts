@@ -22,6 +22,7 @@ export type ProviderEntry = {
   readonly integrationId: string
   readonly integrationMethod: IntegrationEnvMethod
   readonly fallbackModelIds?: readonly string[]
+  readonly providerOptions?: Readonly<Record<string, unknown>>
   readonly createAdapter: (deps: ProviderEntryDeps) => ProviderAdapter
   readonly createAuthHook: (deps: ProviderEntryDeps) => AuthHook
   readonly isConnected: (deps: ProviderEntryDeps) => Promise<boolean>

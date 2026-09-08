@@ -1,16 +1,34 @@
 import { describe, expect, it } from "bun:test"
 
 import { createOllamaSessionAuth } from "../../../src/opencode/v1-session-auth"
+import { parseOllamaEndpoints } from "../../../src/providers/ollama"
 import { FakeFetch, jsonResponse } from "../providers/ollama/http-fake"
 
 const LOCAL_URL = "http://localhost:11434/api/tags"
 
 describe("Ollama session auth", () => {
-  it("tells the user to start the daemon without claiming a missing login", async () => {
+  it("probes the configured daemon endpoint during authorization and callback", async () => {
     // Given
     const http = new FakeFetch()
-    http.enqueue(LOCAL_URL, jsonResponse({}, 503))
-    const method = createOllamaSessionAuth(http.fetch).methods[0]
+    const endpoints = parseOllamaEndpoints("https://daemon.example.test/prefix")
+    http.enqueue(endpoints.tagsURL, jsonResponse({ models: [] }))
+    http.enqueue(endpoints.tagsURL, jsonResponse({ models: [] }))
+    const method = createOllamaSessionAuth(http.fetch, endpoints).methods[0]
+    if (method?.authorize === undefined) throw new Error("Ollama authorization method is missing")
+    const authorization = await method.authorize({})
+    if (!("callback" in authorization)) throw new Error("Ollama callback is missing")
+    // When
+    await authorization.callback("")
+    // Then
+    expect(http.requests.map(({ url }) => url)).toEqual([endpoints.tagsURL, endpoints.tagsURL])
+  })
+
+  it("describes an unavailable configured daemon without claiming a missing login", async () => {
+    // Given
+    const http = new FakeFetch()
+    const endpoints = parseOllamaEndpoints("https://daemon.example.test/prefix")
+    http.enqueue(endpoints.tagsURL, jsonResponse({}, 503))
+    const method = createOllamaSessionAuth(http.fetch, endpoints).methods[0]
     if (method?.authorize === undefined) throw new Error("Ollama authorization method is missing")
 
     // When
@@ -18,7 +36,8 @@ describe("Ollama session auth", () => {
     if (!("instructions" in authorization)) throw new Error("Ollama instructions are missing")
 
     // Then
-    expect(authorization.instructions).toContain("Start the local Ollama daemon")
+    expect(method.label).toBe("Ollama daemon")
+    expect(authorization.instructions).toContain("configured Ollama daemon")
     expect(authorization.instructions).not.toContain("logged-in")
     expect(authorization.instructions).not.toContain("vendor CLI")
   })
@@ -26,8 +45,9 @@ describe("Ollama session auth", () => {
   it("explains daemon reuse and leaves cloud sign-in to Ollama", async () => {
     // Given
     const http = new FakeFetch()
-    http.enqueue(LOCAL_URL, jsonResponse({ models: [] }))
-    const method = createOllamaSessionAuth(http.fetch).methods[0]
+    const endpoints = parseOllamaEndpoints("https://daemon.example.test/prefix")
+    http.enqueue(endpoints.tagsURL, jsonResponse({ models: [] }))
+    const method = createOllamaSessionAuth(http.fetch, endpoints).methods[0]
     if (method?.authorize === undefined) throw new Error("Ollama authorization method is missing")
 
     // When
@@ -35,7 +55,8 @@ describe("Ollama session auth", () => {
     if (!("instructions" in authorization)) throw new Error("Ollama instructions are missing")
 
     // Then
-    expect(authorization.instructions).toContain("reuse the running local Ollama daemon")
+    expect(method.label).toBe("Ollama daemon")
+    expect(authorization.instructions).toContain("configured Ollama daemon")
     expect(authorization.instructions).toContain("ollama signin")
     expect(authorization.instructions).toContain("plugin does not run sign-in")
   })

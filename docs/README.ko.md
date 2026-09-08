@@ -2,7 +2,7 @@
 
 # OpenCode External Provider Connector
 
-**Claude, Cursor, Command Code, Ollama를 위한 OpenCode 플러그인 설정 하나 — 기존 벤더 세션과 로컬 Ollama 데몬을 사용합니다. 새 OAuth 없음.**
+**Claude, Cursor, Command Code, Ollama를 위한 OpenCode 플러그인 설정 하나 — 기존 벤더 세션과 신뢰하는 Ollama 데몬을 사용합니다. 새 OAuth 없음.**
 
 <p>
   <img src="https://img.shields.io/badge/Bun-%3E%3D1.3.14-000000?style=for-the-badge" alt="Bun >=1.3.14" />
@@ -13,7 +13,7 @@
 
 [English](../README.md) · **한국어** · [문서](#문서)
 
-[상태](#상태) · [요구 사항](#요구-사항) · [빠른 설치](#빠른-설치) · [설정](#설정) · [업데이트 및 제거](#업데이트-및-제거) · [최초 연결](#최초-연결) · [프로바이더](#프로바이더) · [문제 해결](#문제-해결) · [문서](#문서) · [테스트](#테스트) · [라이선스 및 면책 조항](#라이선스-및-면책-조항)
+[상태](#상태) · [요구 사항](#요구-사항) · [빠른 설치](#빠른-설치) · [설정](#설정) · [호스트/게스트 샌드박스 설정](#호스트게스트-샌드박스-설정) · [업데이트 및 제거](#업데이트-및-제거) · [최초 연결](#최초-연결) · [프로바이더](#프로바이더) · [문제 해결](#문제-해결) · [문서](#문서) · [테스트](#테스트) · [라이선스 및 면책 조항](#라이선스-및-면책-조항)
 
 </div>
 
@@ -21,7 +21,7 @@
 
 > 독립적인 비공식 커뮤니티 플러그인, 버전 **0.3.3**. CI에 설치된 OpenCode CLI를 대상으로 legacy multi-function 로더를 패키지 E2E 테스트로 검증합니다. `@opencode-ai/plugin@1.18.18`은 컴파일 시 사용하는 플러그인 API 대상이며 OpenCode 런타임 버전 고정이 아닙니다. 소스는 BSD-3-Clause입니다. 이 프로젝트는 OpenCode 또는 어떤 프로바이더와도 제휴, 보증, 후원, 승인 관계가 없습니다. 전체 조건은 [라이선스 및 면책 조항](#라이선스-및-면책-조항)에 있습니다.
 
-이미 가지고 있는 Claude, Cursor, Command Code, Ollama 세션을 재사용합니다. `opencode.json` 플러그인 항목 하나가 라이브 카탈로그를 OpenCode에 공개합니다. Claude와 Cursor는 OpenCode에 마커 또는 OAuth 레코드가 있고 벤더 세션이 있을 때까지 연결되지 않은 상태로 유지됩니다. Command Code는 OpenCode에 저장된 직접 API 키 또는 기존 CLI 세션/키를 사용할 수 있습니다. Ollama는 정확한 세션 마커와 응답하는 localhost 데몬이 필요합니다.
+이미 가지고 있는 Claude, Cursor, Command Code, Ollama 세션을 재사용합니다. `opencode.json` 플러그인 항목 하나가 라이브 카탈로그를 OpenCode에 공개합니다. Claude와 Cursor는 OpenCode에 마커 또는 OAuth 레코드가 있고 벤더 세션이 있을 때까지 연결되지 않은 상태로 유지됩니다. Command Code는 OpenCode에 저장된 직접 API 키 또는 기존 CLI 세션/키를 사용할 수 있습니다. Ollama는 정확한 세션 마커와 응답하는 신뢰된 데몬이 필요합니다.
 
 ## 요구 사항
 
@@ -33,7 +33,7 @@
 | Claude | 기존 Claude Code 자격 증명 (`~/.claude/.credentials.json` 및/또는 macOS Keychain). `claude` 바이너리는 선택 사항입니다. |
 | Cursor | 기존 Cursor CLI 로그인 (`~/.config/cursor/auth.json` 또는 `CURSOR_ACCESS_TOKEN`) |
 | Command Code | 기존 API 키 (`COMMAND_CODE_API_KEY` 또는 `~/.commandcode/auth.json`). `command-code` 바이너리는 선택 사항입니다. |
-| Ollama | `localhost:11434`에서 실행 중인 설치된 로컬 데몬; 그 프로세스를 신뢰할 것; Cloud는 별도로 `ollama signin` 실행 |
+| Ollama | 신뢰하는 데몬; 기본값은 `http://localhost:11434`이며 명시적인 원격/self-hosted URL도 지원; Cloud는 별도로 `ollama signin` 실행 |
 
 OpenCode가 실행되는 곳에 벤더 CLI를 설치할 필요가 없습니다. Claude와 Command Code 요청에는 클라이언트 버전이 포함되는데, 커넥터는 `ANTHROPIC_CLI_VERSION` / `COMMAND_CODE_CLI_VERSION`이 설정되어 있으면 그 값을, 아니면 설치된 `claude` / `command-code` 바이너리를, 그것도 없으면 npm registry에 공개된 최신 버전(`@anthropic-ai/claude-code`, `command-code`)을 사용합니다. 패키지에 고정된 버전은 없습니다.
 
@@ -72,6 +72,7 @@ OpenCode는 플러그인 옵션을 두 요소 튜플의 두 번째 항목으로 
 | 옵션 | 기본값 | 의미 |
 | --- | --- | --- |
 | `providers` | 네 프로바이더 모두 | 등록할 프로바이더 id: `claude`, `cursor`, `command-code`, `ollama`; 명시적 `[]`는 모두 비활성화 |
+| `ollamaBaseURL` | `"http://localhost:11434"` | 신뢰하는 Ollama 데몬의 절대 `http` 또는 `https` base; 경로 prefix를 보존 |
 | `writeBackCredentials` | `false` | Claude OAuth 갱신 후 토큰을 Claude 파일, Keychain(macOS), OpenCode `auth.json`에 기록 |
 | `credentialRefresh.mode` | `"auto"` | `"auto"`는 만료 전에 Claude 토큰을 갱신; `"never"`는 자격 증명 파일의 내용만 보내고 401 이후 그 파일을 다시 읽음 |
 | `credentialRefresh.leadMs` | `60000` | `"auto"`가 만료 얼마 전부터 갱신을 시작할지 |
@@ -96,7 +97,17 @@ writeback은 기본적으로 꺼져 있어, 요청하지 않는 한 이 플러�
 }
 ```
 
-활성화된 프로바이더는 프로바이더별 인증 규칙이 충족될 때까지 연결되지 않은 상태로 유지됩니다. Claude와 Cursor는 OpenCode 마커 또는 OAuth 레코드와 벤더 세션이 필요하고, Command Code는 OpenCode에 저장된 직접 API 키 또는 기존 CLI 세션/키를 사용할 수 있으며, Ollama는 정확한 세션 마커와 응답하는 localhost 데몬이 필요합니다.
+활성화된 프로바이더는 프로바이더별 인증 규칙이 충족될 때까지 연결되지 않은 상태로 유지됩니다. Claude와 Cursor는 OpenCode 마커 또는 OAuth 레코드와 벤더 세션이 필요하고, Command Code는 OpenCode에 저장된 직접 API 키 또는 기존 CLI 세션/키를 사용할 수 있으며, Ollama는 정확한 세션 마커와 응답하는 설정된 데몬이 필요합니다.
+
+명시적으로 선택한 원격 또는 self-hosted 데몬을 사용하려면 패키지 항목에 같은 flat 옵션을 설정하십시오:
+
+```jsonc
+{
+  "plugin": [["opencode-ext-connector", { "ollamaBaseURL": "https://ollama.example.test/team" }]]
+}
+```
+
+커넥터는 이 base에 `/api/tags`, `/api/pull`, `/api/chat`을 붙입니다. 자격 증명, query, fragment, 직접 API route base, `ollama.com` host를 거부합니다. `OLLAMA_HOST`를 읽지 않고 cookie나 authorization header를 보내지 않으며 redirect를 따르지 않고 custom CA나 TLS 검증 우회를 지원하지 않습니다. Ollama 데몬에는 내장 인증이 없으므로 신뢰하는 데몬과 네트워크 경로만 사용하고, HTTPS 종료와 접근 정책은 커넥터 외부에서 적용하십시오. 정규화된 base가 다르면 catalog lease와 pull flight가 격리되고, 같은 base는 프로세스 내 상태를 공유합니다.
 
 커넥터는 항상 초기 카탈로그 갱신을 한 번 수행합니다. `snapshotTimeoutMs`는 각 프로바이더 스냅샷에 적용되고, `catalogReloadMs: 0`은 주기적 갱신만 비활성화합니다. 주기적 갱신은 fixed-delay이며 single-flight입니다. 다음 지연은 현재 갱신이 끝난 뒤에 시작됩니다. health backoff는 반복 실패를 억제합니다. 일시적 실패는 마지막으로 알려진 카탈로그를 유지하고, 명시적인 unavailable 스냅샷은 커넥터가 소유한 프로바이더 데이터만 제거합니다.
 
@@ -113,6 +124,74 @@ Anthropic은 갱신할 때마다 refresh 토큰을 회전시키고 이전 토큰
 - 소유자의 `~/.claude/.credentials.json`이 바뀔 때마다 각 사본으로 push하십시오(파일 watcher면 충분합니다). OpenCode 자체 `auth.json`은 `anthropic` 레코드만 한 번 있으면 되며, 다른 프로바이더 레코드는 건드리지 마십시오.
 
 대화형으로 사용하는 Claude Code 설치처럼 스스로 갱신하는 머신은 파일을 공유하면 안 됩니다. 그곳에서는 별도로 로그인하십시오.
+
+## 호스트/게스트 샌드박스 설정
+
+OpenCode가 컨테이너, VM 또는 다른 샌드박스에서 실행될 때 그 런타임을 **게스트**, 벤더 로그인과 Ollama 데몬을 소유한 머신을 **호스트**로 봅니다. 게스트에는 자체 `localhost`, 홈 디렉터리, 환경, keychain, 파일 권한, 네트워크 namespace가 있습니다. 파일을 mount하거나 환경 값을 명시적으로 주입하지 않으면 호스트 세션은 게스트에 보이지 않습니다.
+
+가장 안전한 공유 세션 구성은 각 벤더 로그인의 소유와 갱신을 호스트에 두고, 필요한 벤더 자격 증명 source만 read-only로 mount하며, 게스트에는 별도의 writable persistent OpenCode 데이터 디렉터리를 제공하는 것입니다:
+
+| 프로바이더 | 호스트 | 게스트 |
+| --- | --- | --- |
+| Claude | Claude Code 로그인을 소유하고 갱신 | Claude 자격 증명 디렉터리를 read-only로 mount하고 `CLAUDE_CONFIG_DIR`을 그 게스트 경로로 설정하며 `credentialRefresh.mode: "never"`를 사용; 호스트 macOS Keychain은 Linux 게스트 안에서 사용할 수 없음; `ANTHROPIC_CLI_VERSION`, 설치된 `claude` 바이너리 또는 npm registry 접근으로 클라이언트 버전 확인 |
+| Cursor | Cursor CLI 로그인을 소유 | 자격 증명 파일을 게스트의 `${HOME}/.config/cursor/auth.json`에 read-only로 mount하거나 샌드박스 secret 기능으로 `CURSOR_ACCESS_TOKEN` 주입; 게스트에 Node.js 22 이상 설치 |
+| Command Code | CLI 로그인 또는 API 키를 소유 | `${HOME}/.commandcode/auth.json`을 read-only로 mount하거나 `COMMAND_CODE_API_KEY` 주입; `COMMAND_CODE_CLI_VERSION`, 설치된 `command-code` 바이너리 또는 npm registry 접근으로 클라이언트 버전 확인 |
+| Ollama | 신뢰하는 데몬을 실행하고 Cloud 접근이 필요하면 그곳에서 `ollama signin` 실행 | Ollama 자격 증명을 복사하지 않고 `ollamaBaseURL`로 선택한 데몬에만 연결 |
+
+예를 들어 Linux 게스트는 다음 경로와 선택적인 secret/version override를 사용할 수 있습니다. Mount source와 destination은 샌드박스 런타임에 맞게 조정하십시오:
+
+```dotenv
+HOME=/home/sandbox
+XDG_DATA_HOME=/home/sandbox/.local/share
+CLAUDE_CONFIG_DIR=/run/host-credentials/claude
+CURSOR_ACCESS_TOKEN=<optional-sandbox-secret>
+COMMAND_CODE_API_KEY=<optional-sandbox-secret>
+ANTHROPIC_CLI_VERSION=<optional-compatible-version>
+COMMAND_CODE_CLI_VERSION=<optional-compatible-version>
+```
+
+게스트에 writable persistent `XDG_DATA_HOME`을 설정하십시오. `/connect`는 OpenCode 인증 상태를 `${XDG_DATA_HOME}/opencode/auth.json`에 기록하며, Linux에서 `XDG_DATA_HOME`이 없으면 `${HOME}/.local/share/opencode/auth.json`을 사용합니다. 이 파일에는 비밀인 Claude OAuth 레코드 또는 Command Code API 키가 들어갈 수 있습니다. Cursor와 Ollama는 비밀이 아닌 CLI 세션 마커를 사용하고, Command Code는 마커 또는 키를 사용할 수 있습니다. 비밀을 담을 수 있는 파일로 보호하십시오. 게스트의 `/connect` 또는 Claude writeback이 파일을 갱신해야 한다면 호스트 OpenCode 데이터 디렉터리 전체를 read-only로 mount하지 마십시오.
+
+네 프로바이더를 모두 활성화하고 호스트가 공유 자격 증명을 소유할 때 다음과 같은 완전한 게스트 `opencode.json`을 사용하십시오:
+
+```jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    [
+      "opencode-ext-connector",
+      {
+        "providers": ["claude", "cursor", "command-code", "ollama"],
+        "ollamaBaseURL": "http://host.docker.internal:11434",
+        "writeBackCredentials": false,
+        "credentialRefresh": {
+          "mode": "never",
+          "leadMs": 60000
+        },
+        "catalogReloadMs": 300000,
+        "snapshotTimeoutMs": 30000,
+        "health": {
+          "initialBackoffMs": 1000,
+          "maximumBackoffMs": 60000
+        }
+      }
+    ]
+  ]
+}
+```
+
+`ollamaBaseURL`은 OpenCode 프로바이더 옵션이 아니라 패키지 tuple에 넣는 flat 커넥터 옵션입니다. 위 숫자 값은 커넥터 기본값이고, `credentialRefresh.mode: "never"`와 호스트 데몬 URL은 read-only 호스트 소유 자격 증명을 위한 의도적인 override입니다. `opencode.json`에 벤더 토큰을 넣지 말고 read-only mount 또는 샌드박스 secret 주입 기능을 사용하십시오.
+
+Docker Desktop에서는 보통 `host.docker.internal`이 호스트로 resolve됩니다. Linux Docker bridge에는 `--add-host=host.docker.internal:host-gateway` 또는 다음 Compose 설정이 추가로 필요할 수 있습니다:
+
+```yaml
+extra_hosts:
+  - "host.docker.internal:host-gateway"
+```
+
+Ollama는 보통 호스트 loopback에서 수신합니다. Bridge networking에서는 호스트가 `OLLAMA_HOST=0.0.0.0:11434`로 시작해야 할 수 있으며, 노출된 port를 호스트 firewall과 샌드박스 network policy로 제한하십시오. `OLLAMA_HOST`는 호스트 데몬을 설정하고 `ollamaBaseURL`은 게스트의 이 커넥터를 설정합니다. Host networking을 사용하면 게스트 `localhost`가 호스트에 도달하지만 격리가 약해지므로 명시적으로 선택해야 합니다. 다른 샌드박스 런타임도 이에 해당하는 호스트 route가 필요하며, 활성화한 각 프로바이더로 outbound 접근을 허용해야 합니다. Claude 또는 Command Code가 환경 값이나 설치된 바이너리에서 클라이언트 버전을 확인할 수 없을 때만 `registry.npmjs.org` 접근을 허용하십시오.
+
+대신 게스트가 persistent guest storage에서 자체 벤더 로그인을 소유할 수도 있습니다. 이 모드에서는 호스트 자격 증명을 mount하지 말고 게스트에서 벤더 로그인 flow를 실행하십시오. 게스트가 유일한 Claude 갱신 소유자라면 `credentialRefresh.mode: "auto"`와 `writeBackCredentials: true`를 사용할 수 있습니다. 호스트와 게스트가 같은 Claude refresh token에서 파생된 자격 증명을 각자 갱신하게 해서는 안 됩니다.
 
 ## 업데이트 및 제거
 
@@ -133,12 +212,14 @@ npm view opencode-ext-connector version
 
 ## 최초 연결
 
+OpenCode가 샌드박스에서 실행된다면 `/connect` 전에 writable OpenCode 인증 저장소와 호스트 networking을 포함한 [호스트/게스트 샌드박스 설정](#호스트게스트-샌드박스-설정)을 완료하십시오.
+
 1. npm 패키지 항목 또는 버전 spec을 추가한 뒤 **OpenCode를 완전히 재시작**하십시오. 프로세스를 종료한 다음 다시 시작해야 named legacy auth hook이 로드됩니다. 리로드나 주기적 카탈로그 갱신은 인스턴스 재생성이 아닙니다.
-2. 활성화한 프로바이더의 **로컬 전제 조건을 확인**하십시오. Claude와 Cursor는 벤더 세션이 필요합니다. Command Code는 OpenCode에 저장할 API 키 또는 기존 CLI 세션/키가 필요합니다. Ollama는 `http://localhost:11434`에서 신뢰하는 프로세스가 필요하며, Cloud는 별도로 `ollama signin`이 여전히 필요합니다.
-3. 원하는 각 프로바이더에 대해 **`/connect`를 실행**하십시오. Claude와 Cursor는 벤더 세션이 사용 가능할 때만 마커 또는 OAuth 항목을 기록합니다. Command Code는 OpenCode에 직접 API 키를 저장하거나 기존 CLI 세션/키를 재사용할 수 있습니다. Ollama는 localhost 데몬이 응답할 때만 정확한 세션 마커를 저장합니다. 모델은 그 프로바이더별 규칙이 충족된 뒤에만 공개됩니다.
+2. 활성화한 프로바이더의 **로컬 전제 조건을 확인**하십시오. Claude와 Cursor는 벤더 세션이 필요합니다. Command Code는 OpenCode에 저장할 API 키 또는 기존 CLI 세션/키가 필요합니다. Ollama는 설정한 `ollamaBaseURL`에서 신뢰하는 데몬이 필요하며, Cloud는 별도로 `ollama signin`이 여전히 필요합니다.
+3. 원하는 각 프로바이더에 대해 **`/connect`를 실행**하십시오. Claude와 Cursor는 벤더 세션이 사용 가능할 때만 마커 또는 OAuth 항목을 기록합니다. Command Code는 OpenCode에 직접 API 키를 저장하거나 기존 CLI 세션/키를 재사용할 수 있습니다. Ollama는 설정된 데몬이 응답할 때만 정확한 세션 마커를 저장합니다. 모델은 그 프로바이더별 규칙이 충족된 뒤에만 공개됩니다.
 4. **카탈로그를 확인**하십시오. Claude, Cursor, Command Code 모델이 OpenCode에 나타나는지 확인합니다. Ollama는 `opencode models ollama`를 실행하여 로컬로 pull된 모델과, 커넥터가 자격 증명을 제공하지 않은 채 비인증으로 발견된 Cloud 태그를 확인하십시오.
 
-Ollama `/connect`는 로컬 데몬을 조사하고 정확한 세션 마커를 저장합니다. `ollama signin`을 실행하거나 Ollama 자격 증명을 다루지 않습니다.
+Ollama `/connect`는 설정된 데몬을 조사하고 정확한 세션 마커를 저장합니다. `ollama signin`을 실행하거나 Ollama 자격 증명을 다루지 않습니다.
 
 ## 프로바이더
 
@@ -147,24 +228,26 @@ Ollama `/connect`는 로컬 데몬을 조사하고 정확한 세션 마커를 �
 | **Claude** | 기존 Claude Code 자격 증명을 재사용합니다. OAuth를 발급하지 않습니다. 호환 fetch가 CLI 호환 요청 메타데이터를 보내고, 내장 `anthropic` 경로에서 Anthropic SSE를 스트림합니다. `writeBackCredentials` 기본값은 `false`(메모리 내 갱신만); `true`는 갱신된 토큰을 Claude 파일, macOS Keychain, OpenCode `auth.json`에 기록합니다. |
 | **Cursor** | CLI 액세스 토큰으로 Cursor의 미공개 클라이언트 프로토콜(`api2.cursor.sh` `AgentService`, HTTP/2 위의 Connect+protobuf)을 호출합니다. 플러그인이 소유한 Node 자식 프로세스가 private stdio로 통신하고, 툴 결과를 같은 bidi Run에 유지하며, parked call을 절대 재실행하지 않고, 사용자 대면 데몬을 열지 않으며, 생성에 `cursor-agent`를 절대 spawn하지 않습니다. 비공식이며 공개 Cursor API가 아닙니다. 프로토콜이 어긋난 뒤에는 암시적 fallback이 없습니다 — 해당 프로바이더가 실패합니다. Node.js 22 이상이 필요합니다. 라이브 카탈로그 id가 있으면 그것을 쓰고, 없으면 문서화된 fallback은 `default`입니다. |
 | **Command Code** | CLI 호환 요청 메타데이터와 함께 `/alpha/generate`를 호출하고, 프로바이더 로컬 NDJSON 텍스트와 툴 이벤트를 스트림합니다. 클라이언트 버전은 `COMMAND_CODE_CLI_VERSION`, 설치된 `command-code` 바이너리, 또는 npm registry에서 가져옵니다. 요청 메타데이터에는 Node.js 버전, 플랫폼, 아키텍처, 절대 작업 디렉터리가 포함됩니다. 라이브 카탈로그 id가 있으면 그것을 쓰고, 없으면 문서화된 fallback은 `Qwen/Qwen3.8-Max`입니다. |
-| **Ollama** | `http://localhost:11434`의 로컬 데몬만 사용하며, 고정된 `/api/tags`, `/api/pull`, `/api/chat`을 씁니다. 그 포트에 바인딩된 프로세스를 신뢰하십시오. 이미 로컬에 pull된 모델과, 커넥터가 자격 증명을 제공하지 않은 채 Ollama 공식 Cloud 검색 및 library 페이지에서 비인증으로 발견한 정확한 Cloud 태그를 공개합니다. 정확히 중복되는 항목은 로컬이 이깁니다. 불완전한 Cloud 갱신은 마지막 완전한 목록을 유지합니다. 없는 인가된 Cloud 태그를 선택하면 최초 사용 시 lightweight remote reference를 pull합니다. 같은 태그의 동시 pull은 하나의 in-flight 요청을 공유하고, 실패한 pull은 나중에 재시도할 수 있습니다. 로컬 데몬은 이후 사용자의 Ollama Cloud 구독으로 Cloud 태그 프롬프트를 proxy할 수 있습니다. 커넥터는 Ollama API 키, 사용량 과금 direct Cloud API, `OLLAMA_HOST`, 원격 Cloud 생성 endpoint를 절대 사용하지 않습니다. |
+| **Ollama** | `ollamaBaseURL`로 선택한 신뢰된 데몬(기본값 `http://localhost:11434`)의 `/api/tags`, `/api/pull`, `/api/chat`을 사용하며 경로 prefix를 보존합니다. 이미 pull된 모델과, 커넥터 자격 증명 없이 Ollama 공식 Cloud 검색 및 library 페이지에서 익명으로 발견한 정확한 Cloud 태그를 공개합니다. 정확히 중복되는 항목은 로컬이 이깁니다. 불완전한 Cloud 갱신은 마지막 완전한 목록을 유지합니다. 없는 인가된 Cloud 태그를 선택하면 최초 사용 시 lightweight remote reference를 pull합니다. 같은 정규화 base와 태그의 동시 pull은 하나의 in-flight 요청을 공유하며 실패한 pull은 재시도할 수 있습니다. 데몬은 사용자의 Ollama Cloud 구독으로 Cloud 태그 프롬프트를 proxy할 수 있습니다. 커넥터는 Ollama API 키, 사용량 과금 direct Cloud API, `OLLAMA_HOST`, 자격 증명/custom header, cookie, direct Cloud 생성 endpoint를 사용하지 않습니다. |
 
 프로바이더 health는 격리됩니다. 한 프로바이더가 실패해도 나머지는 제거되지 않습니다.
 
-독립 SDK entry는 `opencode-ext-connector/ollama`입니다. 로컬 데몬에 이미 있는 모델로 생성할 수 있으며, 커넥터가 관리하는 Cloud 자동 pull은 활성 Ollama 카탈로그 lease가 필요합니다.
+독립 SDK entry는 `opencode-ext-connector/ollama`입니다. `{ ollamaBaseURL }`을 전달해 같은 신뢰된 데몬을 선택할 수 있습니다. 해당 데몬에 이미 있는 모델로 생성할 수 있으며, 커넥터가 관리하는 Cloud 자동 pull은 그 정규화 base의 활성 Ollama 카탈로그 lease가 필요합니다.
 
 ## 문제 해결
 
 | 증상 | 확인할 것 |
 | --- | --- |
 | `/connect` 메서드가 없음 | `plugin`에 `"opencode-ext-connector"` 또는 정확한 공개 `"opencode-ext-connector@<version>"` spec이 있는지 확인한 뒤 OpenCode를 완전히 재시작하십시오. |
-| 프로바이더가 활성화됐지만 모델이 없음 | `providers`를 생략하면 네 프로바이더가 모두 활성화됩니다. 명시적 목록은 엄격한 allow-list입니다. Claude와 Cursor는 마커 또는 OAuth 레코드와 벤더 세션이 필요하고, Command Code는 OpenCode에 저장된 API 키 또는 CLI 세션/키를 사용할 수 있으며, Ollama는 정확한 마커와 응답하는 localhost 데몬이 필요합니다. `/connect` 후 완전히 재시작해야 인스턴스 재생성이 새 소속을 반영합니다. |
+| 프로바이더가 활성화됐지만 모델이 없음 | `providers`를 생략하면 네 프로바이더가 모두 활성화됩니다. 명시적 목록은 엄격한 allow-list입니다. Claude와 Cursor는 마커 또는 OAuth 레코드와 벤더 세션이 필요하고, Command Code는 OpenCode에 저장된 API 키 또는 CLI 세션/키를 사용할 수 있으며, Ollama는 정확한 마커와 응답하는 설정된 데몬이 필요합니다. `/connect` 후 완전히 재시작해야 인스턴스 재생성이 새 소속을 반영합니다. |
 | Claude가 다음 시작 전까지만 동작함 | 기본 `writeBackCredentials: false`는 갱신된 토큰을 메모리에만 둡니다. 회전된 refresh 토큰은 writeback을 켜지 않으면 다음 프로세스 시작에서 실패합니다. |
 | 복사한 자격 증명 파일에서 Claude가 `invalid_grant`를 보고함 | 같은 로그인의 다른 사본이 이미 갱신해서 refresh 토큰이 회전됐습니다. 한 머신에만 갱신 소유권을 주고 나머지에는 `credentialRefresh: { mode: "never" }`를 설정하거나, 별도로 로그인하십시오. |
 | `Claude Code client version is unavailable` | `ANTHROPIC_CLI_VERSION`도, `claude` 바이너리도 없고 `registry.npmjs.org`에 접근할 수 없었습니다. 변수를 설정하거나 registry 접근을 허용하십시오. |
 | Cursor 생성이 실패함 | Node.js 22 이상이 필요합니다. 생성은 `cursor-agent`가 아니라 private Node 자식 프로세스를 통한 미공개 프로토콜을 사용합니다. 프로토콜이 어긋나면 해당 프로바이더가 실패하며, 암시적 fallback은 없습니다. |
 | Command Code 생성이 실패함 | 클라이언트 버전을 확인할 수 없었습니다: `COMMAND_CODE_CLI_VERSION`을 설정하거나, `command-code`를 설치하거나, `registry.npmjs.org` 접근을 허용하십시오. 요청 메타데이터에는 Node.js 버전, 플랫폼, 아키텍처, 절대 작업 디렉터리가 포함됩니다. |
-| `opencode models ollama`에 Ollama가 없음 | `localhost:11434`에서 신뢰하는 프로세스를 시작한 뒤 `/connect`하여 정확한 세션 마커를 저장할 수 있게 하십시오. Cloud 태그는 커넥터가 자격 증명을 제공하지 않은 비인증 카탈로그 항목이며, 로컬 데몬이 Cloud 태그 프롬프트를 proxy할 수 있습니다. `OLLAMA_HOST`, API 키, direct Cloud 생성은 사용하지 않습니다. |
+| `opencode models ollama`에 Ollama가 없음 | `ollamaBaseURL`(또는 기본 `localhost:11434`)에서 신뢰하는 데몬을 시작한 뒤 `/connect`하십시오. 경로 prefix가 Ollama `/api/*` route에 도달하는지 확인하십시오. Cloud 태그는 익명 catalog 항목이며 `OLLAMA_HOST`, API 키, credential header, redirect, direct Cloud 생성은 사용하지 않습니다. |
+| 호스트 자격 증명이 있지만 게스트 프로바이더가 연결되지 않음 | mount 대상과 권한, 게스트의 `HOME`, `CLAUDE_CONFIG_DIR`, 주입한 secret 환경, writable 게스트 OpenCode `auth.json`, 게스트 안에서 `/connect`가 완료됐는지 확인하십시오. |
+| Ollama가 호스트에서는 동작하지만 게스트에서는 동작하지 않음 | 게스트 `localhost`는 보통 호스트가 아닙니다. `host.docker.internal` resolve, Linux `host-gateway` mapping, 데몬 bind 주소, firewall과 샌드박스 egress, base path prefix가 Ollama `/api/*` route에 도달하는지 확인하십시오. |
 | 한 프로바이더가 다운됨 | 실패는 격리됩니다. 일시적 스냅샷 실패는 마지막으로 알려진 카탈로그를 유지하고, unavailable 스냅샷은 해당 커넥터 소유 프로바이더만 제거합니다. |
 
 ## 문서

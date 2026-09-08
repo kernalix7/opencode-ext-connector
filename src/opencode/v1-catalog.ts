@@ -59,7 +59,12 @@ export function createV1CatalogProjector(options: {
     }
     const provider = attachedConfig.provider ?? {}
     Object.defineProperty(provider, entry.id, {
-      value: { npm, name: entry.displayName, models },
+      value: {
+        npm,
+        name: entry.displayName,
+        models,
+        ...(entry.providerOptions === undefined ? {} : { options: entry.providerOptions }),
+      },
       enumerable: true,
       configurable: true,
       writable: true,

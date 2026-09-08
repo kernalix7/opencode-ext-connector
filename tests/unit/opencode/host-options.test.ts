@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 
 import { parseConnectorOptions } from "../../../src/core/options"
-import { pickConnectorOptionsInput } from "../../../src/opencode/host-options"
+import { pickConnectorOptionsInput, pickOllamaBaseURL } from "../../../src/opencode/host-options"
 
 describe("pickConnectorOptionsInput", () => {
   it("keeps known fields and drops host-only keys", () => {
@@ -62,5 +62,23 @@ describe("pickConnectorOptionsInput", () => {
     const options = parseConnectorOptions(pickConnectorOptionsInput({ writeBackCredentials: true }))
     // Then
     expect(options.writeBackCredentials).toBe(true)
+  })
+})
+
+describe("pickOllamaBaseURL", () => {
+  it("extracts the flat daemon base URL independently of connector options", () => {
+    // Given / When
+    const baseURL = pickOllamaBaseURL({ ollamaBaseURL: "https://daemon.example.test/ollama" })
+
+    // Then
+    expect(baseURL).toBe("https://daemon.example.test/ollama")
+  })
+
+  it("preserves malformed values for the Ollama boundary parser to reject", () => {
+    // Given / When
+    const baseURL = pickOllamaBaseURL({ ollamaBaseURL: 11434 })
+
+    // Then
+    expect(baseURL).toBe(11434)
   })
 })

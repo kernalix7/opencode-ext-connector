@@ -7,7 +7,7 @@ import { createClaudeTokenReader } from "../providers/claude/auth.js"
 import { readCursorAccessToken } from "../providers/cursor/auth.js"
 import { createCursorDirectRuntime } from "../providers/cursor/direct-runtime.js"
 import { createConnectorLanguage } from "./language-factory.js"
-import { productionOllamaRuntime } from "./ollama-production.js"
+import { getProductionOllamaBundle } from "./ollama-production.js"
 
 const clock: Clock = {
   nowMs: (): number => Date.now(),
@@ -58,12 +58,16 @@ export function languageForV1Provider(
   options: Readonly<Record<string, unknown>>,
 ): LanguageModelV3 {
   const commandCodeApiKey = apiKeyFromOptions(options)
+  const ollamaRuntime =
+    providerID === "ollama"
+      ? getProductionOllamaBundle(options["ollamaBaseURL"]).runtime
+      : undefined
   const createLanguage = createConnectorLanguage({
     env,
     transport,
     readClaudeToken,
     cursorRuntime,
-    ollamaRuntime: productionOllamaRuntime,
+    ...(ollamaRuntime === undefined ? {} : { ollamaRuntime }),
     ...(commandCodeApiKey === undefined ? {} : { commandCodeApiKey }),
   })
   const model = createLanguage(providerID, modelId)
