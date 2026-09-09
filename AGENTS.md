@@ -1,8 +1,8 @@
 # PROJECT KNOWLEDGE BASE
 
-**Updated:** 2026-08-30
-**Commit:** 62518cb
-**Branch:** `main`; preserve the existing dirty worktree
+**Updated:** 2026-09-09
+**Code baseline:** `1e98401` (remote Ollama and credential policy integrated)
+**Branch:** `main`; clean, sole local worktree, tracking `origin/main`
 
 ## OVERVIEW
 
@@ -42,7 +42,7 @@ tests/                         unit/integration/e2e suites and fakes; see AGENTS
 | OpenCode integration | `src/opencode/` | V1 API boundary; V2 imports stay in `beta-api.ts` |
 | Claude changes | `src/providers/claude/AGENTS.md` | Credentials, compatibility stream, writeback |
 | Cursor changes | `src/providers/cursor/AGENTS.md` | Bridge, retries, sessions, pinned codecs |
-| Ollama changes | `src/providers/ollama/AGENTS.md` | Local/Cloud catalog and local generation |
+| Ollama changes | `src/providers/ollama/AGENTS.md` | Local/Cloud catalog and configured-daemon generation |
 | Command Code changes | `src/providers/command-code/` | Request lifecycle and NDJSON remain local |
 | Test placement | `tests/AGENTS.md` | Deterministic fakes and isolated E2E |
 | Policy failures | `scripts/check-source-policy.ts` | AST/source-boundary violations |
@@ -72,8 +72,20 @@ tests/                         unit/integration/e2e suites and fakes; see AGENTS
   alone for one migration cycle (custom lead times require the legacy config);
   combining either with `credentialManagement` is rejected.
 - Provider snapshots, health, and failures remain isolated.
-- `ollamaBaseURL` is provider-local, defaults to `http://localhost:11434`, and is
-  projected normalized into Ollama provider options; do not add it to core options.
+- `ollamaBaseURL` is a flat connector and standalone SDK option. It defaults to
+  `http://localhost:11434`; explicit remote/self-hosted bases preserve path
+  prefixes and are normalized for Ollama state. Do not add it to core options.
+
+## WORKSPACE HANDOFF
+
+- `main` is the only local branch and `/workspace/project` is the only worktree;
+  completed feature and release work was consolidated before this memory update.
+- `.opensandbox/project-id` and `sandbox.sh` are ignored local runner state. Keep
+  them unless the user explicitly asks to remove OpenSandbox tooling.
+- `.git/recovery/release-0.2.0-safety-62518cb/` is a checksum-verified local
+  snapshot of the discarded dirty release worktree, not project source.
+- Remote feature branches were intentionally left untouched; local redundant
+  branches and worktrees were removed.
 
 ## CONVENTIONS
 
