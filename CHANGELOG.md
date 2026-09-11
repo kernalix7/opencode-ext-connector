@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 - 2026-09-11
 
 - Add explicit `ollamaBaseURL` support for trusted remote and self-hosted Ollama
   daemons across plugin options, `/connect`, provider projection, runtime, and
