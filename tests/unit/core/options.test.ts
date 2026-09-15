@@ -1,6 +1,10 @@
 import { describe, expect, it } from "bun:test"
 
-import { ConnectorOptionsSchema, parseConnectorOptions } from "../../../src/core/options"
+import {
+  type ConnectorOptionsInput,
+  ConnectorOptionsSchema,
+  parseConnectorOptions,
+} from "../../../src/core/options"
 
 describe("connector options", () => {
   it("selects all providers by default", () => {
@@ -14,12 +18,17 @@ describe("connector options", () => {
       snapshotTimeoutMs: 30_000,
       writeBackCredentials: false,
       credentialRefresh: { mode: "auto", leadMs: 60_000 },
+      credentialAuthority: {
+        claudeCli: { enabled: false, leadMs: 300_000, retryMs: 300_000 },
+      },
       catalogReloadMs: 300_000,
       health: { initialBackoffMs: 1_000, maximumBackoffMs: 60_000 },
     })
     expect(Object.isFrozen(options)).toBe(true)
     expect(Object.isFrozen(options.health)).toBe(true)
     expect(Object.isFrozen(options.credentialRefresh)).toBe(true)
+    expect(Object.isFrozen(options.credentialAuthority)).toBe(true)
+    expect(Object.isFrozen(options.credentialAuthority.claudeCli)).toBe(true)
   })
 
   it("accepts a read-only credential refresh policy with a custom lead time", () => {
@@ -90,6 +99,60 @@ describe("connector options", () => {
     expect("credentialManagement" in options).toBe(false)
   })
 
+  it("enables Claude CLI authority with external credential management", () => {
+    // Given
+    const input = {
+      providers: ["claude"],
+      credentialManagement: "external",
+      credentialAuthority: { claudeCli: { enabled: true, leadMs: 45_000, retryMs: 90_000 } },
+    } satisfies ConnectorOptionsInput
+    // When
+    const options = parseConnectorOptions(input)
+    // Then
+    expect(options.credentialAuthority).toEqual({
+      claudeCli: { enabled: true, leadMs: 45_000, retryMs: 90_000 },
+    })
+  })
+
+  it("accepts safe integer boundaries for Claude CLI authority scheduling", () => {
+    // Given
+    const input = {
+      providers: ["claude"],
+      credentialManagement: "external",
+      credentialAuthority: {
+        claudeCli: {
+          enabled: true,
+          leadMs: Number.MAX_SAFE_INTEGER,
+          retryMs: Number.MAX_SAFE_INTEGER,
+        },
+      },
+    }
+    // When
+    const options = parseConnectorOptions(input)
+    // Then
+    expect(options.credentialAuthority.claudeCli.leadMs).toBe(Number.MAX_SAFE_INTEGER)
+    expect(options.credentialAuthority.claudeCli.retryMs).toBe(Number.MAX_SAFE_INTEGER)
+  })
+
+  it.each([
+    ["connector management", { credentialManagement: "connector", providers: ["claude"] }],
+    ["omitted management", { providers: ["claude"] }],
+    ["disabled Claude", { credentialManagement: "external", providers: ["cursor"] }],
+  ])("rejects enabled Claude CLI authority with %s", (_case, policy) => {
+    // Given
+    const input = { ...policy, credentialAuthority: { claudeCli: { enabled: true } } }
+    // When
+    const result = ConnectorOptionsSchema.safeParse(input)
+    // Then
+    expect(result.success).toBe(false)
+    if (result.success) return
+    expect(
+      result.error.issues.some(
+        (issue) => issue.path.join(".") === "credentialAuthority.claudeCli.enabled",
+      ),
+    ).toBe(true)
+  })
+
   it("rejects every legacy combination with one exact credential management issue", () => {
     // Given
     const inputs = [
@@ -155,6 +218,9 @@ describe("connector options", () => {
       snapshotTimeoutMs: 50,
       writeBackCredentials: false,
       credentialRefresh: { mode: "auto", leadMs: 60_000 },
+      credentialAuthority: {
+        claudeCli: { enabled: false, leadMs: 300_000, retryMs: 300_000 },
+      },
       catalogReloadMs: 300_000,
       health: { initialBackoffMs: 5, maximumBackoffMs: 10 },
     })
@@ -173,6 +239,19 @@ describe("connector options", () => {
       { credentialRefresh: { leadMs: -1 } },
       { credentialRefresh: { leadMs: 2_147_483_648 } },
       { credentialRefresh: { extra: true } },
+      { credentialAuthority: { claudeCli: { enabled: false, leadMs: -1 } } },
+      { credentialAuthority: { claudeCli: { enabled: false, retryMs: 0 } } },
+      {
+        credentialAuthority: {
+          claudeCli: { enabled: false, leadMs: Number.MAX_SAFE_INTEGER + 1 },
+        },
+      },
+      {
+        credentialAuthority: {
+          claudeCli: { enabled: false, retryMs: Number.MAX_SAFE_INTEGER + 1 },
+        },
+      },
+      { credentialAuthority: { claudeCli: { enabled: false, extra: true } } },
     ]
     // When
     const parses = inputs.map((input) => () => parseConnectorOptions(input))

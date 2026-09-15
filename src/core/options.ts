@@ -10,10 +10,29 @@ export type CredentialRefreshPolicy = {
   readonly leadMs: number
 }
 
+export type ClaudeCliCredentialAuthority = {
+  readonly enabled: boolean
+  readonly leadMs: number
+  readonly retryMs: number
+}
+
+export type CredentialAuthority = {
+  readonly claudeCli: ClaudeCliCredentialAuthority
+}
+
 export type ConnectorOptionsInput = {
   readonly providers?: readonly ("claude" | "cursor" | "command-code" | "ollama")[] | undefined
   readonly snapshotTimeoutMs?: number | undefined
   readonly credentialManagement?: CredentialManagement | undefined
+  readonly credentialAuthority?:
+    | {
+        readonly claudeCli: {
+          readonly enabled: boolean
+          readonly leadMs?: number | undefined
+          readonly retryMs?: number | undefined
+        }
+      }
+    | undefined
   /** @deprecated Use credentialManagement instead. */
   readonly writeBackCredentials?: boolean | undefined
   /** @deprecated Use credentialManagement instead. */
@@ -37,6 +56,7 @@ export type ConnectorOptions = {
   readonly snapshotTimeoutMs: number
   readonly writeBackCredentials: boolean
   readonly credentialRefresh: CredentialRefreshPolicy
+  readonly credentialAuthority: CredentialAuthority
   readonly catalogReloadMs: number
   readonly health: HealthPolicy
 }
@@ -47,12 +67,26 @@ const NonNegativeSafeIntegerSchema = z.number().int().nonnegative().max(MaximumT
 const ProviderSchema = z.enum(["claude", "cursor", "command-code", "ollama"])
 const CredentialRefreshModeSchema = z.enum(["auto", "never"])
 const CredentialManagementSchema = z.enum(["connector", "external"])
+const SafeIntegerSchema = z.number().int().safe()
 const DefaultProviders: ConnectorOptions["providers"] = [
   "claude",
   "cursor",
   "command-code",
   "ollama",
 ]
+const CredentialAuthorityInputSchema = z
+  .object({
+    claudeCli: z
+      .object({
+        enabled: z.boolean(),
+        leadMs: SafeIntegerSchema.nonnegative().optional(),
+        retryMs: SafeIntegerSchema.positive().optional(),
+      })
+      .strict()
+      .readonly(),
+  })
+  .strict()
+  .readonly()
 
 type ResolvedCredentialOptions = {
   readonly credentialRefresh: CredentialRefreshPolicy
@@ -87,6 +121,7 @@ const ConnectorOptionsInputSchema = z
     providers: z.array(ProviderSchema).optional(),
     snapshotTimeoutMs: PositiveSafeIntegerSchema.optional(),
     credentialManagement: CredentialManagementSchema.optional(),
+    credentialAuthority: CredentialAuthorityInputSchema.optional(),
     writeBackCredentials: z.boolean().optional(),
     credentialRefresh: z
       .object({
@@ -117,6 +152,18 @@ const ConnectorOptionsInputSchema = z
           "`credentialManagement` cannot be combined with deprecated `credentialRefresh` or `writeBackCredentials`",
       })
     }
+    if (
+      input.credentialAuthority?.claudeCli.enabled === true &&
+      (input.credentialManagement !== "external" ||
+        !(input.providers ?? DefaultProviders).includes("claude"))
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["credentialAuthority", "claudeCli", "enabled"],
+        message:
+          "Claude CLI credential authority requires external credential management and the Claude provider",
+      })
+    }
     const initialBackoffMs = input.health?.initialBackoffMs ?? 1_000
     const maximumBackoffMs = input.health?.maximumBackoffMs ?? 60_000
     if (initialBackoffMs > maximumBackoffMs) {
@@ -131,11 +178,19 @@ export const ConnectorOptionsSchema: z.ZodType<ConnectorOptions, ConnectorOption
       maximumBackoffMs: input.health?.maximumBackoffMs ?? 60_000,
     })
     const credentialOptions = resolveCredentialOptions(input)
+    const credentialAuthority = Object.freeze({
+      claudeCli: Object.freeze({
+        enabled: input.credentialAuthority?.claudeCli.enabled ?? false,
+        leadMs: input.credentialAuthority?.claudeCli.leadMs ?? 300_000,
+        retryMs: input.credentialAuthority?.claudeCli.retryMs ?? 300_000,
+      }),
+    })
     return Object.freeze({
       providers: Object.freeze(input.providers ?? DefaultProviders),
       snapshotTimeoutMs: input.snapshotTimeoutMs ?? 30_000,
       writeBackCredentials: credentialOptions.writeBackCredentials,
       credentialRefresh: credentialOptions.credentialRefresh,
+      credentialAuthority,
       catalogReloadMs: input.catalogReloadMs ?? 300_000,
       health,
     })
