@@ -19,7 +19,7 @@
 
 ## Status
 
-> Independent unofficial community plugin, version **0.4.0**. Package E2E tests exercise the legacy multi-function loader with the OpenCode CLI installed in CI. `@opencode-ai/plugin@1.18.18` is the compile-time plugin API target, not a runtime pin. Source is BSD-3-Clause. This project is not affiliated with, endorsed by, sponsored by, or authorized by OpenCode or any provider. Full terms are in [License and Disclaimer](#license-and-disclaimer).
+> Independent unofficial community plugin, version **0.5.0**. Package E2E tests exercise the legacy multi-function loader with the OpenCode CLI installed in CI. `@opencode-ai/plugin@1.18.18` is the compile-time plugin API target, not a runtime pin. Source is BSD-3-Clause. This project is not affiliated with, endorsed by, sponsored by, or authorized by OpenCode or any provider. Full terms are in [License and Disclaimer](#license-and-disclaimer).
 
 Reuse the Claude, Cursor, Command Code, and Ollama sessions you already have. One `opencode.json` plugin entry publishes live catalogs into OpenCode. Claude and Cursor stay disconnected until OpenCode has a marker or OAuth record and the vendor session is present. Command Code may use an OpenCode-stored direct API key or an existing CLI session/key. Ollama requires the exact session marker plus a responsive trusted daemon.
 
@@ -55,7 +55,7 @@ OpenCode installs configured npm plugins with Bun at startup and caches them. Fo
 ```jsonc
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-ext-connector@0.4.0"]
+  "plugin": ["opencode-ext-connector@0.5.0"]
 }
 ```
 
@@ -77,6 +77,9 @@ Omitted `providers` enables all four. An explicit list is a strict allow-list. E
 | `writeBackCredentials` | `false` | **Deprecated:** accepted alone for one migration cycle; controls Claude writeback after refresh |
 | `credentialRefresh.mode` | `"auto"` | **Deprecated:** accepted alone for one migration cycle; controls Claude `"auto"` or `"never"` refresh behavior |
 | `credentialRefresh.leadMs` | `60000` | **Deprecated:** accepted alone for one migration cycle; custom lead times still require this legacy configuration |
+| `credentialAuthority.claudeCli.enabled` | `false` | Claude-only opt-in: see [Opt-in Claude CLI authority timer](#opt-in-claude-cli-authority-timer-claude-only) |
+| `credentialAuthority.claudeCli.leadMs` | `300000` | Claude-only opt-in: milliseconds before credential expiry at which the timer invokes `claude`; non-negative integer |
+| `credentialAuthority.claudeCli.retryMs` | `300000` | Claude-only opt-in: milliseconds to wait before retrying after a non-zero exit, lock conflict, signal, or supervisor failure; positive integer |
 | `catalogReloadMs` | `300000` | Re-run catalog snapshots on this interval; `0` disables |
 | `snapshotTimeoutMs` | `30000` | Per-provider snapshot deadline |
 | `health.initialBackoffMs` | `1000` | Health backoff after a failed snapshot |
@@ -114,7 +117,7 @@ Use external authority when another process manages credentials:
 }
 ```
 
-`credentialManagement: "external"` prohibits connector refresh and writeback. Today Claude maps to never-refresh/no-write and can re-read externally managed credentials after a 401. When all credential-policy options are omitted, Claude preserves the legacy defaults: automatic refresh with a `60_000` ms lead and no writeback. If only `credentialManagement` is omitted, supplied deprecated `credentialRefresh` or `writeBackCredentials` options still control behavior. Cursor direct generation and Command Code remain read-only under both modes: on an exact pre-output HTTP 401, they re-read a changed, non-null credential and retry once only. This safe reread is not refresh or writeback, so both modes allow it; Cursor legacy/compatibility generation remains one-shot. Ollama is unaffected. This option does not log in, mint OAuth, synchronize machines, or imply that credentials use file storage.
+`credentialManagement: "external"` prohibits connector refresh and writeback. Today Claude maps to never-refresh/no-write and can re-read externally managed credentials after a 401. To keep that externally managed credential file current from a single Linux host, you can additionally enable the Claude-only [Opt-in Claude CLI authority timer](#opt-in-claude-cli-authority-timer-claude-only); that timer is independent of the connector's own refresh path and off by default. When all credential-policy options are omitted, Claude preserves the legacy defaults: automatic refresh with a `60_000` ms lead and no writeback. If only `credentialManagement` is omitted, supplied deprecated `credentialRefresh` or `writeBackCredentials` options still control behavior. Cursor direct generation and Command Code remain read-only under both modes: on an exact pre-output HTTP 401, they re-read a changed, non-null credential and retry once only. This safe reread is not refresh or writeback, so both modes allow it; Cursor legacy/compatibility generation remains one-shot. Ollama is unaffected. This option does not log in, mint OAuth, synchronize machines, or imply that credentials use file storage.
 
 For one migration cycle, `writeBackCredentials` and `credentialRefresh.*` remain accepted when used without `credentialManagement`; custom `credentialRefresh.leadMs` values still require the legacy configuration. Mixing the new option with either legacy option is rejected with: `` `credentialManagement` cannot be combined with deprecated `credentialRefresh` or `writeBackCredentials` ``.
 
@@ -140,11 +143,44 @@ With all credential-policy options omitted, refreshed Claude tokens stay in memo
 
 Anthropic rotates the refresh token on every refresh and invalidates the previous one. Two copies of `~/.claude/.credentials.json` that both refresh will therefore break each other. Copying the file works only if exactly one machine refreshes and every other machine receives the result before its own copy expires:
 
-- **Refresh authority** (where you log in): `credentialManagement: "connector"`. If you need a custom publication window, use the deprecated legacy options alone for this migration cycle, for example `writeBackCredentials: true` with `credentialRefresh: { mode: "auto", leadMs: 1800000 }`.
+- **Refresh authority** (where you log in): choose exactly one refresh path. Use `credentialManagement: "connector"`, or on Linux use `credentialManagement: "external"` with the opt-in [Claude CLI authority timer](#opt-in-claude-cli-authority-timer-claude-only). The parser rejects enabling the CLI timer in connector mode. If you need a custom publication window for connector mode, use the deprecated legacy options alone for this migration cycle, for example `writeBackCredentials: true` with `credentialRefresh: { mode: "auto", leadMs: 1800000 }`.
 - **External-authority machines**: `credentialManagement: "external"`. They never contact the OAuth endpoint; when a request returns 401 they re-read externally managed credentials and retry once.
 - Synchronize the externally managed credential material from the refresh-authority machine whenever it changes. The option itself does not synchronize machines or require file storage; if you copy `~/.claude/.credentials.json`, OpenCode's own `auth.json` only needs the `anthropic` record once and its other providers should remain untouched.
 
 Machines that refresh on their own — including a Claude Code install that is used interactively — must not share the file. Log in separately there.
+
+### Opt-in Claude CLI authority timer (Claude-only)
+
+This Linux-only option lets one host use an existing Claude Code login as the refresh authority for an externally managed credential file. It is disabled by default, does not log in or mint tokens, and requires `credentialManagement: "external"`.
+
+Minimal configuration:
+
+```jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    [
+      "opencode-ext-connector",
+      {
+        "credentialManagement": "external",
+        "credentialAuthority": {
+          "claudeCli": {
+            "enabled": true
+          }
+        }
+      }
+    ]
+  ]
+}
+```
+
+After saving the configuration, fully restart OpenCode. The timer requires Linux, util-linux `flock`, Claude Code `2.1.259` or later on `PATH`, an authenticated Claude Code session, and a writable persistent state directory. It is silently disabled on other platforms.
+
+`leadMs` and `retryMs` both default to `300000` (5 minutes). The connector schedules one restricted, single-turn Claude request at the lead boundary. A process-shared non-blocking lock prevents concurrent requests from processes using the same state directory; failures retry after `retryMs` without removing the Claude provider.
+
+Each invocation is a real model request and can count against the account's subscription or billing. Run the timer on exactly one machine per login. It cannot revive a revoked or logged-out session; run interactive `/login` again in that case. Review Anthropic's current [Commercial Terms](https://www.anthropic.com/legal/commercial-terms) before enabling it.
+
+If the timer does not run, check `flock --version`, `claude --version`, the state directory permissions, and both required configuration values. Repeated warnings indicate that the CLI failed, was signalled, or could not be started. To disable the timer, remove `credentialAuthority` or set `enabled` to `false`, then fully restart OpenCode.
 
 ## Host/Guest Sandbox Setup
 
@@ -242,7 +278,7 @@ Ollama `/connect` probes the configured daemon and stores the exact session mark
 
 | Provider | What it does |
 | --- | --- |
-| **Claude** | Reuses existing Claude Code credentials. Does not mint OAuth. Compatibility fetch sends CLI-compatible request metadata and streams Anthropic SSE on the built-in `anthropic` path. `credentialManagement: "connector"` maps to auto-refresh with a `60_000` ms lead and writeback; `"external"` maps to never-refresh/no-write with a credential re-read after 401. Omitting all credential-policy options preserves legacy auto/`60_000` behavior without writeback; if only `credentialManagement` is omitted, supplied deprecated options still control behavior. |
+| **Claude** | Reuses existing Claude Code credentials. Does not mint OAuth. Compatibility fetch sends CLI-compatible request metadata and streams Anthropic SSE on the built-in `anthropic` path. `credentialManagement: "connector"` maps to auto-refresh with a `60_000` ms lead and writeback; `"external"` maps to never-refresh/no-write with a credential re-read after 401. On Linux only, `credentialManagement: "external"` plus the opt-in `credentialAuthority.claudeCli.enabled: true` timer (see [Opt-in Claude CLI authority timer](#opt-in-claude-cli-authority-timer-claude-only)) can keep an externally managed credential file current by invoking the local `claude` CLI; the timer is off by default and does not log in or extend the underlying session lifetime. Omitting all credential-policy options preserves legacy auto/`60_000` behavior without writeback; if only `credentialManagement` is omitted, supplied deprecated options still control behavior. |
 | **Cursor** | Calls Cursor's unpublished client protocol (`api2.cursor.sh` `AgentService`, Connect+protobuf over HTTP/2) with the CLI access token. Credentials remain read-only under both credential-management modes. Direct generation may re-read a changed, non-null credential and retry once only on an exact HTTP 401 before output or effects; this is not refresh or writeback. Legacy/compatibility generation remains one-shot. A plugin-owned Node child communicates over private stdio, keeps tool results on the same bidi Run, never replays parked calls, opens no user-facing daemon, and never spawns `cursor-agent` for generation. Unofficial; not a public Cursor API. After protocol drift there is no implicit fallback — that provider fails. Requires Node.js 22 or later. Live catalog ids are used when present; otherwise the documented fallback is `default`. |
 | **Command Code** | Calls `/alpha/generate` with CLI-compatible request metadata and streams provider-local NDJSON text and tool events. Credentials remain read-only under both credential-management modes. On an exact HTTP 401 before output or effects, it may re-read a changed, non-null credential and retry once only; this is not refresh or writeback. The client version comes from `COMMAND_CODE_CLI_VERSION`, an installed `command-code` binary, or the npm registry. Request metadata includes Node.js version, platform, architecture, and the absolute working directory. Live catalog ids are used when present; otherwise the documented fallback is `Qwen/Qwen3.8-Max`. |
 | **Ollama** | Unaffected by `credentialManagement`. Uses the trusted daemon selected by `ollamaBaseURL` (default `http://localhost:11434`) with `/api/tags`, `/api/pull`, and `/api/chat`; path prefixes are preserved. Publishes models already pulled there, plus exact Cloud tags discovered anonymously from Ollama's official Cloud search and library pages, without connector-supplied credentials. Local entries win exact duplicates. Incomplete Cloud refreshes retain the last complete list. Selecting an absent authorized Cloud tag pulls its lightweight remote reference on first use; concurrent pulls of the same tag and normalized base share one in-flight request, and a failed pull can be retried later. The daemon may then proxy Cloud-tag prompts under the user's Ollama Cloud subscription. The connector never uses an Ollama API key, the usage-billed direct Cloud API, `OLLAMA_HOST`, credentials, custom headers, cookies, or a direct Cloud generation endpoint. |
@@ -258,7 +294,7 @@ The standalone SDK entry is `opencode-ext-connector/ollama`; pass `{ ollamaBaseU
 | `/connect` methods missing | Confirm `plugin` contains `"opencode-ext-connector"` or an exact published `"opencode-ext-connector@<version>"` spec, then fully restart OpenCode. |
 | Provider enabled but no models | Omitted `providers` enables all four; an explicit list is a strict allow-list. Claude and Cursor need a marker or OAuth record plus the vendor session; Command Code may use an OpenCode-stored API key or a CLI session/key; Ollama needs the exact marker plus a responsive configured daemon. Fully restart after `/connect` so instance reconstruction picks up new membership. |
 | Claude works until the next start | Omitting all credential-policy options preserves legacy in-memory refresh without writeback. A rotated refresh token can then fail on the next process start; use `credentialManagement: "connector"` when the connector should refresh and write back. If only `credentialManagement` is omitted, check supplied deprecated refresh/writeback options instead. |
-| Claude reports `invalid_grant` on shared credentials | Another machine with the same login already refreshed and rotated the refresh token. Give one machine refresh authority with `credentialManagement: "connector"` and use `"external"` on the others, or log in separately. |
+| Claude reports `invalid_grant` on shared credentials | Another machine with the same login already refreshed and rotated the refresh token. Every refresher counts: `credentialManagement: "connector"` refreshes through the OAuth endpoint, and the opt-in `credentialAuthority.claudeCli.enabled` timer refreshes through the local `claude` CLI. Pick exactly one authority: either connector mode, or external mode with the CLI timer on one Linux machine. Keep every other machine on `"external"` with the timer disabled, or log in separately. |
 | Configuration rejects credential options | Do not combine the new and legacy options; the exact error is: `` `credentialManagement` cannot be combined with deprecated `credentialRefresh` or `writeBackCredentials` ``. Legacy options remain accepted alone for one migration cycle. |
 | `Claude Code client version is unavailable` | No `ANTHROPIC_CLI_VERSION`, no `claude` binary, and `registry.npmjs.org` was unreachable. Set the variable or allow registry access. |
 | Cursor generation fails | Node.js 22 or later is required. Generation uses the unpublished protocol through a private Node child, not `cursor-agent`. Protocol drift fails that provider; there is no implicit fallback. |
