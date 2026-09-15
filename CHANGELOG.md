@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.0 - 2026-09-15
+
+- Add the disabled-by-default Claude CLI credential authority for Linux
+  deployments using `credentialManagement: "external"`
+- Schedule one restricted Claude Code request before credential expiry, with
+  process-shared `flock` coordination, retry handling, and clean shutdown
+- Require util-linux `flock` and Claude Code `2.1.259` or later when enabled;
+  each invocation is a real model request and may consume account usage
+- Keep OAuth, credential persistence, and other providers unchanged; revoked
+  Claude sessions still require interactive `/login`
+
 ## 0.4.0 - 2026-09-11
 
 - Add explicit `ollamaBaseURL` support for trusted remote and self-hosted Ollama
