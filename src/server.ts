@@ -13,6 +13,8 @@ import { getProductionOllamaBundle } from "./opencode/ollama-production.js"
 import { createProviderRegistry, selectConfiguredProviders } from "./opencode/providers.js"
 import { disposeV1LanguageRuntime } from "./opencode/v1-language.js"
 import { buildV1AuthHooks, createV1AuthServer, createV1Server } from "./opencode/v1-module.js"
+import { createProductionProcessSupervisor } from "./process/production-supervisor.js"
+import { createClaudeCredentialAuthorityScheduler } from "./providers/claude/credential-authority-scheduler.js"
 import { writeClaudeCredentials } from "./providers/claude/writeback.js"
 import { productionOllamaFetch } from "./providers/ollama/http.js"
 
@@ -83,13 +85,29 @@ export const connectorServer: V1Plugin = async (input, options): Promise<Hooks> 
     health: connectorOptions.health,
     logger,
   })(input, options)
+  const processSupervisor = createProductionProcessSupervisor()
+  const claudeCliAuthority = connectorOptions.credentialAuthority.claudeCli
+  const credentialAuthority = createClaudeCredentialAuthorityScheduler({
+    enabled: claudeCliAuthority.enabled,
+    clock,
+    leadMs: claudeCliAuthority.leadMs,
+    retryMs: claudeCliAuthority.retryMs,
+    env,
+    processSupervisor,
+    logger,
+  })
   const dispose = hooks.dispose
   const disposal = createAsyncDisposable(async () => {
-    try {
-      await dispose?.()
-    } finally {
-      await disposeV1LanguageRuntime()
-    }
+    const results = await Promise.allSettled([
+      Promise.resolve().then(() => credentialAuthority.dispose()),
+      Promise.resolve().then(() => processSupervisor.dispose()),
+      Promise.resolve().then(() => dispose?.()),
+      Promise.resolve().then(disposeV1LanguageRuntime),
+    ])
+    const primaryFailure = results.find(
+      (result): result is PromiseRejectedResult => result.status === "rejected",
+    )
+    if (primaryFailure !== undefined) throw primaryFailure.reason
   })
   return {
     ...hooks,
