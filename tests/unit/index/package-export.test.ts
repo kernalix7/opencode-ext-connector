@@ -6,11 +6,17 @@ const PackageSchema = z.object({
   main: z.string(),
   types: z.string(),
   exports: z.record(z.string(), z.object({ types: z.string(), import: z.string() })),
-  scripts: z.record(z.string(), z.string()),
+  scripts: z
+    .object({
+      prepack: z.string(),
+      "verify:package": z.string(),
+      "test:e2e": z.string(),
+    })
+    .catchall(z.string()),
 })
 
 describe("package exports", () => {
-  it("publishes the exact 0.4.0 package entry points", async () => {
+  it("publishes the exact 0.5.0 package entry points", async () => {
     // Given
     const packageJson: unknown = await Bun.file("package.json").json()
 
@@ -24,7 +30,7 @@ describe("package exports", () => {
       types: manifest.types,
       exports: manifest.exports,
     }).toEqual({
-      version: "0.4.0",
+      version: "0.5.0",
       main: "./dist/index.js",
       types: "./dist/index.d.ts",
       exports: {
@@ -54,7 +60,7 @@ describe("package exports", () => {
 
     // Then
     expect({
-      prepack: manifest.scripts["prepack"],
+      prepack: manifest.scripts.prepack,
       verifyPackage: manifest.scripts["verify:package"],
       testE2e: manifest.scripts["test:e2e"],
     }).toEqual({
