@@ -21,6 +21,9 @@ describe("pickConnectorOptionsInput", () => {
       snapshotTimeoutMs: 12_000,
       writeBackCredentials: false,
       credentialRefresh: { mode: "auto", leadMs: 60_000 },
+      credentialAuthority: {
+        claudeCli: { enabled: false, leadMs: 300_000, retryMs: 300_000 },
+      },
       catalogReloadMs: 300_000,
       health: { initialBackoffMs: 2_000, maximumBackoffMs: 8_000 },
     })
@@ -81,6 +84,42 @@ describe("pickConnectorOptionsInput", () => {
     // Then
     expect(options.credentialRefresh).toEqual({ mode: "never", leadMs: 60_000 })
     expect(options.writeBackCredentials).toBe(false)
+  })
+
+  it("preserves valid Claude CLI authority through host sanitization", () => {
+    // Given
+    const input = {
+      providers: ["claude"],
+      credentialManagement: "external",
+      credentialAuthority: { claudeCli: { enabled: true, leadMs: 12_000, retryMs: 34_000 } },
+      extra: true,
+    }
+    // When
+    const options = parseConnectorOptions(pickConnectorOptionsInput(input))
+    // Then
+    expect(options.credentialAuthority.claudeCli).toEqual({
+      enabled: true,
+      leadMs: 12_000,
+      retryMs: 34_000,
+    })
+  })
+
+  it("preserves malformed Claude CLI authority for strict validation", () => {
+    // Given
+    const credentialAuthority = { claudeCli: { enabled: true, retryMs: "later" } }
+    const input = { credentialManagement: "external", credentialAuthority }
+    // When
+    const picked = pickConnectorOptionsInput(input)
+    const result = ConnectorOptionsSchema.safeParse(picked)
+    // Then
+    expect(picked).toMatchObject({ credentialAuthority })
+    expect(result.success).toBe(false)
+    if (result.success) return
+    expect(
+      result.error.issues.some(
+        (issue) => issue.path.join(".") === "credentialAuthority.claudeCli.retryMs",
+      ),
+    ).toBe(true)
   })
 
   it.each([

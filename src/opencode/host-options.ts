@@ -2,8 +2,9 @@ import type { ConnectorOptionsInput } from "../core/options.js"
 
 type HostConnectorOptionsInput = Omit<
   ConnectorOptionsInput,
-  "credentialManagement" | "credentialRefresh" | "writeBackCredentials"
+  "credentialAuthority" | "credentialManagement" | "credentialRefresh" | "writeBackCredentials"
 > & {
+  readonly credentialAuthority?: unknown
   readonly credentialManagement?: unknown
   readonly credentialRefresh?: unknown
   readonly writeBackCredentials?: unknown
@@ -79,6 +80,9 @@ export function pickConnectorOptionsInput(input: unknown): HostConnectorOptionsI
     ...(!("credentialManagement" in input) || input.credentialManagement === undefined
       ? {}
       : { credentialManagement: input.credentialManagement }),
+    ...(!("credentialAuthority" in input) || input.credentialAuthority === undefined
+      ? {}
+      : { credentialAuthority: input.credentialAuthority }),
     ...(credentialRefresh === undefined ? {} : { credentialRefresh }),
     catalogReloadMs:
       "catalogReloadMs" in input ? nonNegativeInteger(input.catalogReloadMs) : undefined,
