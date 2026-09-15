@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE
 
-**Updated:** 2026-09-09
-**Code baseline:** `1e98401` (remote Ollama and credential policy integrated)
+**Updated:** 2026-09-15
+**Code baseline:** `v0.5.0` (optional Claude CLI credential authority integrated)
 **Branch:** `main`; clean, sole local worktree, tracking `origin/main`
 
 ## OVERVIEW
@@ -26,6 +26,7 @@ src/providers/claude/          credentials and compatibility path; see AGENTS.md
 src/providers/command-code/    client version, /alpha/generate, provider-local NDJSON
 src/providers/cursor/          private Node bridge and direct Run runtime; see AGENTS.md
 src/providers/ollama/          trusted daemon endpoints and catalog runtime; see AGENTS.md
+src/process/                   production child-process supervision and disposal
 src/{catalog,http,logging}/    small shared boundary implementations
 src/sdk/                       package subpath entry points
 scripts/                       build, source-policy, and pure-LOC checks
@@ -41,6 +42,7 @@ tests/                         unit/integration/e2e suites and fakes; see AGENTS
 | Shared contracts | `src/core/AGENTS.md` | No provider protocol or concrete I/O |
 | OpenCode integration | `src/opencode/` | V1 API boundary; V2 imports stay in `beta-api.ts` |
 | Claude changes | `src/providers/claude/AGENTS.md` | Credentials, compatibility stream, writeback |
+| Process supervision | `src/process/production-supervisor.ts` | Spawn, abort, termination, and process cleanup |
 | Cursor changes | `src/providers/cursor/AGENTS.md` | Bridge, retries, sessions, pinned codecs |
 | Ollama changes | `src/providers/ollama/AGENTS.md` | Local/Cloud catalog and configured-daemon generation |
 | Command Code changes | `src/providers/command-code/` | Request lifecycle and NDJSON remain local |
@@ -58,9 +60,12 @@ tests/                         unit/integration/e2e suites and fakes; see AGENTS
 - `src/opencode/providers.ts` owns cross-provider registration; protocol code
   stays inside its provider directory.
 - Command Code uses `/alpha/generate` and provider-local NDJSON handling.
-- No vendor CLI is required at runtime. Claude/Command Code client versions
-  resolve from an env override, an installed binary, or the npm registry via
-  `src/http/package-version.ts`; never pin a version constant.
+- No vendor CLI is required by the default runtime. Claude/Command Code client
+  versions resolve from an env override, an installed binary, or the npm
+  registry via `src/http/package-version.ts`; never pin a version constant.
+- The optional Claude CLI credential authority is the only exception: it is
+  Linux-only, requires `credentialManagement: "external"`, util-linux `flock`,
+  and Claude Code >=2.1.259, and is disabled by default.
 - Prefer `credentialManagement: "connector" | "external"`; behavior is
   capability-gated, so Cursor/Command Code stay read-only and Ollama is
   unaffected.
@@ -68,6 +73,9 @@ tests/                         unit/integration/e2e suites and fakes; see AGENTS
   never/no-write with a credential re-read after 401; omitting all policy
   options preserves legacy auto/`60_000` + no-write, while legacy options still
   control behavior when supplied without `credentialManagement`.
+- `credentialAuthority.claudeCli` schedules one restricted CLI request before
+  expiry. Keep scheduling in the Claude provider, process control in
+  `src/process/`, and process-level construction/disposal in `src/server.ts`.
 - `credentialRefresh` and `writeBackCredentials` remain deprecated but accepted
   alone for one migration cycle (custom lead times require the legacy config);
   combining either with `credentialManagement` is rejected.

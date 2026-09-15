@@ -18,7 +18,7 @@ Pull-based adapter + catalog snapshot primitives shared by provider implementati
 | `deadline.ts` | `createDeadline` | Parent abort + clock expiry; dispose cancels schedule |
 | `lifecycle.ts` | `createAsyncDisposable` | Second `dispose()` returns the same promise |
 | `health.ts` | `reduceHealth` | Pure reducer; backoff from `event.atMs`, not wall clock |
-| `options.ts` | `parseConnectorOptions` | `credentialManagement` is input-only and normalizes to existing refresh/writeback fields; conflicts with present legacy options; omission preserves defaults. Present `undefined` defaults (30_000 / 1_000 / 60_000); initial ≤ max |
+| `options.ts` | `parseConnectorOptions` | `credentialManagement` is input-only and normalizes to existing refresh/writeback fields; CLI authority is disabled by default and requires external management plus Claude; conflicts with present legacy options; omission preserves defaults. Present `undefined` defaults (30_000 / 1_000 / 60_000); initial ≤ max |
 | `logger.ts` | `createConnectorLogger` | Sink only; recursive key + URL query redaction |
 | `http.ts` | `HttpTransport` | Interface; body is `Uint8Array` |
 | `process.ts` | `ProcessSupervisor` / `SupervisedProcess` | Interface only; provider runtimes own process boundaries |
@@ -29,6 +29,8 @@ Tests: `tests/unit/core/<same>.test.ts`. Fakes: `tests/support/{clock,http,proce
 
 - Zod objects `.strict()` + nested `.readonly()`.
 - `HttpTransport` / `ProcessSupervisor` stay unimplemented here.
+- Core defines the CLI authority options and process interfaces only; provider
+  scheduling and production process I/O stay outside this layer.
 - No barrel `index.ts` — import the file.
 
 ## ANTI-PATTERNS
