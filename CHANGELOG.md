@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0 - 2026-09-16
+
+- Add the recommended `credentialRole: "owner" | "reader"` option for shared
+  Claude logins: one Linux owner runs the existing Claude CLI authority while
+  readers consume externally managed credentials without refreshing them
+- Keep the existing low-level credential policy options available for advanced
+  control, but reject combining any of them with `credentialRole`
+- Keep omitted credential policy behavior and non-Claude providers unchanged
+
 ## 0.5.0 - 2026-09-15
 
 - Add the disabled-by-default Claude CLI credential authority for Linux
