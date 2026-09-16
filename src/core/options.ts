@@ -4,6 +4,7 @@ import type { HealthPolicy } from "./health.js"
 
 export type CredentialRefreshMode = "auto" | "never"
 export type CredentialManagement = "connector" | "external"
+export type CredentialRole = "owner" | "reader"
 
 export type CredentialRefreshPolicy = {
   readonly mode: CredentialRefreshMode
@@ -23,6 +24,7 @@ export type CredentialAuthority = {
 export type ConnectorOptionsInput = {
   readonly providers?: readonly ("claude" | "cursor" | "command-code" | "ollama")[] | undefined
   readonly snapshotTimeoutMs?: number | undefined
+  readonly credentialRole?: CredentialRole | undefined
   readonly credentialManagement?: CredentialManagement | undefined
   readonly credentialAuthority?:
     | {
@@ -67,6 +69,7 @@ const NonNegativeSafeIntegerSchema = z.number().int().nonnegative().max(MaximumT
 const ProviderSchema = z.enum(["claude", "cursor", "command-code", "ollama"])
 const CredentialRefreshModeSchema = z.enum(["auto", "never"])
 const CredentialManagementSchema = z.enum(["connector", "external"])
+const CredentialRoleSchema = z.enum(["owner", "reader"])
 const SafeIntegerSchema = z.number().int().safe()
 const DefaultProviders: ConnectorOptions["providers"] = [
   "claude",
@@ -94,7 +97,9 @@ type ResolvedCredentialOptions = {
 }
 
 function resolveCredentialOptions(input: ConnectorOptionsInput): ResolvedCredentialOptions {
-  switch (input.credentialManagement) {
+  const credentialManagement =
+    input.credentialRole === undefined ? input.credentialManagement : "external"
+  switch (credentialManagement) {
     case undefined:
       return {
         credentialRefresh: Object.freeze({
@@ -120,6 +125,7 @@ const ConnectorOptionsInputSchema = z
   .object({
     providers: z.array(ProviderSchema).optional(),
     snapshotTimeoutMs: PositiveSafeIntegerSchema.optional(),
+    credentialRole: CredentialRoleSchema.optional(),
     credentialManagement: CredentialManagementSchema.optional(),
     credentialAuthority: CredentialAuthorityInputSchema.optional(),
     writeBackCredentials: z.boolean().optional(),
@@ -141,6 +147,20 @@ const ConnectorOptionsInputSchema = z
   })
   .strict()
   .superRefine((input, context) => {
+    if (
+      input.credentialRole !== undefined &&
+      (input.credentialManagement !== undefined ||
+        input.credentialAuthority !== undefined ||
+        input.credentialRefresh !== undefined ||
+        input.writeBackCredentials !== undefined)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["credentialRole"],
+        message:
+          "`credentialRole` cannot be combined with `credentialManagement`, `credentialAuthority`, `credentialRefresh`, or `writeBackCredentials`",
+      })
+    }
     if (
       input.credentialManagement !== undefined &&
       (input.credentialRefresh !== undefined || input.writeBackCredentials !== undefined)
@@ -164,6 +184,16 @@ const ConnectorOptionsInputSchema = z
           "Claude CLI credential authority requires external credential management and the Claude provider",
       })
     }
+    if (
+      input.credentialRole === "owner" &&
+      !(input.providers ?? DefaultProviders).includes("claude")
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["credentialRole"],
+        message: "Credential owner role requires the Claude provider",
+      })
+    }
     const initialBackoffMs = input.health?.initialBackoffMs ?? 1_000
     const maximumBackoffMs = input.health?.maximumBackoffMs ?? 60_000
     if (initialBackoffMs > maximumBackoffMs) {
@@ -180,7 +210,10 @@ export const ConnectorOptionsSchema: z.ZodType<ConnectorOptions, ConnectorOption
     const credentialOptions = resolveCredentialOptions(input)
     const credentialAuthority = Object.freeze({
       claudeCli: Object.freeze({
-        enabled: input.credentialAuthority?.claudeCli.enabled ?? false,
+        enabled:
+          input.credentialRole === "owner"
+            ? true
+            : (input.credentialAuthority?.claudeCli.enabled ?? false),
         leadMs: input.credentialAuthority?.claudeCli.leadMs ?? 300_000,
         retryMs: input.credentialAuthority?.claudeCli.retryMs ?? 300_000,
       }),
