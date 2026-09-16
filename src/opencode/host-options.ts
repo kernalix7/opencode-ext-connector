@@ -2,11 +2,16 @@ import type { ConnectorOptionsInput } from "../core/options.js"
 
 type HostConnectorOptionsInput = Omit<
   ConnectorOptionsInput,
-  "credentialAuthority" | "credentialManagement" | "credentialRefresh" | "writeBackCredentials"
+  | "credentialAuthority"
+  | "credentialManagement"
+  | "credentialRefresh"
+  | "credentialRole"
+  | "writeBackCredentials"
 > & {
   readonly credentialAuthority?: unknown
   readonly credentialManagement?: unknown
   readonly credentialRefresh?: unknown
+  readonly credentialRole?: unknown
   readonly writeBackCredentials?: unknown
 }
 
@@ -47,8 +52,10 @@ export function pickConnectorOptionsInput(input: unknown): HostConnectorOptionsI
     return {}
   }
   const preservesCredentialPolicy =
-    "credentialManagement" in input &&
-    (input.credentialManagement === "connector" || input.credentialManagement === "external")
+    ("credentialManagement" in input &&
+      (input.credentialManagement === "connector" || input.credentialManagement === "external")) ||
+    ("credentialRole" in input &&
+      (input.credentialRole === "owner" || input.credentialRole === "reader"))
   const writeBackCredentials =
     "writeBackCredentials" in input && input.writeBackCredentials !== undefined
       ? preservesCredentialPolicy
@@ -77,6 +84,9 @@ export function pickConnectorOptionsInput(input: unknown): HostConnectorOptionsI
     snapshotTimeoutMs:
       "snapshotTimeoutMs" in input ? positiveInteger(input.snapshotTimeoutMs) : undefined,
     ...(writeBackCredentials === undefined ? {} : { writeBackCredentials }),
+    ...(!("credentialRole" in input) || input.credentialRole === undefined
+      ? {}
+      : { credentialRole: input.credentialRole }),
     ...(!("credentialManagement" in input) || input.credentialManagement === undefined
       ? {}
       : { credentialManagement: input.credentialManagement }),
