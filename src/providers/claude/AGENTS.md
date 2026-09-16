@@ -34,6 +34,9 @@ LanguageModelV3 generation, optional credential persistence, and opt-in CLI auth
 - CLI authority requires external credential management, Linux, util-linux `flock`, and Claude
   Code >=2.1.259. It schedules one restricted single-turn request, treats lock exit `75` as silent
   contention, retries transient failures, and never owns OAuth or credential writes.
+- Core normalizes `credentialRole: "owner"` to this existing external-management CLI authority
+  configuration and `"reader"` to external management without it. Provider code consumes only
+  normalized fields and must not branch on the public role name.
 - Keep production spawning in `src/process/production-supervisor.ts` and compose/dispose the
   scheduler only from `connectorServer`; standalone auth servers do not start it.
 - `src/opencode/v1-anthropic-auth.ts` is the host-facing compatibility hook;

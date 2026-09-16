@@ -66,9 +66,15 @@ tests/                         unit/integration/e2e suites and fakes; see AGENTS
 - The optional Claude CLI credential authority is the only exception: it is
   Linux-only, requires `credentialManagement: "external"`, util-linux `flock`,
   and Claude Code >=2.1.259, and is disabled by default.
-- Prefer `credentialManagement: "connector" | "external"`; behavior is
-  capability-gated, so Cursor/Command Code stay read-only and Ollama is
-  unaffected.
+- Prefer `credentialRole: "owner" | "reader"` for shared Claude logins. Core
+  normalizes owner to external management plus the Claude CLI authority and
+  reader to external management without that authority. Role names describe
+  credential ownership, not host/guest placement.
+- `credentialRole` is input-only and cannot be combined with
+  `credentialManagement`, `credentialAuthority`, `credentialRefresh`, or
+  `writeBackCredentials`. The low-level options remain available for advanced
+  control; behavior is capability-gated, so Cursor/Command Code stay read-only
+  and Ollama is unaffected.
 - Claude maps `connector` to auto/`60_000` + writeback and `external` to
   never/no-write with a credential re-read after 401; omitting all policy
   options preserves legacy auto/`60_000` + no-write, while legacy options still
