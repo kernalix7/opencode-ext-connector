@@ -4,8 +4,9 @@ import { join } from "node:path"
 import { z } from "zod"
 
 const ProbeResultSchema = z.object({
+  standaloneCreationEvents: z.array(z.string()),
   creationEvents: z.array(z.string()),
-  options: z.object({
+  claudeOptions: z.object({
     enabled: z.boolean(),
     leadMs: z.number(),
     retryMs: z.number(),
@@ -13,9 +14,11 @@ const ProbeResultSchema = z.object({
     supervisorMatches: z.boolean(),
     hasClock: z.boolean(),
     hasLogger: z.boolean(),
-    xaiEnabled: z.boolean(),
-    xaiEnvIsProcessEnv: z.boolean(),
-    xaiSupervisorMatches: z.boolean(),
+  }),
+  xaiOptions: z.object({
+    enabled: z.boolean(),
+    envIsProcessEnv: z.boolean(),
+    supervisorMatches: z.boolean(),
   }),
   successfulDisposalEvents: z.array(z.string()),
   standaloneEvents: z.array(z.string()),
@@ -48,14 +51,15 @@ async function runProbe(): Promise<z.infer<typeof ProbeResultSchema>> {
 }
 
 describe("connector server lifecycle", () => {
-  it("isolates lifecycle mocks while wiring and disposing the Claude authority", async () => {
+  it("wires Claude and xAI authorities and preserves the Claude failure when all disposals fail", async () => {
     // Given / When
     const result = await runProbe()
 
     // Then
     expect(result).toEqual({
-      creationEvents: ["hooks", "supervisor", "authority", "xai-authority"],
-      options: {
+      standaloneCreationEvents: [],
+      creationEvents: ["hooks", "supervisor", "claude-authority", "xai-authority"],
+      claudeOptions: {
         enabled: true,
         leadMs: 12_345,
         retryMs: 67_890,
@@ -63,16 +67,24 @@ describe("connector server lifecycle", () => {
         supervisorMatches: true,
         hasClock: true,
         hasLogger: true,
-        xaiEnabled: true,
-        xaiEnvIsProcessEnv: true,
-        xaiSupervisorMatches: true,
       },
-      successfulDisposalEvents: ["authority", "xai-authority", "supervisor", "hooks", "runtime"],
+      xaiOptions: {
+        enabled: true,
+        envIsProcessEnv: true,
+        supervisorMatches: true,
+      },
+      successfulDisposalEvents: [
+        "claude-authority",
+        "xai-authority",
+        "supervisor",
+        "hooks",
+        "runtime",
+      ],
       standaloneEvents: [],
       standaloneAuthorityHasAuth: false,
       standaloneConsumerMethods: 0,
-      failedDisposalEvents: ["authority", "xai-authority", "supervisor", "hooks", "runtime"],
-      primaryFailure: "authority",
+      failedDisposalEvents: ["claude-authority", "xai-authority", "supervisor", "hooks", "runtime"],
+      primaryFailure: "claude-authority",
     })
   })
 })

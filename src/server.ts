@@ -89,7 +89,7 @@ export const connectorServer: V1Plugin = async (input, options): Promise<Hooks> 
   })(input, options)
   const processSupervisor = createProductionProcessSupervisor()
   const claudeCliAuthority = connectorOptions.credentialAuthority.claudeCli
-  const credentialAuthority = createClaudeCredentialAuthorityScheduler({
+  const claudeCredentialAuthority = createClaudeCredentialAuthorityScheduler({
     enabled: claudeCliAuthority.enabled,
     clock,
     leadMs: claudeCliAuthority.leadMs,
@@ -107,7 +107,7 @@ export const connectorServer: V1Plugin = async (input, options): Promise<Hooks> 
   const dispose = hooks.dispose
   const disposal = createAsyncDisposable(async () => {
     const results = await Promise.allSettled([
-      Promise.resolve().then(() => credentialAuthority.dispose()),
+      Promise.resolve().then(() => claudeCredentialAuthority.dispose()),
       Promise.resolve().then(() => xaiAuthority.dispose()),
       Promise.resolve().then(() => processSupervisor.dispose()),
       Promise.resolve().then(() => dispose?.()),

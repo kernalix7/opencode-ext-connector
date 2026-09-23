@@ -12,23 +12,25 @@ class UnexpectedProcessStartError extends Error {
   public override readonly name = "UnexpectedProcessStartError"
 }
 
-const authorityFailure = new Error("authority disposal failed")
-let authorityOptions: ClaudeCredentialAuthoritySchedulerOptions | undefined
+const claudeAuthorityFailure = new Error("Claude authority disposal failed")
+const xaiAuthorityFailure = new Error("xAI authority disposal failed")
+let claudeAuthorityOptions: ClaudeCredentialAuthoritySchedulerOptions | undefined
 let xaiAuthorityOptions: XaiAuthorityObserverOptions | undefined
 let creationEvents: string[] = []
 let disposalEvents: string[] = []
 let failDisposal = false
 
+const disposeSupervisor = async (): Promise<void> => {
+  disposalEvents.push("supervisor")
+  if (failDisposal) throw new Error("supervisor disposal failed")
+}
+
 const supervisor: ProcessSupervisor = {
   start: async () => {
     throw new UnexpectedProcessStartError()
   },
-  dispose: async () => {
-    disposalEvents.push("supervisor")
-  },
-  [Symbol.asyncDispose]: async () => {
-    disposalEvents.push("supervisor")
-  },
+  dispose: disposeSupervisor,
+  [Symbol.asyncDispose]: disposeSupervisor,
 }
 
 mock.module("../../../src/process/production-supervisor", () => ({
@@ -42,11 +44,11 @@ mock.module("../../../src/providers/claude/credential-authority-scheduler", () =
   createClaudeCredentialAuthorityScheduler: (
     options: ClaudeCredentialAuthoritySchedulerOptions,
   ): AsyncDisposableHandle => {
-    creationEvents.push("authority")
-    authorityOptions = options
+    creationEvents.push("claude-authority")
+    claudeAuthorityOptions = options
     const dispose = async (): Promise<void> => {
-      disposalEvents.push("authority")
-      if (failDisposal) throw authorityFailure
+      disposalEvents.push("claude-authority")
+      if (failDisposal) throw claudeAuthorityFailure
     }
     return { dispose, [Symbol.asyncDispose]: dispose }
   },
@@ -58,6 +60,7 @@ mock.module("../../../src/providers/xai/authority-observer", () => ({
     xaiAuthorityOptions = options
     const dispose = async (): Promise<void> => {
       disposalEvents.push("xai-authority")
+      if (failDisposal) throw xaiAuthorityFailure
     }
     return { dispose, [Symbol.asyncDispose]: dispose }
   },
@@ -84,7 +87,14 @@ mock.module("../../../src/opencode/v1-language", () => ({
   },
 }))
 
-const { connectorServer, xaiAuthServer } = await import("../../../src/server")
+const {
+  connectorServer,
+  claudeAuthServer,
+  cursorAuthServer,
+  commandCodeAuthServer,
+  ollamaAuthServer,
+  xaiAuthServer,
+} = await import("../../../src/server")
 
 const enabledOptions = {
   providers: ["claude"],
@@ -108,9 +118,21 @@ const pluginInput: PluginInput = {
   $: Bun.$,
 }
 
+for (const authServer of [
+  claudeAuthServer,
+  cursorAuthServer,
+  commandCodeAuthServer,
+  ollamaAuthServer,
+  xaiAuthServer,
+]) {
+  await authServer(pluginInput, enabledOptions)
+}
+const standaloneCreationEvents = creationEvents
+creationEvents = []
+
 const successfulHooks = await connectorServer(pluginInput, enabledOptions)
-const options = authorityOptions
-if (options === undefined) throw new Error("authority was not created")
+const claudeOptions = claudeAuthorityOptions
+if (claudeOptions === undefined) throw new Error("Claude authority was not created")
 const xaiOptions = xaiAuthorityOptions
 if (xaiOptions === undefined) throw new Error("xAI authority was not created")
 await successfulHooks.dispose?.()
@@ -133,23 +155,27 @@ let primaryFailure = "none"
 try {
   await failedHooks.dispose?.()
 } catch (error) {
-  primaryFailure = error === authorityFailure ? "authority" : "unexpected"
+  if (!(error instanceof Error)) throw error
+  primaryFailure = error === claudeAuthorityFailure ? "claude-authority" : "unexpected"
 }
 
 process.stdout.write(
   JSON.stringify({
+    standaloneCreationEvents,
     creationEvents,
-    options: {
-      enabled: options.enabled,
-      leadMs: options.leadMs,
-      retryMs: options.retryMs,
-      envIsProcessEnv: options.env === process.env,
-      supervisorMatches: options.processSupervisor === supervisor,
-      hasClock: typeof options.clock.nowMs === "function",
-      hasLogger: typeof options.logger.log === "function",
-      xaiEnabled: xaiOptions.enabled,
-      xaiEnvIsProcessEnv: xaiOptions.env === process.env,
-      xaiSupervisorMatches: xaiOptions.processSupervisor === supervisor,
+    claudeOptions: {
+      enabled: claudeOptions.enabled,
+      leadMs: claudeOptions.leadMs,
+      retryMs: claudeOptions.retryMs,
+      envIsProcessEnv: claudeOptions.env === process.env,
+      supervisorMatches: claudeOptions.processSupervisor === supervisor,
+      hasClock: typeof claudeOptions.clock.nowMs === "function",
+      hasLogger: typeof claudeOptions.logger.log === "function",
+    },
+    xaiOptions: {
+      enabled: xaiOptions.enabled,
+      envIsProcessEnv: xaiOptions.env === process.env,
+      supervisorMatches: xaiOptions.processSupervisor === supervisor,
     },
     successfulDisposalEvents,
     standaloneEvents,
