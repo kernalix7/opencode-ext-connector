@@ -1,15 +1,16 @@
 # PROJECT KNOWLEDGE BASE
 
-**Updated:** 2026-09-15
-**Code baseline:** `v0.5.0` (optional Claude CLI credential authority integrated)
+**Updated:** 2026-09-23
+**Code baseline:** `v0.7.0` (xAI authority/consumer integration; six root exports)
 **Branch:** `main`; clean, sole local worktree, tracking `origin/main`
 
 ## OVERVIEW
 
 Unofficial OpenCode plugin exposing Claude, Cursor, Command Code, and Ollama from
-one `opencode.json` entry. It reuses existing vendor sessions and never mints
-OAuth. Source is BSD-3-Clause; third-party access and terms remain the user's
-responsibility.
+one `opencode.json` entry, with an opt-in xAI host authority on the root entry
+and a guest consumer loaded through the dedicated `opencode-ext-connector/xai`
+subpath. It reuses existing vendor sessions and never mints OAuth. Source is
+BSD-3-Clause; third-party access and terms remain the user's responsibility.
 
 Stack: Bun 1.3.14, TypeScript 6.0.2 strict, Zod 4.1.8,
 `@opencode-ai/plugin@1.18.18`, and `@ai-sdk/provider@3.0.8` LanguageModelV3.
@@ -26,9 +27,11 @@ src/providers/claude/          credentials and compatibility path; see AGENTS.md
 src/providers/command-code/    client version, /alpha/generate, provider-local NDJSON
 src/providers/cursor/          private Node bridge and direct Run runtime; see AGENTS.md
 src/providers/ollama/          trusted daemon endpoints and catalog runtime; see AGENTS.md
+src/providers/xai/             access-state, authority observer, and consumer auth; see AGENTS.md
 src/process/                   production child-process supervision and disposal
 src/{catalog,http,logging}/    small shared boundary implementations
-src/sdk/                       package subpath entry points
+src/sdk/                       cursor, command-code, ollama package subpath entries
+src/xai.ts                     dedicated `/xai` subpath loader (xaiAuthServer only)
 scripts/                       build, source-policy, and pure-LOC checks
 tests/                         unit/integration/e2e suites and fakes; see AGENTS.md
 ```
@@ -37,7 +40,7 @@ tests/                         unit/integration/e2e suites and fakes; see AGENTS
 
 | Task | Location | Notes |
 |------|----------|-------|
-| Public plugin exports | `src/index.ts` | Exactly five named legacy plugin functions |
+| Public plugin exports | `src/index.ts` | Exactly six named legacy plugin functions (xaiAuthServer added) |
 | Server composition | `src/server.ts` | Registry, transports, auth servers, disposal |
 | Shared contracts | `src/core/AGENTS.md` | No provider protocol or concrete I/O |
 | OpenCode integration | `src/opencode/` | V1 API boundary; V2 imports stay in `beta-api.ts` |
@@ -45,7 +48,9 @@ tests/                         unit/integration/e2e suites and fakes; see AGENTS
 | Process supervision | `src/process/production-supervisor.ts` | Spawn, abort, termination, and process cleanup |
 | Cursor changes | `src/providers/cursor/AGENTS.md` | Bridge, retries, sessions, pinned codecs |
 | Ollama changes | `src/providers/ollama/AGENTS.md` | Local/Cloud catalog and configured-daemon generation |
+| xAI changes | `src/providers/xai/AGENTS.md` | Access file, authority observer, consumer auth |
 | Command Code changes | `src/providers/command-code/` | Request lifecycle and NDJSON remain local |
+| `/xai` subpath loader | `src/xai.ts` | Dedicated consumer entry, `xaiAuthServer` only |
 | Test placement | `tests/AGENTS.md` | Deterministic fakes and isolated E2E |
 | Policy failures | `scripts/check-source-policy.ts` | AST/source-boundary violations |
 | Size failures | `scripts/check-file-size.ts` | 250 pure-LOC ceiling |
@@ -56,7 +61,8 @@ tests/                         unit/integration/e2e suites and fakes; see AGENTS
 - Publication requires the provider-specific OpenCode auth record and usable
   vendor/local credential state.
 - Public root exports are exactly `connectorServer`, `claudeAuthServer`,
-  `cursorAuthServer`, `commandCodeAuthServer`, and `ollamaAuthServer`.
+  `cursorAuthServer`, `commandCodeAuthServer`, `ollamaAuthServer`, and
+  `xaiAuthServer`.
 - `src/opencode/providers.ts` owns cross-provider registration; protocol code
   stays inside its provider directory.
 - Command Code uses `/alpha/generate` and provider-local NDJSON handling.
@@ -85,6 +91,21 @@ tests/                         unit/integration/e2e suites and fakes; see AGENTS
 - `credentialRefresh` and `writeBackCredentials` remain deprecated but accepted
   alone for one migration cycle (custom lead times require the legacy config);
   combining either with `credentialManagement` is rejected.
+- `xaiOAuth` enables an opt-in xAI host authority plus a guest consumer pair.
+  The option accepts a strict `{ mode: "authority" | "consumer" }` value;
+  omitting `xaiOAuth` disables the integration silently, and a present option
+  with a missing or unknown `mode` is rejected at parse time. The role is
+  independent of every Claude credential option and is preserved in parsed
+  output as `xaiOAuth` (or `null` when omitted).
+- `xaiOAuth.mode: "authority"` is honored on the root `connectorServer`
+  entry. The host observer watches the OpenCode auth record and invokes a
+  fixed no-arg helper to project guest access state. It does not write the
+  access file, mint or refresh xAI OAuth, or carry tokens across machines.
+- `xaiOAuth.mode: "consumer"` is honored only through the dedicated
+  `opencode-ext-connector/xai` subpath. A subpath entry without `mode`
+  returns an empty hook and the xAI provider stays disconnected; with mode
+  `"consumer"` the connector returns the xAI auth hook and exposes no
+  `/connect` methods (`methods: []` is part of the public contract).
 - Provider snapshots, health, and failures remain isolated.
 - `ollamaBaseURL` is a flat connector and standalone SDK option. It defaults to
   `http://localhost:11434`; explicit remote/self-hosted bases preserve path
