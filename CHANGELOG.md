@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.7.0 - 2026-09-23
+
+- Add the opt-in `xaiOAuth.mode: "authority" | "consumer"` package subpath
+  pairing a host-side authority with a guest-side consumer; omitting
+  `xaiOAuth` disables the integration silently, while a present `xaiOAuth`
+  whose `mode` is missing or unknown is rejected at parse time
+- Ship the dedicated `./xai` consumer as a separate OpenCode plugin entry
+  that returns the xAI auth hook only with `methods: []`
+- Invoke the fixed helper at `${HOME}/.local/bin/opensandbox-xai-auth-sync`
+  with no arguments, `PATH=/usr/local/bin:/usr/bin:/bin`, `HOME` always
+  set, and `XDG_DATA_HOME` forwarded only when absolute; the helper
+  delegates projection to the OpenSandbox manager, and a non-zero exit
+  retries after `5000` ms without removing the xAI provider
+- Re-read the access file and `expires` on every outbound request and raise
+  `XaiAccessUnavailableError` before any network call on a missing file,
+  a stat that fails the closed-v1 `0600`/single-link/current-user gates,
+  a schema mismatch, a `"state": "unavailable"` record, malformed JSON,
+  or a non-future `expires`
+- Never place a refresh token inside the guest; refresh stays on the host
+  authority only
+- Keep existing Claude, Cursor, Command Code, and Ollama providers and
+  omitted-mode behavior unchanged
+
 ## 0.6.0 - 2026-09-16
 
 - Add the recommended `credentialRole: "owner" | "reader"` option for shared
