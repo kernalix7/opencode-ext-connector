@@ -7,13 +7,14 @@ import {
   connectorServer,
   cursorAuthServer,
   ollamaAuthServer,
+  xaiAuthServer,
 } from "../../../src/index"
 import { createCommandCode } from "../../../src/sdk/command-code"
 import { createCursor } from "../../../src/sdk/cursor"
 import { createOllama } from "../../../src/sdk/ollama"
 
 describe("plugin export", () => {
-  it("exports exactly the five legacy OpenCode plugin functions", () => {
+  it("exports exactly the six legacy OpenCode plugin functions", () => {
     // Given
     const expectedExports: readonly string[] = [
       "claudeAuthServer",
@@ -21,6 +22,7 @@ describe("plugin export", () => {
       "connectorServer",
       "cursorAuthServer",
       "ollamaAuthServer",
+      "xaiAuthServer",
     ]
     // When
     const exportedNames = Object.keys(pluginModule).sort()
@@ -32,6 +34,7 @@ describe("plugin export", () => {
     expect(typeof cursorAuthServer).toBe("function")
     expect(typeof commandCodeAuthServer).toBe("function")
     expect(typeof ollamaAuthServer).toBe("function")
+    expect(typeof xaiAuthServer).toBe("function")
   })
 
   it("exposes Cursor as an AI SDK factory", () => {

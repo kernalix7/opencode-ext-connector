@@ -16,6 +16,7 @@ const rootExportNames = [
   "connectorServer",
   "cursorAuthServer",
   "ollamaAuthServer",
+  "xaiAuthServer",
 ] as const
 const rootExportsSchema = z.object({ names: z.array(z.string()), kinds: z.array(z.string()) })
 
@@ -165,7 +166,7 @@ describe("packed package installation", () => {
       // Then
       expect(rootExportsSchema.parse(JSON.parse(rawExports))).toEqual({
         names: [...rootExportNames],
-        kinds: ["function", "function", "function", "function", "function"],
+        kinds: ["function", "function", "function", "function", "function", "function"],
       })
       expect(Object.keys(auth.data ?? {}).sort()).toEqual([
         "anthropic",

@@ -14,3 +14,6 @@ export const commandCodeAuthServer: V1Plugin = async (input, options) =>
 
 export const ollamaAuthServer: V1Plugin = async (input, options) =>
   (await import("./server.js")).ollamaAuthServer(input, options)
+
+export const xaiAuthServer: V1Plugin = async (input, options) =>
+  (await import("./server.js")).xaiAuthServer(input, options)
