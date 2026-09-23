@@ -6,12 +6,14 @@ type HostConnectorOptionsInput = Omit<
   | "credentialManagement"
   | "credentialRefresh"
   | "credentialRole"
+  | "xaiOAuth"
   | "writeBackCredentials"
 > & {
   readonly credentialAuthority?: unknown
   readonly credentialManagement?: unknown
   readonly credentialRefresh?: unknown
   readonly credentialRole?: unknown
+  readonly xaiOAuth?: unknown
   readonly writeBackCredentials?: unknown
 }
 
@@ -90,6 +92,7 @@ export function pickConnectorOptionsInput(input: unknown): HostConnectorOptionsI
     ...(!("credentialManagement" in input) || input.credentialManagement === undefined
       ? {}
       : { credentialManagement: input.credentialManagement }),
+    ...(!("xaiOAuth" in input) || input.xaiOAuth === undefined ? {} : { xaiOAuth: input.xaiOAuth }),
     ...(!("credentialAuthority" in input) || input.credentialAuthority === undefined
       ? {}
       : { credentialAuthority: input.credentialAuthority }),
