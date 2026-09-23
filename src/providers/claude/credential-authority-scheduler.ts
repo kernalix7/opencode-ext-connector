@@ -18,6 +18,7 @@ const LOCK_FILE = "authority.lock"
 const LOCK_CONFLICT_EXIT_CODE = 75
 const MAXIMUM_DELAY_MS = 2_147_483_647
 const AUTHORITY_PROMPT = "Reply OK without using tools."
+const ANTHROPIC_API_KEY = "ANTHROPIC_API_KEY"
 
 export type ClaudeCredentialReader = (
   env: Readonly<Record<string, string | undefined>>,
@@ -60,6 +61,17 @@ function assertNeverProcessExit(exit: never): never {
   throw new InvalidArgumentError("processExit", exit)
 }
 
+function authorityChildEnvironment(
+  env: ClaudeCredentialAuthorityEnvironment,
+): Readonly<Record<string, string>> {
+  const child: Record<string, string> = {}
+  for (const [key, value] of Object.entries(env)) {
+    if (key === ANTHROPIC_API_KEY || value === undefined) continue
+    child[key] = value
+  }
+  return Object.freeze(child)
+}
+
 export function createClaudeCredentialAuthorityScheduler(
   options: ClaudeCredentialAuthoritySchedulerOptions,
 ): AsyncDisposableHandle {
@@ -97,6 +109,8 @@ export function createClaudeCredentialAuthorityScheduler(
   const runAuthority = async (): Promise<ProcessExit | null> => {
     if (stateDirectory === null) return null
     await ensureStateDirectory(stateDirectory)
+    // Use the stored OAuth login even when the parent has an API key.
+    const environment = authorityChildEnvironment(options.env)
     const process = await options.processSupervisor.start(
       {
         executable: "flock",
@@ -120,6 +134,7 @@ export function createClaudeCredentialAuthorityScheduler(
           "json",
         ],
         cwd: stateDirectory,
+        environment,
       },
       controller.signal,
     )

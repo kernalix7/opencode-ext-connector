@@ -21,12 +21,25 @@ function credentials(expiresAtMs: number): ClaudeCredentials {
 }
 
 describe("Claude credential authority invocation", () => {
-  it("runs the restricted flock command from XDG state without credential arguments", async () => {
+  it("runs the restricted flock command with the API key omitted from its environment", async () => {
     // Given
     const clock = new FakeClock()
     const supervisor = new FakeProcessSupervisor()
     const process = new FakeSupervisedProcess()
     const directories: string[] = []
+    const expectedEnvironment = {
+      HOME: "/home/test",
+      PATH: "/test/bin:/usr/bin",
+      CLAUDE_CONFIG_DIR: "/test/claude",
+      XDG_STATE_HOME: "/xdg/state",
+      UNRELATED: "preserved",
+      EMPTY: "",
+    }
+    const env = Object.freeze({
+      ...expectedEnvironment,
+      UNSET: undefined,
+      ANTHROPIC_API_KEY: "test-api-key",
+    })
     supervisor.enqueueProcess(process)
     let reads = 0
     const scheduler = createClaudeCredentialAuthorityScheduler({
@@ -35,7 +48,7 @@ describe("Claude credential authority invocation", () => {
       clock,
       leadMs: 1_000,
       retryMs: 5_000,
-      env: { HOME: "/home/test", XDG_STATE_HOME: "/xdg/state" },
+      env,
       processSupervisor: supervisor,
       logger: createConnectorLogger(clock, new MemoryLogSink()),
       readCredentials: async () => {
@@ -57,6 +70,12 @@ describe("Claude credential authority invocation", () => {
     expect(directories).toEqual([stateDirectory])
     expect(supervisor.commands).toHaveLength(1)
     const command = supervisor.commands[0]
+    expect(command?.environment).toStrictEqual(expectedEnvironment)
+    expect(command).not.toHaveProperty("environment.ANTHROPIC_API_KEY")
+    expect(command?.environment).not.toHaveProperty("UNSET")
+    expect(env.ANTHROPIC_API_KEY).toBe("test-api-key")
+    expect(env.UNSET).toBeUndefined()
+    expect(env.EMPTY).toBe("")
     expect(command?.executable).toBe("flock")
     expect(command?.cwd).toBe(stateDirectory)
     expect(command?.arguments.slice(0, 10)).toEqual([
@@ -82,6 +101,7 @@ describe("Claude credential authority invocation", () => {
     ])
     expect(JSON.stringify(command)).not.toContain("secret-access-token")
     expect(JSON.stringify(command)).not.toContain("secret-refresh-token")
+    expect(JSON.stringify(command)).not.toContain("test-api-key")
     expect(clock.pendingCount()).toBe(1)
     await scheduler.dispose()
   })
