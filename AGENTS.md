@@ -1,8 +1,8 @@
 # PROJECT KNOWLEDGE BASE
 
 **Updated:** 2026-09-23
-**Code baseline:** `v0.7.0` (xAI authority/consumer integration; six root exports)
-**Branch:** `main`; clean, sole local worktree, tracking `origin/main`
+**Code baseline:** `v0.7.1` (Claude authority hardening: strict credential-authority-options module, isolated child env without `ANTHROPIC_API_KEY`, hardened lifecycle cleanup; six root exports preserved)
+**Branch:** `release/v0.7.1`; clean, current release worktree at `/tmp/opencode-release-v071`, tracking `origin/main`
 
 ## OVERVIEW
 
@@ -71,7 +71,7 @@ tests/                         unit/integration/e2e suites and fakes; see AGENTS
   registry via `src/http/package-version.ts`; never pin a version constant.
 - The optional Claude CLI credential authority is the only exception: it is
   Linux-only, requires `credentialManagement: "external"`, util-linux `flock`,
-  and Claude Code >=2.1.259, and is disabled by default.
+  and Claude Code >=2.1.265, and is disabled by default.
 - Prefer `credentialRole: "owner" | "reader"` for shared Claude logins. Core
   normalizes owner to external management plus the Claude CLI authority and
   reader to external management without that authority. Role names describe
@@ -88,6 +88,10 @@ tests/                         unit/integration/e2e suites and fakes; see AGENTS
 - `credentialAuthority.claudeCli` schedules one restricted CLI request before
   expiry. Keep scheduling in the Claude provider, process control in
   `src/process/`, and process-level construction/disposal in `src/server.ts`.
+  The Claude authority child inherits every defined string from the parent
+  environment except `ANTHROPIC_API_KEY`, so the stored OAuth login is always
+  used regardless of any in-memory key, and the Claude authority is wired and
+  disposed by name in `src/server.ts` (standalone auth servers do not start it).
 - `credentialRefresh` and `writeBackCredentials` remain deprecated but accepted
   alone for one migration cycle (custom lead times require the legacy config);
   combining either with `credentialManagement` is rejected.
@@ -113,14 +117,17 @@ tests/                         unit/integration/e2e suites and fakes; see AGENTS
 
 ## WORKSPACE HANDOFF
 
-- `main` is the only local branch and `/workspace/project` is the only worktree;
-  completed feature and release work was consolidated before this memory update.
+- `release/v0.7.1` is the current release branch, checked out at
+  `/tmp/opencode-release-v071` and tracking `origin/main`; `/workspace/project`
+  remains the canonical `main` worktree.
+- `archive/local-v0.6.1-869e92d` is a preserved local candidate branch pointing
+  at the v0.6.1 docs commit; keep it as a reference snapshot until the v0.7.1
+  release ships.
 - `.opensandbox/project-id` and `sandbox.sh` are ignored local runner state. Keep
   them unless the user explicitly asks to remove OpenSandbox tooling.
 - `.git/recovery/release-0.2.0-safety-62518cb/` is a checksum-verified local
   snapshot of the discarded dirty release worktree, not project source.
-- Remote feature branches were intentionally left untouched; local redundant
-  branches and worktrees were removed.
+- Remote feature branches were intentionally left untouched.
 
 ## CONVENTIONS
 
