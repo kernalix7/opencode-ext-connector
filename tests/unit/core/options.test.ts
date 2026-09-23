@@ -154,6 +154,23 @@ describe("connector options", () => {
     ).toBe(true)
   })
 
+  it("rejects the removed Grok CLI authority option", () => {
+    // Given
+    const input = { credentialAuthority: { grokCli: { enabled: true } } }
+    // When
+    const result = ConnectorOptionsSchema.safeParse(input)
+    // Then
+    expect(result.success).toBe(false)
+    if (result.success) return
+    expect(result.error.issues).toContainEqual(
+      expect.objectContaining({
+        code: "unrecognized_keys",
+        path: ["credentialAuthority"],
+        keys: ["grokCli"],
+      }),
+    )
+  })
+
   it("rejects every legacy combination with one exact credential management issue", () => {
     // Given
     const inputs = [
@@ -202,6 +219,20 @@ describe("connector options", () => {
     const options = parseConnectorOptions(input)
     // Then
     expect(options.providers).toEqual([])
+  })
+
+  it("accepts empty credentialAuthority object and normalizes to disabled Claude CLI defaults", () => {
+    // Given
+    const input = { credentialAuthority: {} }
+    // When
+    const options = parseConnectorOptions(input)
+    // Then
+    expect(options.credentialAuthority).toEqual({
+      claudeCli: { enabled: false, leadMs: 300_000, retryMs: 300_000 },
+    })
+    expect(Object.isFrozen(options.credentialAuthority)).toBe(true)
+    expect(Object.isFrozen(options.credentialAuthority.claudeCli)).toBe(true)
+    expect(options.xaiOAuth).toBeNull()
   })
 
   it("accepts overrides without sharing defaults", () => {

@@ -1,6 +1,17 @@
 import { z } from "zod"
 
+import {
+  type CredentialAuthority,
+  type CredentialAuthorityInput,
+  CredentialAuthorityInputSchema,
+  resolveCredentialAuthority,
+} from "./credential-authority-options.js"
 import type { HealthPolicy } from "./health.js"
+
+export type {
+  ClaudeCliCredentialAuthority,
+  CredentialAuthority,
+} from "./credential-authority-options.js"
 
 export type CredentialRefreshMode = "auto" | "never"
 export type CredentialManagement = "connector" | "external"
@@ -16,31 +27,13 @@ export type CredentialRefreshPolicy = {
   readonly leadMs: number
 }
 
-export type ClaudeCliCredentialAuthority = {
-  readonly enabled: boolean
-  readonly leadMs: number
-  readonly retryMs: number
-}
-
-export type CredentialAuthority = {
-  readonly claudeCli: ClaudeCliCredentialAuthority
-}
-
 export type ConnectorOptionsInput = {
   readonly providers?: readonly ("claude" | "cursor" | "command-code" | "ollama")[] | undefined
   readonly snapshotTimeoutMs?: number | undefined
   readonly credentialRole?: CredentialRole | undefined
   readonly xaiOAuth?: XaiOAuthOptions | undefined
   readonly credentialManagement?: CredentialManagement | undefined
-  readonly credentialAuthority?:
-    | {
-        readonly claudeCli: {
-          readonly enabled: boolean
-          readonly leadMs?: number | undefined
-          readonly retryMs?: number | undefined
-        }
-      }
-    | undefined
+  readonly credentialAuthority?: CredentialAuthorityInput | undefined
   /** @deprecated Use credentialManagement instead. */
   readonly writeBackCredentials?: boolean | undefined
   /** @deprecated Use credentialManagement instead. */
@@ -81,26 +74,12 @@ const XaiOAuthSchema = z
   .object({ mode: z.enum(["authority", "consumer"]) })
   .strict()
   .readonly()
-const SafeIntegerSchema = z.number().int().safe()
 const DefaultProviders: ConnectorOptions["providers"] = [
   "claude",
   "cursor",
   "command-code",
   "ollama",
 ]
-const CredentialAuthorityInputSchema = z
-  .object({
-    claudeCli: z
-      .object({
-        enabled: z.boolean(),
-        leadMs: SafeIntegerSchema.nonnegative().optional(),
-        retryMs: SafeIntegerSchema.positive().optional(),
-      })
-      .strict()
-      .readonly(),
-  })
-  .strict()
-  .readonly()
 
 type ResolvedCredentialOptions = {
   readonly credentialRefresh: CredentialRefreshPolicy
@@ -185,7 +164,7 @@ const ConnectorOptionsInputSchema = z
       })
     }
     if (
-      input.credentialAuthority?.claudeCli.enabled === true &&
+      input.credentialAuthority?.claudeCli?.enabled === true &&
       (input.credentialManagement !== "external" ||
         !(input.providers ?? DefaultProviders).includes("claude"))
     ) {
@@ -220,16 +199,10 @@ export const ConnectorOptionsSchema: z.ZodType<ConnectorOptions, ConnectorOption
       maximumBackoffMs: input.health?.maximumBackoffMs ?? 60_000,
     })
     const credentialOptions = resolveCredentialOptions(input)
-    const credentialAuthority = Object.freeze({
-      claudeCli: Object.freeze({
-        enabled:
-          input.credentialRole === "owner"
-            ? true
-            : (input.credentialAuthority?.claudeCli.enabled ?? false),
-        leadMs: input.credentialAuthority?.claudeCli.leadMs ?? 300_000,
-        retryMs: input.credentialAuthority?.claudeCli.retryMs ?? 300_000,
-      }),
-    })
+    const credentialAuthority = resolveCredentialAuthority(
+      input.credentialAuthority,
+      input.credentialRole === "owner",
+    )
     const xaiOAuth = input.xaiOAuth === undefined ? null : Object.freeze(input.xaiOAuth)
     return Object.freeze({
       providers: Object.freeze(input.providers ?? DefaultProviders),

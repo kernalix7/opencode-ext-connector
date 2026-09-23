@@ -34,7 +34,7 @@ describe("credential role options", () => {
   it.each([
     ["credential management", { credentialRole: "owner", credentialManagement: "external" }],
     [
-      "credential authority",
+      "Claude CLI credential authority",
       {
         credentialRole: "owner",
         credentialAuthority: { claudeCli: { enabled: false } },
@@ -56,6 +56,46 @@ describe("credential role options", () => {
       path: ["credentialRole"],
     })
   })
+
+  it.each(["owner", "reader"])("rejects empty authority with the %s role", (credentialRole) => {
+    // Given
+    const input = {
+      credentialRole,
+      credentialAuthority: {},
+    }
+    // When
+    const result = ConnectorOptionsSchema.safeParse(input)
+    // Then
+    expect(result.success).toBe(false)
+    if (result.success) return
+    expect(result.error.issues).toContainEqual(
+      expect.objectContaining({ code: "custom", path: ["credentialRole"] }),
+    )
+  })
+
+  for (const credentialRole of ["owner", "reader"]) {
+    it.each([false, true])(
+      `rejects explicit Claude authority enabled=%s with ${credentialRole}`,
+      (enabled) => {
+        // Given
+        const input = {
+          credentialRole,
+          credentialAuthority: { claudeCli: { enabled } },
+        }
+        // When
+        const result = ConnectorOptionsSchema.safeParse(input)
+        // Then
+        expect(result.success).toBe(false)
+        if (result.success) return
+        expect(result.error.issues).toContainEqual({
+          code: "custom",
+          path: ["credentialRole"],
+          message:
+            "`credentialRole` cannot be combined with `credentialManagement`, `credentialAuthority`, `credentialRefresh`, or `writeBackCredentials`",
+        })
+      },
+    )
+  }
 
   it("requires the Claude provider for the owner role", () => {
     // Given / When
