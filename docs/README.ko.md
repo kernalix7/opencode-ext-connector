@@ -19,7 +19,7 @@
 
 ## 상태
 
-> 독립적인 비공식 커뮤니티 플러그인, 버전 **0.7.0**. CI에 설치된 OpenCode CLI를 대상으로 legacy multi-function 로더를 패키지 E2E 테스트로 검증합니다. `@opencode-ai/plugin@1.18.18`은 컴파일 시 사용하는 플러그인 API 대상이며 OpenCode 런타임 버전 고정이 아닙니다. 소스는 BSD-3-Clause입니다. 이 프로젝트는 OpenCode 또는 어떤 프로바이더와도 제휴, 보증, 후원, 승인 관계가 없습니다. 전체 조건은 [라이선스 및 면책 조항](#라이선스-및-면책-조항)에 있습니다.
+> 독립적인 비공식 커뮤니티 플러그인, 버전 **0.7.1**. CI에 설치된 OpenCode CLI를 대상으로 legacy multi-function 로더를 패키지 E2E 테스트로 검증합니다. `@opencode-ai/plugin@1.18.18`은 컴파일 시 사용하는 플러그인 API 대상이며 OpenCode 런타임 버전 고정이 아닙니다. 소스는 BSD-3-Clause입니다. 이 프로젝트는 OpenCode 또는 어떤 프로바이더와도 제휴, 보증, 후원, 승인 관계가 없습니다. 전체 조건은 [라이선스 및 면책 조항](#라이선스-및-면책-조항)에 있습니다.
 
 이미 가지고 있는 Claude, Cursor, Command Code, Ollama 세션을 재사용합니다. `opencode.json` 플러그인 항목 하나가 라이브 카탈로그를 OpenCode에 공개합니다. Claude와 Cursor는 OpenCode에 마커 또는 OAuth 레코드가 있고 벤더 세션이 있을 때까지 연결되지 않은 상태로 유지됩니다. Command Code는 OpenCode에 저장된 직접 API 키 또는 기존 CLI 세션/키를 사용할 수 있습니다. Ollama는 정확한 세션 마커와 응답하는 신뢰된 데몬이 필요합니다.
 
@@ -55,7 +55,7 @@ OpenCode는 시작 시 Bun으로 설정된 npm 플러그인을 설치하고 캐�
 ```jsonc
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-ext-connector@0.7.0"]
+  "plugin": ["opencode-ext-connector@0.7.1"]
 }
 ```
 
@@ -109,7 +109,7 @@ OpenCode는 플러그인 옵션을 두 요소 튜플의 두 번째 항목으로 
 
 `"owner"`는 내부적으로 external 자격 증명 관리를 선택하고 기본 타이밍으로 Claude CLI 권한을 활성화합니다. `"reader"`는 CLI 권한을 시작하지 않고 external 자격 증명 관리를 선택합니다. 이 역할은 자격 증명 소유권을 뜻하며 OpenCode가 물리 호스트에서 실행되는지, 샌드박스 게스트에서 실행되는지를 뜻하지 않습니다.
 
-공유 Claude 로그인마다 owner를 정확히 하나만 설정하십시오. Owner 모드에는 Linux, util-linux `flock`, `PATH`의 Claude Code `2.1.259` 이상, 인증된 Claude Code 세션이 필요합니다. 각 권한 호출은 실제 모델 요청이며 계정 사용량을 소비할 수 있습니다. 폐기된 로그인은 여전히 대화형 `/login`이 필요합니다.
+공유 Claude 로그인마다 owner를 정확히 하나만 설정하십시오. Owner 모드에는 Linux, util-linux `flock`, `PATH`의 Claude Code `2.1.265` 이상, 인증된 Claude Code 세션이 필요합니다. 각 권한 호출은 실제 모델 요청이며 계정 사용량을 소비할 수 있습니다. 폐기된 로그인은 여전히 대화형 `/login`이 필요합니다.
 
 `credentialRole`을 `credentialManagement`, `credentialAuthority`, `credentialRefresh`, `writeBackCredentials`와 함께 사용하지 마십시오. 기존 저수준 설정은 고급 제어용으로 계속 지원됩니다.
 
@@ -204,7 +204,7 @@ Anthropic은 갱신할 때마다 refresh 토큰을 회전시키고 이전 토큰
 }
 ```
 
-설정을 저장한 뒤 OpenCode를 완전히 재시작하십시오. 타이머는 Linux, `PATH`의 util-linux `flock`, Claude Code `2.1.259` 이상, 인증된 Claude Code 세션, writable persistent 상태 디렉터리가 필요합니다. 다른 플랫폼에서는 조용히 비활성화됩니다.
+설정을 저장한 뒤 OpenCode를 완전히 재시작하십시오. 타이머는 Linux, `PATH`의 util-linux `flock`, Claude Code `2.1.265` 이상, 인증된 Claude Code 세션, writable persistent 상태 디렉터리가 필요합니다. 다른 플랫폼에서는 조용히 비활성화됩니다.
 
 `leadMs`와 `retryMs`의 기본값은 모두 `300000`(5분)입니다. 커넥터는 lead 경계에서 restricted single-turn Claude 요청 하나를 예약합니다. 프로세스 공유 non-blocking lock이 같은 상태 디렉터리를 사용하는 프로세스의 동시 요청을 막고, 실패하면 Claude 프로바이더를 제거하지 않은 채 `retryMs` 후 재시도합니다.
 

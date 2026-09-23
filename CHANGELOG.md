@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.1 - 2026-09-23
+
+- Restrict the `credentialAuthority` schema to a strict, deeply-frozen Claude CLI
+  object: unknown keys fail parsing, empty input normalizes to disabled defaults
+  with `leadMs: 300_000` and `retryMs: 300_000`, and only `claudeCli` is accepted
+- Strip `ANTHROPIC_API_KEY` from every Claude authority child invocation so the
+  stored OAuth login is always used regardless of any in-memory key, without
+  mutating the parent environment
+- Attempt every disposer on shutdown through `Promise.allSettled` and keep the
+  Claude authority failure as the primary error so the xAI authority, supervisor,
+  and runtime disposers still run alongside Claude while Claude stays primary
+
 ## 0.7.0 - 2026-09-23
 
 - Add the opt-in `xaiOAuth.mode: "authority" | "consumer"` package subpath

@@ -19,7 +19,7 @@
 
 ## Status
 
-> Independent unofficial community plugin, version **0.7.0**. Package E2E tests exercise the legacy multi-function loader with the OpenCode CLI installed in CI. `@opencode-ai/plugin@1.18.18` is the compile-time plugin API target, not a runtime pin. Source is BSD-3-Clause. This project is not affiliated with, endorsed by, sponsored by, or authorized by OpenCode or any provider. Full terms are in [License and Disclaimer](#license-and-disclaimer).
+> Independent unofficial community plugin, version **0.7.1**. Package E2E tests exercise the legacy multi-function loader with the OpenCode CLI installed in CI. `@opencode-ai/plugin@1.18.18` is the compile-time plugin API target, not a runtime pin. Source is BSD-3-Clause. This project is not affiliated with, endorsed by, sponsored by, or authorized by OpenCode or any provider. Full terms are in [License and Disclaimer](#license-and-disclaimer).
 
 Reuse the Claude, Cursor, Command Code, and Ollama sessions you already have. One `opencode.json` plugin entry publishes live catalogs into OpenCode. Claude and Cursor stay disconnected until OpenCode has a marker or OAuth record and the vendor session is present. Command Code may use an OpenCode-stored direct API key or an existing CLI session/key. Ollama requires the exact session marker plus a responsive trusted daemon.
 
@@ -55,7 +55,7 @@ OpenCode installs configured npm plugins with Bun at startup and caches them. Fo
 ```jsonc
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-ext-connector@0.7.0"]
+  "plugin": ["opencode-ext-connector@0.7.1"]
 }
 ```
 
@@ -109,7 +109,7 @@ Choose `"reader"` on every instance that only consumes synchronized credentials:
 
 `"owner"` internally selects external credential management and enables the Claude CLI authority with its default timing. `"reader"` selects external credential management without starting the CLI authority. The role describes credential ownership, not whether OpenCode runs on a physical host or in a sandbox guest.
 
-Set exactly one owner per shared Claude login. Owner mode requires Linux, util-linux `flock`, Claude Code `2.1.259` or later on `PATH`, and an authenticated Claude Code session. Each authority invocation is a real model request and may consume account usage. A revoked login still requires interactive `/login`.
+Set exactly one owner per shared Claude login. Owner mode requires Linux, util-linux `flock`, Claude Code `2.1.265` or later on `PATH`, and an authenticated Claude Code session. Each authority invocation is a real model request and may consume account usage. A revoked login still requires interactive `/login`.
 
 Do not combine `credentialRole` with `credentialManagement`, `credentialAuthority`, `credentialRefresh`, or `writeBackCredentials`. Existing low-level configurations remain supported for advanced control.
 
@@ -204,7 +204,7 @@ Low-level equivalent:
 }
 ```
 
-After saving the configuration, fully restart OpenCode. The timer requires Linux, util-linux `flock`, Claude Code `2.1.259` or later on `PATH`, an authenticated Claude Code session, and a writable persistent state directory. It is silently disabled on other platforms.
+After saving the configuration, fully restart OpenCode. The timer requires Linux, util-linux `flock`, Claude Code `2.1.265` or later on `PATH`, an authenticated Claude Code session, and a writable persistent state directory. It is silently disabled on other platforms.
 
 `leadMs` and `retryMs` both default to `300000` (5 minutes). The connector schedules one restricted, single-turn Claude request at the lead boundary. A process-shared non-blocking lock prevents concurrent requests from processes using the same state directory; failures retry after `retryMs` without removing the Claude provider.
 
