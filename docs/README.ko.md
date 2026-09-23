@@ -19,7 +19,7 @@
 
 ## 상태
 
-> 독립적인 비공식 커뮤니티 플러그인, 버전 **0.6.0**. CI에 설치된 OpenCode CLI를 대상으로 legacy multi-function 로더를 패키지 E2E 테스트로 검증합니다. `@opencode-ai/plugin@1.18.18`은 컴파일 시 사용하는 플러그인 API 대상이며 OpenCode 런타임 버전 고정이 아닙니다. 소스는 BSD-3-Clause입니다. 이 프로젝트는 OpenCode 또는 어떤 프로바이더와도 제휴, 보증, 후원, 승인 관계가 없습니다. 전체 조건은 [라이선스 및 면책 조항](#라이선스-및-면책-조항)에 있습니다.
+> 독립적인 비공식 커뮤니티 플러그인, 버전 **0.7.0**. CI에 설치된 OpenCode CLI를 대상으로 legacy multi-function 로더를 패키지 E2E 테스트로 검증합니다. `@opencode-ai/plugin@1.18.18`은 컴파일 시 사용하는 플러그인 API 대상이며 OpenCode 런타임 버전 고정이 아닙니다. 소스는 BSD-3-Clause입니다. 이 프로젝트는 OpenCode 또는 어떤 프로바이더와도 제휴, 보증, 후원, 승인 관계가 없습니다. 전체 조건은 [라이선스 및 면책 조항](#라이선스-및-면책-조항)에 있습니다.
 
 이미 가지고 있는 Claude, Cursor, Command Code, Ollama 세션을 재사용합니다. `opencode.json` 플러그인 항목 하나가 라이브 카탈로그를 OpenCode에 공개합니다. Claude와 Cursor는 OpenCode에 마커 또는 OAuth 레코드가 있고 벤더 세션이 있을 때까지 연결되지 않은 상태로 유지됩니다. Command Code는 OpenCode에 저장된 직접 API 키 또는 기존 CLI 세션/키를 사용할 수 있습니다. Ollama는 정확한 세션 마커와 응답하는 신뢰된 데몬이 필요합니다.
 
@@ -55,13 +55,13 @@ OpenCode는 시작 시 Bun으로 설정된 npm 플러그인을 설치하고 캐�
 ```jsonc
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-ext-connector@0.6.0"]
+  "plugin": ["opencode-ext-connector@0.7.0"]
 }
 ```
 
 항목을 추가하거나 변경한 뒤 OpenCode를 완전히 종료하고 다시 시작하십시오. 리로드만으로는 충분하지 않습니다.
 
-패키지 항목 하나가 카탈로그 플러그인과 Claude, Cursor, Command Code, Ollama 인증 hook을 노출합니다. 프로바이더 id: `claude`, `cursor`, `command-code`, `ollama`. 모델 id는 각 프로바이더의 라이브 카탈로그에서 가져오며, 라이브 목록이 비어 있으면 문서화된 fallback은 Cursor의 `default`와 Command Code의 `Qwen/Qwen3.8-Max`입니다.
+패키지 항목 하나가 카탈로그 플러그인과 Claude, Cursor, Command Code, Ollama 인증 hook을 노출합니다. 프로바이더 id: `claude`, `cursor`, `command-code`, `ollama`. 모델 id는 각 프로바이더의 라이브 카탈로그에서 가져오며, 라이브 목록이 비어 있으면 문서화된 fallback은 Cursor의 `default`와 Command Code의 `Qwen/Qwen3.8-Max`입니다. 옵트인 xAI 컨슈머는 패키지 subpath `opencode-ext-connector/xai`로 노출됩니다. [옵트인 xAI OAuth 권한과 컨슈머](#옵트인-xai-oauth-권한과-컨슈머-호스트와-게스트)를 참조하십시오.
 
 ## 설정
 
@@ -78,6 +78,7 @@ OpenCode는 플러그인 옵션을 두 요소 튜플의 두 번째 항목으로 
 | `writeBackCredentials` | `false` | **사용 중단 예정:** 한 번의 마이그레이션 주기 동안 단독 사용 시 허용되며, 갱신 후 Claude writeback을 제어 |
 | `credentialRefresh.mode` | `"auto"` | **사용 중단 예정:** 한 번의 마이그레이션 주기 동안 단독 사용 시 허용되며, Claude의 `"auto"` 또는 `"never"` 갱신 동작을 제어 |
 | `credentialRefresh.leadMs` | `60000` | **사용 중단 예정:** 한 번의 마이그레이션 주기 동안 단독 사용 시 허용되며, 사용자 지정 리드 타임에는 여전히 이 레거시 설정이 필요 |
+| `xaiOAuth.mode` | 생략 | 옵트인 xAI 역할. `"authority"`는 호스트 `connectorServer` 항목에서 호스트 옵저버를 활성화하고, `"consumer"`는 전용 `opencode-ext-connector/xai` 컨슈머를 활성화합니다. `xaiOAuth`를 생략하면 통합은 조용히 비활성화됩니다. `xaiOAuth`가 존재하지만 `mode`가 없거나 `"authority" | "consumer"` 중 하나가 아니면 파싱 시점에 거부됩니다. 모든 Claude 자격 증명 옵션과 독립적입니다. |
 | `credentialAuthority.claudeCli.enabled` | `false` | Claude 전용 옵트인: [옵트인 Claude CLI 권한 타이머](#옵트인-claude-cli-권한-타이머-claude-전용) 참조 |
 | `credentialAuthority.claudeCli.leadMs` | `300000` | Claude 전용 옵트인: 자격 증명 만료 전 이 밀리초만큼 남았을 때 타이머가 `claude`를 호출; 음수가 아닌 정수 |
 | `credentialAuthority.claudeCli.retryMs` | `300000` | Claude 전용 옵트인: 0이 아닌 종료, 잠금 충돌, 시그널, supervisor 실패 후 재시도까지의 밀리초; 양의 정수 |
@@ -211,6 +212,58 @@ Anthropic은 갱신할 때마다 refresh 토큰을 회전시키고 이전 토큰
 
 타이머가 실행되지 않으면 `flock --version`, `claude --version`, 상태 디렉터리 권한, 두 필수 설정값을 확인하십시오. 반복 경고는 CLI 실행 실패, 시그널 종료, 또는 시작 실패를 뜻합니다. 비활성화하려면 `credentialAuthority`를 제거하거나 `enabled`를 `false`로 설정한 뒤 OpenCode를 완전히 재시작하십시오.
 
+### 옵트인 xAI OAuth 권한과 컨슈머 (호스트와 게스트)
+
+이 커넥터는 옵트인 xAI 경로를 호스트 측 **authority**와 게스트 측 **consumer** 쌍으로 제공합니다. 두 역할은 `credentialRole`, `credentialManagement`, `credentialAuthority`, `credentialRefresh`, `writeBackCredentials`와 독립적이며 어떤 Claude 정책도 변경하거나 대체하지 않습니다. `xaiOAuth`를 생략하면 통합은 조용히 비활성화됩니다. `xaiOAuth`가 존재하지만 `mode`가 없거나 `"authority" | "consumer"` 중 하나가 아니면 파싱 시점에 거부됩니다.
+
+두 역할은 서로 다른 OpenCode 환경에 설정하십시오. 호스트에서는:
+
+```jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [["opencode-ext-connector", { "xaiOAuth": { "mode": "authority" } }]]
+}
+```
+
+게스트에서는:
+
+```jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [["opencode-ext-connector/xai", { "xaiOAuth": { "mode": "consumer" } }]]
+}
+```
+
+**Authority (호스트).** 호스트 `connectorServer` 항목에 `xaiOAuth.mode: "authority"`를 설정하십시오. 옵저버는 `XDG_DATA_HOME`이 설정되어 절대 경로일 때 `${XDG_DATA_HOME}/opencode/auth.json`을 읽고, Linux에서 `XDG_DATA_HOME`이 미설정 또는 빈 문자열일 때만 `${HOME}/.local/share/opencode/auth.json`으로 fallback합니다. 상대 경로의 `XDG_DATA_HOME`(설정되었지만 절대 경로가 아님)은 권한을 비활성화합니다 — `auth.json`을 읽지 않고 헬퍼도 호출하지 않습니다. 활성화된 경우 옵저버는 **오직** `xai` 레코드만 검사합니다. 그 레코드의 직렬화 fingerprint가 바뀌면 `${HOME}/.local/bin/opensandbox-xai-auth-sync` 고정 헬퍼를 인자 없이, `PATH`는 `/usr/local/bin:/usr/bin:/bin`, `HOME`은 항상 설정하고 `XDG_DATA_HOME`은 절대 경로일 때만 전달하여 호출합니다. 헬퍼는 OpenSandbox manager에 projection을 위임합니다. 커넥터는 게스트 접근 파일을 기록하거나 xAI OAuth를 발급·갱신하지 않고, 머신 간에 토큰을 전송하거나 refresh 토큰을 게스트에 두지 않습니다. 0이 아닌 종료는 일시적 사례로 처리되어 xAI 프로바이더를 제거하지 않은 채 `5000` ms 후 재시도됩니다.
+
+**Consumer (게스트).** 별도의 OpenCode 플러그인 항목으로 `["opencode-ext-connector/xai", { "xaiOAuth": { "mode": "consumer" } }]` 튜플을 로드하십시오. mode는 필수입니다. subpath 항목에 mode가 없으면 빈 hook을 반환하고 xAI 프로바이더는 연결되지 않은 상태로 유지됩니다. `"consumer"` 모드에서 커넥터는 xAI auth hook을 반환하며 `/connect` 메서드를 노출하지 않습니다 — `methods: []`가 공개 계약의 일부입니다. 컨슈머는 `xai` 프로바이더의 OpenCode auth 레코드에 다음 정확한 마커를 요구합니다:
+
+```jsonc
+{ "type": "api", "key": "cli-session:xai" }
+```
+
+커넥터는 이 마커를 기록하지 않으며 마커 배치는 운영자의 책임입니다. 다른 형태면 loader는 auth를 반환하지 않습니다. 센티널로 loader는 자리 표시자 `apiKey`와 래핑된 `fetch`를 반환합니다. 실제 bearer는 모든 외부 요청마다 접근 파일에서 가져옵니다.
+
+**접근 파일.** 컨슈머는 **모든** 요청마다 접근 파일을 다시 읽으며 메모리 내 토큰을 신뢰하지 않습니다:
+
+- 경로: `XDG_DATA_HOME`이 설정되어 절대 경로일 때 `${XDG_DATA_HOME}/opencode/xai-access.json`, Linux에서 `XDG_DATA_HOME`이 미설정 또는 빈 문자열일 때만 `${HOME}/.local/share/opencode/xai-access.json`. 상대 경로의 `XDG_DATA_HOME`은 HOME fallback을 검사하지 않고 fail-closed합니다.
+- 파일 게이트: 정규 파일, mode `0600`, link 수 `1`, 현재 사용자 소유. 파일 부재, 부적합한 stat, 심볼릭 링크, 다중 링크 파일, 잘못된 소유자, 잘못된 mode는 모두 unavailable 상태를 반환합니다.
+- 스키마 (closed v1):
+
+```jsonc
+{
+  "schema_version": 1,
+  "provider": "xai",
+  "state": "ready",
+  "access": "<bearer-token>",
+  "expires": 1735689600000
+}
+```
+
+`"state": "unavailable"` 레코드, malformed JSON, 스키마 불일치, 파일 부재, stat 실패, 또는 `expires`가 현재 시각 이후가 아닌 경우 모두 **모든** 네트워크 호출 **이전**에 실패하며 해당 요청에 대해 `XaiAccessUnavailableError`를 던집니다. bearer 토큰은 플러그인 인수, 커넥터 stdout/stderr 진단, 또는 요청 URL에 들어가지 않습니다.
+
+**범위 밖.** OpenCode auth에 직접 저장된 일반 xAI API 키(내장 `XAI_API_KEY` 방식 경로)는 이 권한/컨슈머 쌍이 아니라 OpenCode의 내장 `xai` 프로바이더를 따릅니다. 커넥터는 그러한 키를 가져오거나, 미러링하거나, 프록시하지 않습니다. 헬퍼는 idempotent해야 합니다. 같은 게스트에서 개발자 Claude Code 세션을 실행해도 projected 접근 파일에 대한 권한을 갖지 않습니다.
+
 ## 호스트/게스트 샌드박스 설정
 
 OpenCode가 컨테이너, VM 또는 다른 샌드박스에서 실행될 때 그 런타임을 **게스트**, 벤더 로그인과 Ollama 데몬을 소유한 머신을 **호스트**로 봅니다. 게스트에는 자체 `localhost`, 홈 디렉터리, 환경, keychain, 파일 권한, 네트워크 namespace가 있습니다. 파일을 mount하거나 환경 값을 명시적으로 주입하지 않으면 호스트 세션은 게스트에 보이지 않습니다.
@@ -223,6 +276,7 @@ OpenCode가 컨테이너, VM 또는 다른 샌드박스에서 실행될 때 그 
 | Cursor | Cursor CLI 로그인을 소유 | 자격 증명 파일을 게스트의 `${HOME}/.config/cursor/auth.json`에 read-only로 mount하거나 샌드박스 secret 기능으로 `CURSOR_ACCESS_TOKEN` 주입; 게스트에 Node.js 22 이상 설치 |
 | Command Code | CLI 로그인 또는 API 키를 소유 | `${HOME}/.commandcode/auth.json`을 read-only로 mount하거나 `COMMAND_CODE_API_KEY` 주입; `COMMAND_CODE_CLI_VERSION`, 설치된 `command-code` 바이너리 또는 npm registry 접근으로 클라이언트 버전 확인 |
 | Ollama | 신뢰하는 데몬을 실행하고 Cloud 접근이 필요하면 그곳에서 `ollama signin` 실행 | Ollama 자격 증명을 복사하지 않고 `ollamaBaseURL`로 선택한 데몬에만 연결 |
+| xAI | 호스트 권한이 `~/.local/bin/opensandbox-xai-auth-sync`을 호출하고 OpenSandbox manager가 access-only 게스트 상태를 projection | manager가 projection한 `{"type":"api","key":"cli-session:xai"}` 마커와 `${XDG_DATA_HOME}/opencode/xai-access.json`(또는 XDG가 미설정 또는 빈 문자열일 때 HOME fallback)을 사용하고, `xaiOAuth.mode: "consumer"`로 `opencode-ext-connector/xai`를 로드; refresh 토큰은 절대 복사하거나 mount하지 않음 |
 
 예를 들어 Linux 게스트는 다음 경로와 선택적인 secret/version override를 사용할 수 있습니다. Mount source와 destination은 샌드박스 런타임에 맞게 조정하십시오:
 
@@ -311,10 +365,13 @@ Ollama `/connect`는 설정된 데몬을 조사하고 정확한 세션 마커를
 | **Cursor** | CLI 액세스 토큰으로 Cursor의 미공개 클라이언트 프로토콜(`api2.cursor.sh` `AgentService`, HTTP/2 위의 Connect+protobuf)을 호출합니다. 두 자격 증명 관리 모드 모두 자격 증명은 읽기 전용입니다. direct 생성은 정확한 HTTP 401이 출력이나 효과 전에 발생할 때만 null이 아니며 변경된 자격 증명을 다시 읽고 한 번 재시도할 수 있으며, 이는 갱신이나 writeback이 아닙니다. legacy/compatibility 생성은 한 번만 시도합니다. 플러그인이 소유한 Node 자식 프로세스가 private stdio로 통신하고, 툴 결과를 같은 bidi Run에 유지하며, parked call을 절대 재실행하지 않고, 사용자 대면 데몬을 열지 않으며, 생성에 `cursor-agent`를 절대 spawn하지 않습니다. 비공식이며 공개 Cursor API가 아닙니다. 프로토콜이 어긋난 뒤에는 암시적 fallback이 없습니다 — 해당 프로바이더가 실패합니다. Node.js 22 이상이 필요합니다. 라이브 카탈로그 id가 있으면 그것을 쓰고, 없으면 문서화된 fallback은 `default`입니다. |
 | **Command Code** | CLI 호환 요청 메타데이터와 함께 `/alpha/generate`를 호출하고, 프로바이더 로컬 NDJSON 텍스트와 툴 이벤트를 스트림합니다. 두 자격 증명 관리 모드 모두 자격 증명은 읽기 전용입니다. 정확한 HTTP 401이 출력이나 효과 전에 발생하면 null이 아니며 변경된 자격 증명을 다시 읽고 한 번만 재시도할 수 있으며, 이는 갱신이나 writeback이 아닙니다. 클라이언트 버전은 `COMMAND_CODE_CLI_VERSION`, 설치된 `command-code` 바이너리, 또는 npm registry에서 가져옵니다. 요청 메타데이터에는 Node.js 버전, 플랫폼, 아키텍처, 절대 작업 디렉터리가 포함됩니다. 라이브 카탈로그 id가 있으면 그것을 쓰고, 없으면 문서화된 fallback은 `Qwen/Qwen3.8-Max`입니다. |
 | **Ollama** | `credentialManagement`의 영향을 받지 않습니다. `ollamaBaseURL`로 선택한 신뢰된 데몬(기본값 `http://localhost:11434`)의 `/api/tags`, `/api/pull`, `/api/chat`을 사용하며 경로 prefix를 보존합니다. 이미 pull된 모델과, 커넥터 자격 증명 없이 Ollama 공식 Cloud 검색 및 library 페이지에서 익명으로 발견한 정확한 Cloud 태그를 공개합니다. 정확히 중복되는 항목은 로컬이 이깁니다. 불완전한 Cloud 갱신은 마지막 완전한 목록을 유지합니다. 없는 인가된 Cloud 태그를 선택하면 최초 사용 시 lightweight remote reference를 pull합니다. 같은 정규화 base와 태그의 동시 pull은 하나의 in-flight 요청을 공유하며 실패한 pull은 재시도할 수 있습니다. 데몬은 사용자의 Ollama Cloud 구독으로 Cloud 태그 프롬프트를 proxy할 수 있습니다. 커넥터는 Ollama API 키, 사용량 과금 direct Cloud API, `OLLAMA_HOST`, 자격 증명/custom header, cookie, direct Cloud 생성 endpoint를 사용하지 않습니다. |
+| **xAI** | 패키지 subpath `opencode-ext-connector/xai`로만 로드되는 옵트인 OAuth 컨슈머입니다. 접근 파일은 모든 요청마다 다시 읽고, `/connect` 메서드를 노출하지 않으며, xAI OAuth를 발급하거나 갱신하지 않습니다. Claude `credentialRole`과 자격 증명 정책에서 독립적입니다. [옵트인 xAI OAuth 권한과 컨슈머](#옵트인-xai-oauth-권한과-컨슈머-호스트와-게스트) 참조. |
 
 프로바이더 health는 격리됩니다. 한 프로바이더가 실패해도 나머지는 제거되지 않습니다.
 
 독립 SDK entry는 `opencode-ext-connector/ollama`입니다. `{ ollamaBaseURL }`을 전달해 같은 신뢰된 데몬을 선택할 수 있습니다. 해당 데몬에 이미 있는 모델로 생성할 수 있으며, 커넥터가 관리하는 Cloud 자동 pull은 그 정규화 base의 활성 Ollama 카탈로그 lease가 필요합니다.
+
+전용 컨슈머 entry는 `opencode-ext-connector/xai`입니다. `{ xaiOAuth: { mode: "consumer" } }`을 전달해 모델 프로바이더, 모델, `/connect` 메서드를 등록하지 않고 xAI auth hook만 등록합니다.
 
 ## 문제 해결
 
@@ -329,6 +386,8 @@ Ollama `/connect`는 설정된 데몬을 조사하고 정확한 세션 마커를
 | Cursor 생성이 실패함 | Node.js 22 이상이 필요합니다. 생성은 `cursor-agent`가 아니라 private Node 자식 프로세스를 통한 미공개 프로토콜을 사용합니다. 프로토콜이 어긋나면 해당 프로바이더가 실패하며, 암시적 fallback은 없습니다. |
 | Command Code 생성이 실패함 | 클라이언트 버전을 확인할 수 없었습니다: `COMMAND_CODE_CLI_VERSION`을 설정하거나, `command-code`를 설치하거나, `registry.npmjs.org` 접근을 허용하십시오. 요청 메타데이터에는 Node.js 버전, 플랫폼, 아키텍처, 절대 작업 디렉터리가 포함됩니다. |
 | `opencode models ollama`에 Ollama가 없음 | `ollamaBaseURL`(또는 기본 `localhost:11434`)에서 신뢰하는 데몬을 시작한 뒤 `/connect`하십시오. 경로 prefix가 Ollama `/api/*` route에 도달하는지 확인하십시오. Cloud 태그는 익명 catalog 항목이며 `OLLAMA_HOST`, API 키, credential header, redirect, direct Cloud 생성은 사용하지 않습니다. |
+| xAI 요청이 `XaiAccessUnavailableError`로 실패함 | 호스트 `connectorServer` 항목의 `xaiOAuth.mode`가 `"authority"`인지, `opencode-ext-connector/xai` subpath 항목의 `xaiOAuth.mode`가 `"consumer"`인지, OpenCode auth 레코드가 정확히 `{"type":"api","key":"cli-session:xai"}`를 담고 있는지, 접근 파일이 `${XDG_DATA_HOME}/opencode/xai-access.json`(또는 Linux에서 `XDG_DATA_HOME`이 미설정 또는 빈 문자열일 때 `${HOME}/.local/share/opencode/xai-access.json`)에 현재 사용자 소유의 정규 단일 링크 mode `0600` 파일로 존재하고 유효한 closed v1 스키마와 미래의 `expires`를 가지는지 확인하십시오. 상대 경로의 `XDG_DATA_HOME`은 HOME fallback 없이 fail-closed합니다. 오류는 모든 네트워크 호출 전에 발생합니다. |
+| 호스트 xAI 권한 헬퍼가 실행되지 않음 | `${HOME}/.local/bin/opensandbox-xai-auth-sync`이 존재하고 실행 가능하며 성공 시 `0`으로 종료하는지 확인하십시오. 옵저버는 모든 0이 아닌 종료를 일시적 사례로 처리해 `5000` ms 후 재시도하며 xAI 프로바이더를 제거하지 않습니다. 헬퍼는 OpenSandbox manager에 projection을 위임합니다. 상대 경로의 `XDG_DATA_HOME`(설정되었지만 절대 경로가 아님)은 읽기와 호출 없이 권한을 비활성화합니다. |
 | 호스트 자격 증명이 있지만 게스트 프로바이더가 연결되지 않음 | mount 대상과 권한, 게스트의 `HOME`, `CLAUDE_CONFIG_DIR`, 주입한 secret 환경, writable 게스트 OpenCode `auth.json`, 게스트 안에서 `/connect`가 완료됐는지 확인하십시오. |
 | Ollama가 호스트에서는 동작하지만 게스트에서는 동작하지 않음 | 게스트 `localhost`는 보통 호스트가 아닙니다. `host.docker.internal` resolve, Linux `host-gateway` mapping, 데몬 bind 주소, firewall과 샌드박스 egress, base path prefix가 Ollama `/api/*` route에 도달하는지 확인하십시오. |
 | 한 프로바이더가 다운됨 | 실패는 격리됩니다. 일시적 스냅샷 실패는 마지막으로 알려진 카탈로그를 유지하고, unavailable 스냅샷은 해당 커넥터 소유 프로바이더만 제거합니다. |
