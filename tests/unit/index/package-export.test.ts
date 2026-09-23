@@ -35,6 +35,7 @@ describe("package exports", () => {
       types: "./dist/index.d.ts",
       exports: {
         ".": { types: "./dist/index.d.ts", import: "./dist/index.js" },
+        "./xai": { types: "./dist/xai.d.ts", import: "./dist/xai.js" },
         "./command-code": {
           types: "./dist/sdk/command-code.d.ts",
           import: "./dist/sdk/command-code.js",
