@@ -5,6 +5,11 @@ import type { HealthPolicy } from "./health.js"
 export type CredentialRefreshMode = "auto" | "never"
 export type CredentialManagement = "connector" | "external"
 export type CredentialRole = "owner" | "reader"
+export type XaiOAuthMode = "authority" | "consumer"
+
+export type XaiOAuthOptions = {
+  readonly mode: XaiOAuthMode
+}
 
 export type CredentialRefreshPolicy = {
   readonly mode: CredentialRefreshMode
@@ -25,6 +30,7 @@ export type ConnectorOptionsInput = {
   readonly providers?: readonly ("claude" | "cursor" | "command-code" | "ollama")[] | undefined
   readonly snapshotTimeoutMs?: number | undefined
   readonly credentialRole?: CredentialRole | undefined
+  readonly xaiOAuth?: XaiOAuthOptions | undefined
   readonly credentialManagement?: CredentialManagement | undefined
   readonly credentialAuthority?:
     | {
@@ -59,6 +65,7 @@ export type ConnectorOptions = {
   readonly writeBackCredentials: boolean
   readonly credentialRefresh: CredentialRefreshPolicy
   readonly credentialAuthority: CredentialAuthority
+  readonly xaiOAuth: XaiOAuthOptions | null
   readonly catalogReloadMs: number
   readonly health: HealthPolicy
 }
@@ -70,6 +77,10 @@ const ProviderSchema = z.enum(["claude", "cursor", "command-code", "ollama"])
 const CredentialRefreshModeSchema = z.enum(["auto", "never"])
 const CredentialManagementSchema = z.enum(["connector", "external"])
 const CredentialRoleSchema = z.enum(["owner", "reader"])
+const XaiOAuthSchema = z
+  .object({ mode: z.enum(["authority", "consumer"]) })
+  .strict()
+  .readonly()
 const SafeIntegerSchema = z.number().int().safe()
 const DefaultProviders: ConnectorOptions["providers"] = [
   "claude",
@@ -126,6 +137,7 @@ const ConnectorOptionsInputSchema = z
     providers: z.array(ProviderSchema).optional(),
     snapshotTimeoutMs: PositiveSafeIntegerSchema.optional(),
     credentialRole: CredentialRoleSchema.optional(),
+    xaiOAuth: XaiOAuthSchema.optional(),
     credentialManagement: CredentialManagementSchema.optional(),
     credentialAuthority: CredentialAuthorityInputSchema.optional(),
     writeBackCredentials: z.boolean().optional(),
@@ -218,12 +230,14 @@ export const ConnectorOptionsSchema: z.ZodType<ConnectorOptions, ConnectorOption
         retryMs: input.credentialAuthority?.claudeCli.retryMs ?? 300_000,
       }),
     })
+    const xaiOAuth = input.xaiOAuth === undefined ? null : Object.freeze(input.xaiOAuth)
     return Object.freeze({
       providers: Object.freeze(input.providers ?? DefaultProviders),
       snapshotTimeoutMs: input.snapshotTimeoutMs ?? 30_000,
       writeBackCredentials: credentialOptions.writeBackCredentials,
       credentialRefresh: credentialOptions.credentialRefresh,
       credentialAuthority,
+      xaiOAuth,
       catalogReloadMs: input.catalogReloadMs ?? 300_000,
       health,
     })

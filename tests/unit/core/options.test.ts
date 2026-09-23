@@ -21,6 +21,7 @@ describe("connector options", () => {
       credentialAuthority: {
         claudeCli: { enabled: false, leadMs: 300_000, retryMs: 300_000 },
       },
+      xaiOAuth: null,
       catalogReloadMs: 300_000,
       health: { initialBackoffMs: 1_000, maximumBackoffMs: 60_000 },
     })
@@ -221,6 +222,7 @@ describe("connector options", () => {
       credentialAuthority: {
         claudeCli: { enabled: false, leadMs: 300_000, retryMs: 300_000 },
       },
+      xaiOAuth: null,
       catalogReloadMs: 300_000,
       health: { initialBackoffMs: 5, maximumBackoffMs: 10 },
     })
