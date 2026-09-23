@@ -17,6 +17,8 @@ import { createProductionProcessSupervisor } from "./process/production-supervis
 import { createClaudeCredentialAuthorityScheduler } from "./providers/claude/credential-authority-scheduler.js"
 import { writeClaudeCredentials } from "./providers/claude/writeback.js"
 import { productionOllamaFetch } from "./providers/ollama/http.js"
+import { createXaiAuthorityObserver } from "./providers/xai/authority-observer.js"
+import { createXaiConsumerAuth } from "./providers/xai/consumer-auth.js"
 
 const env = process.env
 const transport = createFetchHttpTransport()
@@ -96,10 +98,17 @@ export const connectorServer: V1Plugin = async (input, options): Promise<Hooks> 
     processSupervisor,
     logger,
   })
+  const xaiAuthority = createXaiAuthorityObserver({
+    enabled: connectorOptions.xaiOAuth?.mode === "authority",
+    clock,
+    env,
+    processSupervisor,
+  })
   const dispose = hooks.dispose
   const disposal = createAsyncDisposable(async () => {
     const results = await Promise.allSettled([
       Promise.resolve().then(() => credentialAuthority.dispose()),
+      Promise.resolve().then(() => xaiAuthority.dispose()),
       Promise.resolve().then(() => processSupervisor.dispose()),
       Promise.resolve().then(() => dispose?.()),
       Promise.resolve().then(disposeV1LanguageRuntime),
@@ -146,6 +155,13 @@ export const ollamaAuthServer: V1Plugin = async (_input, options): Promise<Hooks
     },
   }).find((candidate) => candidate.id === "ollama")
   return entry === undefined ? {} : buildV1AuthHooks(entry, providerDeps, options)
+}
+
+export const xaiAuthServer: V1Plugin = async (_input, options): Promise<Hooks> => {
+  const connectorOptions = parseConnectorOptions(pickConnectorOptionsInput(options))
+  return connectorOptions.xaiOAuth?.mode === "consumer"
+    ? { auth: createXaiConsumerAuth({ env, clock, networkFetch: globalThis.fetch }) }
+    : {}
 }
 
 export type ConnectorPluginModule = {

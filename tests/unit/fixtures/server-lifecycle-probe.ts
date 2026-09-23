@@ -6,6 +6,7 @@ import { createOpencodeClient } from "@opencode-ai/sdk"
 import type { AsyncDisposableHandle } from "../../../src/core/lifecycle"
 import type { ProcessSupervisor } from "../../../src/core/process"
 import type { ClaudeCredentialAuthoritySchedulerOptions } from "../../../src/providers/claude/credential-authority-scheduler"
+import type { XaiAuthorityObserverOptions } from "../../../src/providers/xai/authority-observer"
 
 class UnexpectedProcessStartError extends Error {
   public override readonly name = "UnexpectedProcessStartError"
@@ -13,6 +14,7 @@ class UnexpectedProcessStartError extends Error {
 
 const authorityFailure = new Error("authority disposal failed")
 let authorityOptions: ClaudeCredentialAuthoritySchedulerOptions | undefined
+let xaiAuthorityOptions: XaiAuthorityObserverOptions | undefined
 let creationEvents: string[] = []
 let disposalEvents: string[] = []
 let failDisposal = false
@@ -50,6 +52,17 @@ mock.module("../../../src/providers/claude/credential-authority-scheduler", () =
   },
 }))
 
+mock.module("../../../src/providers/xai/authority-observer", () => ({
+  createXaiAuthorityObserver: (options: XaiAuthorityObserverOptions): AsyncDisposableHandle => {
+    creationEvents.push("xai-authority")
+    xaiAuthorityOptions = options
+    const dispose = async (): Promise<void> => {
+      disposalEvents.push("xai-authority")
+    }
+    return { dispose, [Symbol.asyncDispose]: dispose }
+  },
+}))
+
 mock.module("../../../src/opencode/v1-module", () => ({
   buildV1AuthHooks: (): Hooks => ({}),
   createV1AuthServer: () => async (): Promise<Hooks> => ({}),
@@ -71,7 +84,7 @@ mock.module("../../../src/opencode/v1-language", () => ({
   },
 }))
 
-const { connectorServer } = await import("../../../src/server")
+const { connectorServer, xaiAuthServer } = await import("../../../src/server")
 
 const enabledOptions = {
   providers: ["claude"],
@@ -79,6 +92,7 @@ const enabledOptions = {
   credentialAuthority: {
     claudeCli: { enabled: true, leadMs: 12_345, retryMs: 67_890 },
   },
+  xaiOAuth: { mode: "authority" },
 }
 const pluginInput: PluginInput = {
   client: createOpencodeClient(),
@@ -97,11 +111,22 @@ const pluginInput: PluginInput = {
 const successfulHooks = await connectorServer(pluginInput, enabledOptions)
 const options = authorityOptions
 if (options === undefined) throw new Error("authority was not created")
+const xaiOptions = xaiAuthorityOptions
+if (xaiOptions === undefined) throw new Error("xAI authority was not created")
 await successfulHooks.dispose?.()
 const successfulDisposalEvents = disposalEvents
 
 creationEvents = []
 disposalEvents = []
+const standaloneAuthorityHooks = await xaiAuthServer(pluginInput, {
+  xaiOAuth: { mode: "authority" },
+})
+const standaloneConsumerHooks = await xaiAuthServer(pluginInput, {
+  xaiOAuth: { mode: "consumer" },
+})
+const standaloneEvents = creationEvents
+
+creationEvents = []
 failDisposal = true
 const failedHooks = await connectorServer(pluginInput, enabledOptions)
 let primaryFailure = "none"
@@ -122,8 +147,14 @@ process.stdout.write(
       supervisorMatches: options.processSupervisor === supervisor,
       hasClock: typeof options.clock.nowMs === "function",
       hasLogger: typeof options.logger.log === "function",
+      xaiEnabled: xaiOptions.enabled,
+      xaiEnvIsProcessEnv: xaiOptions.env === process.env,
+      xaiSupervisorMatches: xaiOptions.processSupervisor === supervisor,
     },
     successfulDisposalEvents,
+    standaloneEvents,
+    standaloneAuthorityHasAuth: standaloneAuthorityHooks.auth !== undefined,
+    standaloneConsumerMethods: standaloneConsumerHooks.auth?.methods.length ?? -1,
     failedDisposalEvents: disposalEvents,
     primaryFailure,
   }),

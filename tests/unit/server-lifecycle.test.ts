@@ -13,8 +13,14 @@ const ProbeResultSchema = z.object({
     supervisorMatches: z.boolean(),
     hasClock: z.boolean(),
     hasLogger: z.boolean(),
+    xaiEnabled: z.boolean(),
+    xaiEnvIsProcessEnv: z.boolean(),
+    xaiSupervisorMatches: z.boolean(),
   }),
   successfulDisposalEvents: z.array(z.string()),
+  standaloneEvents: z.array(z.string()),
+  standaloneAuthorityHasAuth: z.boolean(),
+  standaloneConsumerMethods: z.number(),
   failedDisposalEvents: z.array(z.string()),
   primaryFailure: z.string(),
 })
@@ -48,7 +54,7 @@ describe("connector server lifecycle", () => {
 
     // Then
     expect(result).toEqual({
-      creationEvents: ["hooks", "supervisor", "authority"],
+      creationEvents: ["hooks", "supervisor", "authority", "xai-authority"],
       options: {
         enabled: true,
         leadMs: 12_345,
@@ -57,9 +63,15 @@ describe("connector server lifecycle", () => {
         supervisorMatches: true,
         hasClock: true,
         hasLogger: true,
+        xaiEnabled: true,
+        xaiEnvIsProcessEnv: true,
+        xaiSupervisorMatches: true,
       },
-      successfulDisposalEvents: ["authority", "supervisor", "hooks", "runtime"],
-      failedDisposalEvents: ["authority", "supervisor", "hooks", "runtime"],
+      successfulDisposalEvents: ["authority", "xai-authority", "supervisor", "hooks", "runtime"],
+      standaloneEvents: [],
+      standaloneAuthorityHasAuth: false,
+      standaloneConsumerMethods: 0,
+      failedDisposalEvents: ["authority", "xai-authority", "supervisor", "hooks", "runtime"],
       primaryFailure: "authority",
     })
   })
