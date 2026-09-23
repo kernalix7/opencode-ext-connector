@@ -17,6 +17,7 @@ export type ProcessSpawnOptions = {
   readonly shell: false
   readonly stdio: "ignore"
   readonly windowsHide: true
+  readonly env?: Readonly<Record<string, string>>
 }
 
 export interface SpawnedChild {
@@ -47,6 +48,7 @@ function spawnNodeChild(command: ProcessCommand, options: ProcessSpawnOptions): 
     shell: options.shell,
     stdio: options.stdio,
     windowsHide: options.windowsHide,
+    ...(options.env === undefined ? {} : { env: options.env }),
   })
   return {
     get exitCode() {
@@ -185,7 +187,12 @@ export function createProductionProcessSupervisor(
     if (disposalStarted) throw new ResourceDisposedError("process-supervisor")
     let child: SpawnedChild
     try {
-      child = spawnProcess(command, spawnOptions)
+      child = spawnProcess(
+        command,
+        command.environment === undefined
+          ? spawnOptions
+          : { ...spawnOptions, env: command.environment },
+      )
     } catch (error) {
       throw processFailure("spawn", error)
     }

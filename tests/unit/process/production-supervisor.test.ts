@@ -95,6 +95,56 @@ describe("production process supervision", () => {
     ])
   })
 
+  it("passes an explicitly sanitized command environment exactly", async () => {
+    // Given
+    const child = new FakeSpawnedChild()
+    const optionsSeen: ProcessSpawnOptions[] = []
+    const supervisor = createProductionProcessSupervisor({
+      spawn: (_input, options) => {
+        optionsSeen.push(options)
+        return child
+      },
+    })
+    const sanitized = { HOME: "/home/authority" }
+
+    // When
+    const starting = supervisor.start(
+      { ...command, environment: sanitized },
+      new AbortController().signal,
+    )
+    child.emitSpawn()
+    const process = await starting
+    child.complete({ kind: "code", code: 0 })
+
+    // Then
+    expect(optionsSeen).toEqual([
+      { shell: false, stdio: "ignore", windowsHide: true, env: sanitized },
+    ])
+    await process.wait(new AbortController().signal)
+  })
+
+  it("omits the spawn environment when command inheritance is requested", async () => {
+    // Given
+    const child = new FakeSpawnedChild()
+    const optionsSeen: ProcessSpawnOptions[] = []
+    const supervisor = createProductionProcessSupervisor({
+      spawn: (_input, options) => {
+        optionsSeen.push(options)
+        return child
+      },
+    })
+
+    // When
+    const starting = supervisor.start(command, new AbortController().signal)
+    child.emitSpawn()
+    const process = await starting
+    child.complete({ kind: "code", code: 0 })
+
+    // Then
+    expect(optionsSeen[0]).not.toHaveProperty("env")
+    await process.wait(new AbortController().signal)
+  })
+
   it("maps spawn failures without exposing child output", async () => {
     // Given
     const child = new FakeSpawnedChild()

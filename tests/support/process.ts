@@ -97,6 +97,7 @@ export class FakeProcessSupervisor implements ProcessSupervisor {
       executable: command.executable,
       arguments: [...command.arguments],
       cwd: command.cwd,
+      ...(command.environment === undefined ? {} : { environment: command.environment }),
     })
     switch (script.kind) {
       case "process":

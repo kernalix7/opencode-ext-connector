@@ -4,6 +4,7 @@ export type ProcessCommand = {
   readonly executable: string
   readonly arguments: readonly string[]
   readonly cwd: string | null
+  readonly environment?: Readonly<Record<string, string>>
 }
 
 export type ProcessExit =
