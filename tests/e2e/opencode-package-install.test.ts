@@ -7,6 +7,7 @@ import { createOpencodeClient } from "@opencode-ai/sdk"
 import { z } from "zod"
 
 import { type OpenCodeProcess, startOpenCode } from "../support/opencode-process"
+import { runPackageCommand } from "../support/package-command"
 import { packCleanSource, readPackageManifest } from "../support/packed-package"
 
 const projectRoot = join(import.meta.dir, "..", "..")
@@ -19,25 +20,6 @@ const rootExportNames = [
   "xaiAuthServer",
 ] as const
 const rootExportsSchema = z.object({ names: z.array(z.string()), kinds: z.array(z.string()) })
-
-type PackageCommand = {
-  readonly operation: "extract" | "inspect-exports" | "node-consumer"
-  readonly command: readonly string[]
-  readonly cwd: string
-  readonly env: Readonly<Record<string, string>>
-}
-
-class PackageE2eCommandError extends Error {
-  public override readonly name = "PackageE2eCommandError"
-
-  public constructor(
-    public readonly operation: PackageCommand["operation"],
-    public readonly exitCode: number,
-    public readonly stderr: string,
-  ) {
-    super(`${operation} failed with code ${exitCode}: ${stderr.trim()}`)
-  }
-}
 
 function isolatedEnvironment(home: string, registryUrl: string): Readonly<Record<string, string>> {
   return {
@@ -56,24 +38,6 @@ function isolatedEnvironment(home: string, registryUrl: string): Readonly<Record
     XDG_CONFIG_HOME: join(home, "config"),
     XDG_DATA_HOME: join(home, "data"),
   }
-}
-
-async function runPackageCommand(packageCommand: PackageCommand): Promise<string> {
-  const child = Bun.spawn([...packageCommand.command], {
-    cwd: packageCommand.cwd,
-    env: { ...packageCommand.env },
-    stderr: "pipe",
-    stdout: "pipe",
-  })
-  const [exitCode, stdout, stderr] = await Promise.all([
-    child.exited,
-    new Response(child.stdout).text(),
-    new Response(child.stderr).text(),
-  ])
-  if (exitCode !== 0) {
-    throw new PackageE2eCommandError(packageCommand.operation, exitCode, stderr)
-  }
-  return stdout
 }
 
 describe("packed package installation", () => {
@@ -119,6 +83,15 @@ describe("packed package installation", () => {
       const dependencyEntries = await readdir(workspaceNodeModules)
       expect(dependencyEntries).not.toContain("opencode-ext-connector")
       await mkdir(cacheNodeModules, { recursive: true })
+      await writeFile(
+        join(cacheProjectRoot, "package.json"),
+        JSON.stringify({
+          name: "connector-offline-consumer",
+          private: true,
+          type: "module",
+          dependencies: { [manifest.name]: manifest.version },
+        }),
+      )
       await Promise.all(
         dependencyEntries.map((entry) =>
           symlink(join(workspaceNodeModules, entry), join(cacheNodeModules, entry)),
@@ -149,13 +122,14 @@ describe("packed package installation", () => {
       )
 
       // When
+      const inspectFile = join(cacheProjectRoot, "inspect.mjs")
+      await writeFile(
+        inspectFile,
+        'const root = await import("opencode-ext-connector"); const names = Object.keys(root).sort(); process.stdout.write(JSON.stringify({ names, kinds: names.map((name) => typeof root[name]) }))',
+      )
       const rawExports = await runPackageCommand({
         operation: "inspect-exports",
-        command: [
-          process.execPath,
-          "--eval",
-          'const root = await import("opencode-ext-connector"); const names = Object.keys(root).sort(); process.stdout.write(JSON.stringify({ names, kinds: names.map((name) => typeof root[name]) }))',
-        ],
+        command: [process.execPath, inspectFile],
         cwd: cacheProjectRoot,
         env,
       })
@@ -168,12 +142,7 @@ describe("packed package installation", () => {
         names: [...rootExportNames],
         kinds: ["function", "function", "function", "function", "function", "function"],
       })
-      expect(Object.keys(auth.data ?? {}).sort()).toEqual([
-        "anthropic",
-        "command-code",
-        "cursor",
-        "ollama",
-      ])
+      expect(Object.keys(auth.data ?? {}).sort()).toEqual(["claude", "command-code", "ollama"])
       expect(providers.data).toBeDefined()
       expect(providers.data?.connected).not.toContain("cursor")
       expect(providers.data?.connected).not.toContain("command-code")
@@ -204,6 +173,15 @@ describe("packed package installation", () => {
       packed = await packCleanSource({ projectRoot })
       const dependencyEntries = await readdir(join(projectRoot, "node_modules"))
       await mkdir(join(cacheProjectRoot, "node_modules"), { recursive: true })
+      await writeFile(
+        join(cacheProjectRoot, "package.json"),
+        JSON.stringify({
+          name: "connector-offline-consumer",
+          private: true,
+          type: "module",
+          dependencies: { [manifest.name]: manifest.version },
+        }),
+      )
       await Promise.all(
         dependencyEntries.map((entry) =>
           symlink(
@@ -228,25 +206,25 @@ describe("packed package installation", () => {
       })
 
       // When
+      const consumerFile = join(cacheProjectRoot, "consumer.mjs")
+      await writeFile(
+        consumerFile,
+        `
+        const root = await import('opencode-ext-connector');
+        const claude = await import('opencode-ext-connector/claude');
+        const commandCode = await import('opencode-ext-connector/command-code');
+        const cursor = await import('opencode-ext-connector/cursor');
+        const ollama = await import('opencode-ext-connector/ollama');
+        const names = Object.keys(root).sort();
+        const kinds = [claude.createClaude, commandCode.createCommandCode, cursor.createCursor, ollama.createOllama].map((value) => typeof value);
+        const hooks = await root.claudeAuthServer({}, {});
+        await hooks.dispose?.();
+        process.stdout.write(JSON.stringify({ names, kinds }));
+      `,
+      )
       const output = await runPackageCommand({
         operation: "node-consumer",
-        command: [
-          process.env["NODE_BIN"] ?? "node",
-          "--input-type=module",
-          "--eval",
-          `
-            if (Number(process.versions.node.split('.')[0]) < 22) throw new Error('Node >=22 is required');
-            const root = await import('opencode-ext-connector');
-            const commandCode = await import('opencode-ext-connector/command-code');
-            const cursor = await import('opencode-ext-connector/cursor');
-            const ollama = await import('opencode-ext-connector/ollama');
-            const names = Object.keys(root).sort();
-            const kinds = [commandCode.createCommandCode, cursor.createCursor, ollama.createOllama].map((value) => typeof value);
-            const hooks = await root.claudeAuthServer({}, {});
-            await hooks.dispose?.();
-            process.stdout.write(JSON.stringify({ names, kinds }));
-          `,
-        ],
+        command: [process.env["NODE_BIN"] ?? "node", consumerFile],
         cwd: cacheProjectRoot,
         env,
       })
@@ -254,7 +232,7 @@ describe("packed package installation", () => {
       // Then
       expect(JSON.parse(output)).toEqual({
         names: rootExportNames,
-        kinds: ["function", "function", "function"],
+        kinds: ["function", "function", "function", "function"],
       })
     } finally {
       await packed?.cleanup()
