@@ -11,6 +11,7 @@ export class FakeFetch {
   private active = 0
   private readonly replies = new Map<string, FetchReply[]>()
   private readonly blocked = new Map<string, PromiseWithResolvers<void>>()
+  private readonly requested = new Map<string, PromiseWithResolvers<void>>()
 
   public enqueue(url: string, reply: FetchReply): void {
     const queued = this.replies.get(url) ?? []
@@ -26,8 +27,16 @@ export class FakeFetch {
     this.blocked.get(url)?.resolve()
   }
 
+  public waitForRequest(url: string): Promise<void> {
+    if (this.requests.some((request) => request.url === url)) return Promise.resolve()
+    const pending = this.requested.get(url) ?? Promise.withResolvers<void>()
+    this.requested.set(url, pending)
+    return pending.promise
+  }
+
   public readonly fetch = async (url: string, init?: RequestInit): Promise<Response> => {
     this.requests.push({ url, init })
+    this.requested.get(url)?.resolve()
     this.active += 1
     this.maximumActive = Math.max(this.maximumActive, this.active)
     try {
@@ -40,10 +49,6 @@ export class FakeFetch {
       this.active -= 1
     }
   }
-}
-
-export function htmlResponse(html: string, status = 200): Response {
-  return new Response(html, { status, headers: { "content-type": "text/html" } })
 }
 
 export function jsonResponse(value: unknown, status = 200): Response {
