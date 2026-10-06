@@ -1,14 +1,21 @@
 import { describe, expect, it } from "bun:test"
 import type { LanguageModelV3Prompt } from "@ai-sdk/provider"
 
+import { parseAdapterModel } from "../../../../src/core/models"
 import type { OllamaCatalogState, OllamaFetch } from "../../../../src/providers/ollama"
 import { createOllamaLanguageModel, OllamaGenerationError } from "../../../../src/providers/ollama"
+import { HostedCloudIdSchema } from "../../../../src/providers/ollama/cloud-reference"
+import { enqueueCloudReference } from "./cloud-fixtures"
 import { FakeFetch, jsonResponse } from "./http-fake"
 
 const TAGS_URL = "http://localhost:11434/api/tags"
 const PULL_URL = "http://localhost:11434/api/pull"
 const CHAT_URL = "http://localhost:11434/api/chat"
 const signal = (): AbortSignal => new AbortController().signal
+const reference = {
+  model: parseAdapterModel({ id: "cloud:cloud" }),
+  hostedId: HostedCloudIdSchema.parse("cloud"),
+}
 
 function catalog(authorized: readonly string[]): OllamaCatalogState {
   return {
@@ -17,10 +24,15 @@ function catalog(authorized: readonly string[]): OllamaCatalogState {
     },
     activeLeaseCount: () => 1,
     authorizesCloudPull: (id) => authorized.includes(id),
+    cloudPullAuthorization: (id) =>
+      authorized.includes(id) ? { reference, isCurrent: () => true } : null,
   }
 }
 
 function model(http: FakeFetch, id: string, authorized: readonly string[] = []) {
+  if (authorized.includes(id)) {
+    enqueueCloudReference(http, { hostedId: "cloud", referenceId: id })
+  }
   return createOllamaLanguageModel({ modelId: id, catalog: catalog(authorized), fetch: http.fetch })
 }
 
@@ -86,8 +98,9 @@ describe("Ollama LanguageModelV3 generation", () => {
       (await model(http, "cloud:cloud", ["cloud:cloud"]).doStream({ prompt })).stream,
     )
     // Then
-    expect(http.requests.map(({ url }) => url)).toEqual([TAGS_URL, PULL_URL, CHAT_URL])
-    expect(await new Response(http.requests[1]?.init?.body).json()).toEqual({
+    const daemonRequests = http.requests.filter(({ url }) => url.startsWith("http://localhost:"))
+    expect(daemonRequests.map(({ url }) => url)).toEqual([TAGS_URL, PULL_URL, CHAT_URL])
+    expect(await new Response(daemonRequests[1]?.init?.body).json()).toEqual({
       model: "cloud:cloud",
       stream: true,
     })
@@ -113,7 +126,8 @@ describe("Ollama LanguageModelV3 generation", () => {
     const result = model(http, "cloud:cloud", ["cloud:cloud"]).doStream({ prompt })
     // Then
     await expect(result).rejects.toBeInstanceOf(OllamaGenerationError)
-    expect(http.requests.map(({ url }) => url)).toEqual([TAGS_URL, PULL_URL])
+    const daemonRequests = http.requests.filter(({ url }) => url.startsWith("http://localhost:"))
+    expect(daemonRequests.map(({ url }) => url)).toEqual([TAGS_URL, PULL_URL])
   })
 
   it("consumes fragmented chat NDJSON and doGenerate returns matching content and usage", async () => {
