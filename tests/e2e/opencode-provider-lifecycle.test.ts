@@ -22,13 +22,12 @@ const blockedEnvironmentKeys = [
 ] as const
 
 type LifecycleCase = {
-  readonly providerId: "claude" | "cursor" | "command-code"
-  readonly authProvider: "anthropic" | "cursor" | "command-code"
+  readonly providerId: "claude" | "command-code"
+  readonly authProvider: "claude" | "command-code"
 }
 
 const lifecycleCases: LifecycleCase[] = [
-  { providerId: "claude", authProvider: "anthropic" },
-  { providerId: "cursor", authProvider: "cursor" },
+  { providerId: "claude", authProvider: "claude" },
   { providerId: "command-code", authProvider: "command-code" },
 ]
 
@@ -101,8 +100,7 @@ const clock = {
 }
 const transport = { request: async () => { throw new Error("fixture transport must stay offline") } }
 const definitions = [
-  ["claude", "anthropic", "fixture-claude-model"],
-  ["cursor", "cursor", "fixture-cursor-model"],
+  ["claude", "claude", "fixture-claude-model"],
   ["command-code", "command-code", "fixture-command-code-model"],
 ]
 const vendorCredentials = new Set(definitions.map(([id]) => id))
@@ -132,8 +130,8 @@ export const connectorServer = async () => buildV1Hooks({
   npmSpecifiers,
 })
 export const claudeAuthServer = async (_input, options) => buildV1AuthHooks(entries[0], deps, options)
-export const cursorAuthServer = async (_input, options) => buildV1AuthHooks(entries[1], deps, options)
-export const commandCodeAuthServer = async (_input, options) => buildV1AuthHooks(entries[2], deps, options)
+export const cursorAuthServer = async () => ({})
+export const commandCodeAuthServer = async (_input, options) => buildV1AuthHooks(entries[1], deps, options)
 `
 }
 
@@ -142,22 +140,11 @@ async function setAuth(
   provider: LifecycleCase["authProvider"],
 ): Promise<void> {
   switch (provider) {
-    case "anthropic":
-      await client.auth.set({
-        path: { id: provider },
-        body: { type: "oauth", access: "access", refresh: "refresh", expires: 4_102_444_800_000 },
-      })
-      return
-    case "cursor":
-      await client.auth.set({
-        path: { id: provider },
-        body: { type: "api", key: "cli-session:cursor" },
-      })
-      return
+    case "claude":
     case "command-code":
       await client.auth.set({
         path: { id: provider },
-        body: { type: "api", key: "cli-session:command-code" },
+        body: { type: "api", key: "fixture-api-key" },
       })
       return
   }
