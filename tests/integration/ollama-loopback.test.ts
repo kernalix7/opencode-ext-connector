@@ -1,11 +1,24 @@
 import { describe, expect, it } from "bun:test"
+import { createHash } from "node:crypto"
 import type { LanguageModelV3Prompt } from "@ai-sdk/provider"
 
+import { parseAdapterModel } from "../../src/core/models"
 import type { OllamaCatalogState, OllamaFetch } from "../../src/providers/ollama"
 import { createOllamaLanguageModel, parseOllamaEndpoints } from "../../src/providers/ollama"
+import { HostedCloudIdSchema } from "../../src/providers/ollama/cloud-reference"
 import { createOllama } from "../../src/sdk/ollama"
 
 const prompt: LanguageModelV3Prompt = [{ role: "user", content: [{ type: "text", text: "hello" }] }]
+const cloudConfig = JSON.stringify({ remote_host: "https://ollama.com", remote_model: "cloud" })
+const cloudDigest = `sha256:${createHash("sha256").update(cloudConfig).digest("hex")}`
+const cloudManifestURL = "https://registry.ollama.ai/v2/library/cloud/manifests/cloud"
+const cloudConfigURL = `https://registry.ollama.ai/v2/library/cloud/blobs/${cloudDigest}`
+const cloudManifest = JSON.stringify({
+  schemaVersion: 2,
+  mediaType: "application/vnd.docker.distribution.manifest.v2+json",
+  config: { digest: cloudDigest, size: Buffer.byteLength(cloudConfig) },
+  layers: [],
+})
 
 type LoopbackOptions = {
   readonly localModels: readonly string[]
@@ -70,8 +83,22 @@ class LoopbackOllama implements AsyncDisposable {
   }
 
   public readonly fetch: OllamaFetch = async (url, init): Promise<Response> => {
-    this.originalRequests.push(new Request(url, init))
-    return fetch(new Request(url, init))
+    const request = new Request(url, init)
+    this.originalRequests.push(request)
+    expect(init?.credentials).toBe("omit")
+    expect(init?.redirect).toBe("error")
+    if (request.method === "GET" && request.url === cloudManifestURL) {
+      return new Response(cloudManifest, {
+        headers: { "content-type": "application/vnd.docker.distribution.manifest.v2+json" },
+      })
+    }
+    if (request.method === "GET" && request.url === cloudConfigURL) {
+      return new Response(cloudConfig, { headers: { "content-type": "application/json" } })
+    }
+    if (!["tags", "pull", "chat"].some((route) => request.url === `${this.baseURL}/api/${route}`)) {
+      throw new TypeError(`unexpected non-daemon request: ${request.url}`)
+    }
+    return fetch(url, init)
   }
 
   public async [Symbol.asyncDispose](): Promise<void> {
@@ -86,6 +113,16 @@ function catalog(authorized: readonly string[]): OllamaCatalogState {
     },
     activeLeaseCount: () => 1,
     authorizesCloudPull: (modelId) => authorized.includes(modelId),
+    cloudPullAuthorization: (modelId) => {
+      if (modelId !== "cloud:cloud" || !authorized.includes(modelId)) return null
+      return {
+        reference: {
+          model: parseAdapterModel({ id: "cloud:cloud" }),
+          hostedId: HostedCloudIdSchema.parse("cloud"),
+        },
+        isCurrent: () => authorized.includes("cloud:cloud"),
+      }
+    },
   }
 }
 
@@ -144,6 +181,8 @@ describe("Ollama real-network generation", () => {
     // Then
     expect(server.originalRequests.map(({ url }) => new URL(url).pathname)).toEqual([
       "/daemon/api/tags",
+      "/v2/library/cloud/manifests/cloud",
+      `/v2/library/cloud/blobs/${cloudDigest}`,
       "/daemon/api/pull",
       "/daemon/api/chat",
     ])
