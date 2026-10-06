@@ -11,15 +11,11 @@ const projectRoot = join(import.meta.dir, "..", "..")
 const InspectionSchema = z.object({
   names: z.array(z.string()),
   kinds: z.array(z.string()),
-  consumer: z.object({
-    provider: z.string(),
-    loaderKind: z.string(),
-    methods: z.array(z.unknown()),
-  }),
+  retired: z.boolean(),
 })
 
 describe("packaged xAI entrypoint", () => {
-  it("exports only the xAI server and returns consumer auth hooks", async () => {
+  it("exports only the xAI server and rejects retired OAuth activation", async () => {
     // Given
     const directory = await mkdtemp(join(projectRoot, ".xai-package-"))
     const packageDirectory = join(directory, "package")
@@ -44,9 +40,13 @@ describe("packaged xAI entrypoint", () => {
             const xai = await import(${JSON.stringify(pathToFileURL(join(packageDirectory, "dist", "xai.js")).href)});
             const names = Object.keys(xai);
             const kinds = Object.values(xai).map((value) => typeof value);
-            const hooks = await xai.xaiAuthServer({}, { xaiOAuth: { mode: 'consumer' } });
-            const consumer = { provider: hooks.auth?.provider, loaderKind: typeof hooks.auth?.loader, methods: hooks.auth?.methods };
-            process.stdout.write(JSON.stringify({ names, kinds, consumer }));
+             let retired = false;
+             try {
+               await xai.xaiAuthServer({}, { xaiOAuth: { mode: 'consumer' } });
+             } catch (error) {
+               retired = error?.name === 'XaiOAuthRetiredError';
+             }
+             process.stdout.write(JSON.stringify({ names, kinds, retired }));
           `,
         ],
         { cwd: projectRoot, stderr: "pipe", stdout: "pipe" },
@@ -61,7 +61,7 @@ describe("packaged xAI entrypoint", () => {
       expect(InspectionSchema.parse(JSON.parse(stdout))).toEqual({
         names: ["xaiAuthServer"],
         kinds: ["function"],
-        consumer: { provider: "xai", loaderKind: "function", methods: [] },
+        retired: true,
       })
     } finally {
       await packed?.cleanup()
