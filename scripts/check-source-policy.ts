@@ -40,6 +40,13 @@ function isBetaApiBoundary(filePath: string): boolean {
   )
 }
 
+function isRestrictedOpenCodeModule(moduleName: string): boolean {
+  return (
+    /^@opencode-ai\/(?:plugin|sdk)\/v2(?:\/|$)/.test(moduleName) ||
+    /^@opencode\/(?:plugin|schema|ai|client)(?:\/|$)/.test(moduleName)
+  )
+}
+
 function importedModule(node: ts.Node): string | undefined {
   if (ts.isImportDeclaration(node) && ts.isStringLiteralLike(node.moduleSpecifier)) {
     return node.moduleSpecifier.text
@@ -132,10 +139,7 @@ export function inspectSource(
       if (importsSiblingProvider(filePath, moduleName)) {
         reportAt(node.getStart(sourceFile), "provider-sibling-import")
       }
-      if (
-        !isBetaApiBoundary(filePath) &&
-        /^@opencode-ai\/(?:plugin|sdk)\/v2(?:\/|$)/.test(moduleName)
-      ) {
+      if (!isBetaApiBoundary(filePath) && isRestrictedOpenCodeModule(moduleName)) {
         reportAt(node.getStart(sourceFile), "opencode-beta-import")
       }
     }

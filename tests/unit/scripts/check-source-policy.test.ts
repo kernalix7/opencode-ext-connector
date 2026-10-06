@@ -112,4 +112,55 @@ describe("inspectSource", () => {
     // Then
     expect(violations).toEqual([])
   })
+
+  it("rejects new OpenCode plugin, schema, ai, and client imports outside the beta API boundary", () => {
+    // Given
+    const sourceText = [
+      'import { Plugin } from "@opencode/plugin"',
+      'import type { Provider } from "@opencode/schema/provider"',
+      'import type { Model } from "@opencode/ai"',
+      'const client = import("@opencode/client/promise")',
+    ].join("\n")
+
+    // When
+    const violations = inspectSource("src/v2.ts", sourceText)
+
+    // Then
+    expect(violations.map(({ rule }) => rule)).toEqual([
+      "opencode-beta-import",
+      "opencode-beta-import",
+      "opencode-beta-import",
+      "opencode-beta-import",
+    ])
+  })
+
+  it("allows new OpenCode package imports only in the beta API boundary", () => {
+    // Given
+    const sourceText = [
+      'import { Plugin } from "@opencode/plugin"',
+      'import type { Provider } from "@opencode/schema/provider"',
+      'import type { Model } from "@opencode/ai"',
+      'import type { ConnectionInfo } from "@opencode/client"',
+    ].join("\n")
+
+    // When
+    const violations = inspectSource("src/opencode/beta-api.ts", sourceText)
+
+    // Then
+    expect(violations).toEqual([])
+  })
+
+  it("does not restrict provider SDK or legacy plugin imports", () => {
+    // Given
+    const sourceText = [
+      'import type { LanguageModelV3 } from "@ai-sdk/provider"',
+      'import type { Plugin } from "@opencode-ai/plugin"',
+    ].join("\n")
+
+    // When
+    const violations = inspectSource("src/index.ts", sourceText)
+
+    // Then
+    expect(violations).toEqual([])
+  })
 })
