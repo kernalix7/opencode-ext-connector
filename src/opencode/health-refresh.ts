@@ -14,13 +14,6 @@ import type { ConnectorLogger } from "../core/logger.js"
 
 export type HealthStore = Map<ProviderId, HealthState>
 
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message
-  }
-  return "unknown"
-}
-
 export async function refreshAdaptersWithHealth(options: {
   readonly adapters: readonly ProviderAdapter[]
   readonly publisher: CatalogPublisher
@@ -66,7 +59,7 @@ export async function refreshAdaptersWithHealth(options: {
       options.logger.log("warn", "provider.snapshot.failed", {
         providerId: adapter.providerId,
         retryable,
-        message: errorMessage(error),
+        message: error instanceof Error ? error.name : "unknown",
       })
     } finally {
       await deadline.dispose()

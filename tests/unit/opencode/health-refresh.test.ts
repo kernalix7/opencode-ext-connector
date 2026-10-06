@@ -125,7 +125,7 @@ describe("refreshAdaptersWithHealth", () => {
       (r) => r.event === "provider.snapshot.failed" && r.fields["providerId"] === "cursor",
     )
     expect(failedRecord?.fields["retryable"]).toBe(true)
-    expect(failedRecord?.fields["message"]).toBe("connector deadline exceeded")
+    expect(failedRecord?.fields["message"]).toBe("DeadlineExceededError")
   })
 
   it("defers a provider when retryAtMs is in the future", async () => {
