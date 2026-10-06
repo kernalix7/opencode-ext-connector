@@ -55,7 +55,15 @@ export function createOllamaCatalogState(
           if (released) throw new ResourceDisposedError("ollama-catalog-lease")
           if (signal.aborted) throw new OperationCancelledError("ollama-catalog-refresh")
           completeModels = discovered.map(({ model }) => model)
-          references = new Map(discovered.map((reference) => [reference.model.id, reference]))
+          references = new Map(
+            discovered.map((reference) => {
+              const previous = references.get(reference.model.id)
+              return [
+                reference.model.id,
+                previous?.hostedId === reference.hostedId ? previous : reference,
+              ]
+            }),
+          )
           return completeModels
         },
         models: () => completeModels ?? [],
