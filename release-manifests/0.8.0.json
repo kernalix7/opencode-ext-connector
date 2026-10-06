@@ -1,0 +1,1176 @@
+{
+  "name": "opencode-ext-connector",
+  "version": "0.8.0",
+  "originalTarballSha256": "123d8a2608c0fad5c2ebd5210d4f200f84e69a083355939bd9f2eaa849668d8e",
+  "ignoredContainerMetadata": ["member order", "numeric ownership", "gzip header mtime"],
+  "members": [
+    {
+      "path": "package/CHANGELOG.md",
+      "type": "file",
+      "mode": "-rw-r--r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 10593,
+      "sha256": "bc8d7d53c354b88ae1a2f5e148d2490b30e29fa4037fcb0b3b0ea245463e6984"
+    },
+    {
+      "path": "package/dist/core/adapter.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 718,
+      "sha256": "062dc90300dad46dcbefa137b3f2279e203deb08cc824f51def650a5148c48f2"
+    },
+    {
+      "path": "package/dist/core/adapter.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 775,
+      "sha256": "a957c0ddeb92bab7faa12617c58867a05fc5809aacb2940061ca49efc5685bbf"
+    },
+    {
+      "path": "package/dist/core/clock.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 198,
+      "sha256": "4e39f81da91d49640b89cb3106f9277cb658fc04d29f1964933e9781a50651c8"
+    },
+    {
+      "path": "package/dist/core/clock.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 11,
+      "sha256": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+    },
+    {
+      "path": "package/dist/core/deadline.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 474,
+      "sha256": "e56b8e12737b41871bd55607f8e7234ca0ba28414cd103ebc5f069d5c8b60555"
+    },
+    {
+      "path": "package/dist/core/deadline.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 2173,
+      "sha256": "1b8105dfddc01a3feb3efdcf9e81623e081a7dfb259d6e2b2c2060ea0f6f2050"
+    },
+    {
+      "path": "package/dist/core/errors.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 2214,
+      "sha256": "7cb2d74cfd1e3fcec1a275ce1a2f96db1f335e48a73b452a0c992fb49bf80cb1"
+    },
+    {
+      "path": "package/dist/core/errors.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 2465,
+      "sha256": "b10c1689f7a8ff5a8fd30df9d009a970fa84916251122f66e3ea620968b213d4"
+    },
+    {
+      "path": "package/dist/core/health.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 780,
+      "sha256": "217531d7f6c1b35783ac76a743e28ce21593a5b2ac25f2c954fc5baadddd844e"
+    },
+    {
+      "path": "package/dist/core/health.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1060,
+      "sha256": "cbb8a2c04decd2a4fdbebacf6c6893410a1fb6c13b13b92ad4dab069e84ce18e"
+    },
+    {
+      "path": "package/dist/core/http.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 915,
+      "sha256": "046cc5ffcd2a1ccbd870510545914d083e19cf4f2f0735529d257645d14856aa"
+    },
+    {
+      "path": "package/dist/core/http.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 11,
+      "sha256": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+    },
+    {
+      "path": "package/dist/core/ids.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 437,
+      "sha256": "2d18c071e3eb15567c1fbb899acb3b643117ac1390d707c9be3d2b58805f8029"
+    },
+    {
+      "path": "package/dist/core/ids.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 634,
+      "sha256": "1ddaad5aac033909e32b44fc3f01dde4c68b8c3c05ae1f1bf1ba9f894905fd9c"
+    },
+    {
+      "path": "package/dist/core/lifecycle.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 204,
+      "sha256": "176369d31928f6a45f18a1bff4a8b618acac9d251030d0d20d3d57314cd3f080"
+    },
+    {
+      "path": "package/dist/core/lifecycle.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 451,
+      "sha256": "e5248043feaf4b5c5e86c78721245183cf9f10d0bab659492541ef519fcb25b2"
+    },
+    {
+      "path": "package/dist/core/logger.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 705,
+      "sha256": "77e09f5c6e13af7a1a890c23b66bde515be3b80b226e975a89420bd56ee26b5a"
+    },
+    {
+      "path": "package/dist/core/logger.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1720,
+      "sha256": "fc25f828344d1966c5ee738e95c332133c1a11d2b0ede89cb387a10bb124d4d5"
+    },
+    {
+      "path": "package/dist/core/models.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1515,
+      "sha256": "0c04cfc39d526ea04552c2d2957c64941fc5f6a57285db355f4f26a974e74f8b"
+    },
+    {
+      "path": "package/dist/core/models.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1589,
+      "sha256": "415cd1f1d36bf6392253f9a7a1f479f00e128c07f67876978685d1d44ddd1d2f"
+    },
+    {
+      "path": "package/dist/core/options.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 841,
+      "sha256": "d905bd72bfeec904f7063bc02e8badf09f836441857f40b79896e240f7bc4b51"
+    },
+    {
+      "path": "package/dist/core/options.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 2172,
+      "sha256": "7f439b08ffd49a8b8bea502405b64f8071ca475f0ed19330f2bb3934aa79da76"
+    },
+    {
+      "path": "package/dist/http/fetch-transport.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 284,
+      "sha256": "e73d78793e30550ee3d207b6431a885e60d6a65316187a34c2de6e78668ec25c"
+    },
+    {
+      "path": "package/dist/http/fetch-transport.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 2749,
+      "sha256": "d1b344c7fa20c12010a16b0e1167874e790b6a2951203bb636da802ab86cf046"
+    },
+    {
+      "path": "package/dist/http/read-body.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 427,
+      "sha256": "3d14f8a63fc7afdd7f04f10aa57c42e935dc11bbef14812627d79a813542b06f"
+    },
+    {
+      "path": "package/dist/http/read-body.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 848,
+      "sha256": "5bb22c8fa866460af5c8cd7055cea460777b4d78aadcdcdc56a24c780b9824f0"
+    },
+    {
+      "path": "package/dist/http/sdk-fetch.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 145,
+      "sha256": "e60f1313f35c452fed5f79a577983b3078330f768511e5f83662dce8fea6ab50"
+    },
+    {
+      "path": "package/dist/http/sdk-fetch.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 2499,
+      "sha256": "bd49463cb7970281af92e1724e54f6ecfac4e8ce55044312074f50d557c77efc"
+    },
+    {
+      "path": "package/dist/index.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 358,
+      "sha256": "221ca1260d1621e97c342a688b3cdcede4cafb19855193eed91415d1f929be5d"
+    },
+    {
+      "path": "package/dist/index.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 734,
+      "sha256": "8a984d115fec7e6946ce7abb46005b9759f35afc37d280104f9e2e0d065f9dfc"
+    },
+    {
+      "path": "package/dist/logging/logger.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 252,
+      "sha256": "4ce7e635d4f87225c375e177813f06dc129b59cf75a8cb5ff407a131a82ee5a3"
+    },
+    {
+      "path": "package/dist/logging/logger.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 320,
+      "sha256": "574d492125cc00488d45e059cdf9a69c4193d53aaf6d2d4fd0614abc05933dc7"
+    },
+    {
+      "path": "package/dist/opencode/auth-store.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 843,
+      "sha256": "faeae76dcd5696b191f6684e11eca7dee257469dcb4d1e24ea6f4d45ffcf32c3"
+    },
+    {
+      "path": "package/dist/opencode/auth-store.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 3072,
+      "sha256": "ed9eb257830608550be0e346df07ac4a016512c6c764523fe960f327d295d575"
+    },
+    {
+      "path": "package/dist/opencode/beta-api.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1190,
+      "sha256": "550c46acf4f2d382895b3cec923baa0a1c3cd6c16d99e8ee8484cfbd9a61d8b2"
+    },
+    {
+      "path": "package/dist/opencode/beta-api.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 340,
+      "sha256": "47b9fd50601931aac66bca943172d6b01750aad39cf6bd5c61f4a2a52fee5d27"
+    },
+    {
+      "path": "package/dist/opencode/health-refresh.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 742,
+      "sha256": "848052b3e724da7f9d8a75541efe5d667cc4aa1cde48325daf829b85dc266cea"
+    },
+    {
+      "path": "package/dist/opencode/health-refresh.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1930,
+      "sha256": "b1ec6bb24b4173ceb3ec8bb7420e948a062b1a6264a78d8f5ad251fc9e8ba843"
+    },
+    {
+      "path": "package/dist/opencode/host-options.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 548,
+      "sha256": "c8435c4c0900bf54284e1ce27ab0d45f9bed862e173645fd31057caa5c8ca87d"
+    },
+    {
+      "path": "package/dist/opencode/host-options.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 735,
+      "sha256": "93527174b859b6e66ed7d019f16986f7d3c27e86f31a38942853c557147ffd47"
+    },
+    {
+      "path": "package/dist/opencode/language-factory.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 612,
+      "sha256": "c14cf426038f83ed4076f5064cacf85552d980c5348b22e906865f9d40f03c56"
+    },
+    {
+      "path": "package/dist/opencode/language-factory.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1128,
+      "sha256": "79b029a9d18fa5e823b6b25ffd4be3fb4a203245607e6d5483d67535eff1f059"
+    },
+    {
+      "path": "package/dist/opencode/ollama-probe.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 245,
+      "sha256": "a0c65f2acb07fdc869edab22034bcc275c43b96efb68367f4a1a3b87105b5bd1"
+    },
+    {
+      "path": "package/dist/opencode/ollama-probe.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 611,
+      "sha256": "c5d9d05b490542dd2cbaae992a164317257350a95a61f4c063748d49dac436f4"
+    },
+    {
+      "path": "package/dist/opencode/ollama-production.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 603,
+      "sha256": "a6e621668234c46a09b8fd121cd9edf20639f479e7ac3a8c416197d7b9460b53"
+    },
+    {
+      "path": "package/dist/opencode/ollama-production.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1024,
+      "sha256": "f86122d8fe77ca67f913e821ab834e8eef4cce46cff072d828e4fbc08bdd0f33"
+    },
+    {
+      "path": "package/dist/opencode/provider-entry.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1099,
+      "sha256": "52b208324a25ebde8f4405368c41a5661e94e0de25b70d66f8cfc1beb8126e05"
+    },
+    {
+      "path": "package/dist/opencode/provider-entry.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 11,
+      "sha256": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+    },
+    {
+      "path": "package/dist/opencode/providers.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1139,
+      "sha256": "380bb87eaae59523215c7f3e619005eea7ece5bfbb72a2e7632d1fe551041dde"
+    },
+    {
+      "path": "package/dist/opencode/providers.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 4044,
+      "sha256": "e0c9dcabbe9364537eab57e597dd7054b24a77986f5a6cdfe54a1b8b907fc757"
+    },
+    {
+      "path": "package/dist/opencode/reload.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 315,
+      "sha256": "b946893dd018ae5c305c2a971ac400be7ce1076b9b6e7c25ae7a1a4ea8ab8dda"
+    },
+    {
+      "path": "package/dist/opencode/reload.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 906,
+      "sha256": "b8e9477ac59c69f1b0ebeadf98835399251a61e3bf43255fc7f5ad7ad6165b65"
+    },
+    {
+      "path": "package/dist/opencode/v1-api-auth.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 146,
+      "sha256": "11d2989801fa7eb9fc47b96af4d28d0da0056aa708064935f8641fe0e11a9336"
+    },
+    {
+      "path": "package/dist/opencode/v1-api-auth.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 222,
+      "sha256": "36e32075d3c6c854f5b829195c15e44402e6c1d4329f76086e71226f627f4a1b"
+    },
+    {
+      "path": "package/dist/opencode/v1-binding.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1358,
+      "sha256": "be0d66596d3fba7c72411cdf44f31b4363a4aab52326b7a1a929d43fd2587253"
+    },
+    {
+      "path": "package/dist/opencode/v1-binding.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1224,
+      "sha256": "9c797ba6d1a92aa51a69f7aefc104b92b43e48eb97bd221ad0130151384d8807"
+    },
+    {
+      "path": "package/dist/opencode/v1-catalog.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 843,
+      "sha256": "6c24d48eed38eb533bb953cbd3d6f351950a39f6b2627abd1c9672afd71313a2"
+    },
+    {
+      "path": "package/dist/opencode/v1-catalog.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 3905,
+      "sha256": "6b16cbaeb7fd841ead5327997b10ddc95a282a39cf911a2fc106acaf854655cc"
+    },
+    {
+      "path": "package/dist/opencode/v1-generation.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1102,
+      "sha256": "9f75ed25cb719a2e01c50307a52d1aaddfd9dfb87559b6368595d4b14746faa2"
+    },
+    {
+      "path": "package/dist/opencode/v1-generation.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 3596,
+      "sha256": "435c1b9e484d600119de3ac0214143d5444ea91e2ba64f8b73337aa59eeee895"
+    },
+    {
+      "path": "package/dist/opencode/v1-language.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 270,
+      "sha256": "4c7110787fc19e8cfa3bf6dcfd628ad66a89b78bde063e2b5e2fd67a7fd6d820"
+    },
+    {
+      "path": "package/dist/opencode/v1-language.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 3186,
+      "sha256": "235f0c3a979c66cc2a4333dd1c2c00eed266974fc89c42758365f79a832d9e95"
+    },
+    {
+      "path": "package/dist/opencode/v1-module.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1267,
+      "sha256": "ca6485da8057819612610b10f214b6bcc3861c7236ccc83656953ea5109d958e"
+    },
+    {
+      "path": "package/dist/opencode/v1-module.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 3917,
+      "sha256": "9fd08d74c1dd5c35a95f96b78b57bdc60bdc078cbf73f792b5a66f00052c005f"
+    },
+    {
+      "path": "package/dist/opencode/v1-owner.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 703,
+      "sha256": "6a4b94aba02aff952fad0b316b54c2fcf0d4f1bb0e2b90c0fd5a3e1b530b4ef6"
+    },
+    {
+      "path": "package/dist/opencode/v1-owner.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 4779,
+      "sha256": "2b398fcf11122310a2b374fa77b7e3b8860b51d09ad7e1bf498657f4677df21a"
+    },
+    {
+      "path": "package/dist/opencode/v1-session-auth.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 299,
+      "sha256": "7c154cd2445d51bcba47b152fd989989af77f4c98a9833e8249fd42fb6958231"
+    },
+    {
+      "path": "package/dist/opencode/v1-session-auth.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1622,
+      "sha256": "14c62db142ffea1f28fcee8dd01a1a0ea5fb1a51853693248ed819ce930a877d"
+    },
+    {
+      "path": "package/dist/opencode/v2-auth.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 804,
+      "sha256": "bcf1f9172680a38ca38b77252b2453a3906a6e0275770ce0a7586114394cd604"
+    },
+    {
+      "path": "package/dist/opencode/v2-auth.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 3306,
+      "sha256": "aa30cd35ed77fb75f378e96283fca709bff214ceae8830295d8a4a157aa05ff8"
+    },
+    {
+      "path": "package/dist/opencode/v2-catalog.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1154,
+      "sha256": "29c9bcce721b4430cf913a491429a2c76389e1ada1757988712d273af0792a30"
+    },
+    {
+      "path": "package/dist/opencode/v2-catalog.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 6650,
+      "sha256": "90b971bb2df523bc2cd4d4936e38134db72caf70d57d41785d7ca9c0d26371c2"
+    },
+    {
+      "path": "package/dist/opencode/v2-language.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1232,
+      "sha256": "0766613825b00ebe144d8141be40602123645a9fef512ec93f5208dc10ede57b"
+    },
+    {
+      "path": "package/dist/opencode/v2-language.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 4528,
+      "sha256": "2302616d564331504e23e1553b017f837d5a5f1582e9102994f102ae406ea450"
+    },
+    {
+      "path": "package/dist/opencode/v2-refresh.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1240,
+      "sha256": "2c30fa09151eed9a4d2bae5f5ac09841982608ade453f0b2841b8f682c37bbca"
+    },
+    {
+      "path": "package/dist/opencode/v2-refresh.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 7491,
+      "sha256": "609e8a9adb5bda697911bf9c039e70742325f16344be0f9e5d6a614881f27cdb"
+    },
+    {
+      "path": "package/dist/opencode/v2-resources.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 822,
+      "sha256": "09d493fc174941fb40560232693c8bacc0dcdf34f95bf140e43658d6d1632092"
+    },
+    {
+      "path": "package/dist/opencode/v2-resources.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1357,
+      "sha256": "228e116e1a89706832ce1a7c13a458957ae3ec00e2889eaa8ca4d1ab13bc2d86"
+    },
+    {
+      "path": "package/dist/opencode/v2-sdk.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 115,
+      "sha256": "dc5a044fdb976a3622ff3764af0fea981dc1f6dd90c43753949d8d82b17144f7"
+    },
+    {
+      "path": "package/dist/opencode/v2-sdk.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 718,
+      "sha256": "b2c0401aaa231711576812039ed11402d6bc130960a87d719189a5ead2238865"
+    },
+    {
+      "path": "package/dist/opencode/v2-setup.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1296,
+      "sha256": "1d579b78989148d29afa95d7ace27f67633d0b942148c3cad3547ed0aed5a6d6"
+    },
+    {
+      "path": "package/dist/opencode/v2-setup.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 5219,
+      "sha256": "0568d821782ff1fbc59b39e2b55675790a9dce871b7ac6bc8d538abbcad266d3"
+    },
+    {
+      "path": "package/dist/providers/claude/api-adapter.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 430,
+      "sha256": "5c7d65748ec1e95005d075be6fb1a62d8cd693cf5b7e10a75ad56f4b9c648284"
+    },
+    {
+      "path": "package/dist/providers/claude/api-adapter.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 2245,
+      "sha256": "c674a11ec862fbca054261fcb2d521b4aa5b340bc5e44fa257a510600e0984f6"
+    },
+    {
+      "path": "package/dist/providers/claude/api-language-model.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 414,
+      "sha256": "77c92d20699ef2c577ea9269758c50a7a23692cae18e2522d145ff9c44f50c03"
+    },
+    {
+      "path": "package/dist/providers/claude/api-language-model.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 2076,
+      "sha256": "e8c94079f2536f0df9ac16cb69ac78697811bfc973799827fafca3f0f0432951"
+    },
+    {
+      "path": "package/dist/providers/claude/api-models.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 374,
+      "sha256": "1887027d4ddc51af2a27c5069c377abbf6a619e00c6b5bc12f63d10cf09a482d"
+    },
+    {
+      "path": "package/dist/providers/claude/api-models.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 2149,
+      "sha256": "b46fb062bb45db258e3301a460979eaa38e7a06b9c553609af10ed5b9517dee5"
+    },
+    {
+      "path": "package/dist/providers/command-code/api-adapter.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 372,
+      "sha256": "cbdc74f13bcc832729d70fafe5f782239a98644fb6378c7becccface425e3a92"
+    },
+    {
+      "path": "package/dist/providers/command-code/api-adapter.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 2180,
+      "sha256": "b643450bdee8529e66a12e79cbe3289066ec46ea4d7ccafb01d3d8a09cc2e1cb"
+    },
+    {
+      "path": "package/dist/providers/command-code/api-language-model.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 344,
+      "sha256": "aa89179e408c0173e06fd5225c5d7f77e8e136bf94fb332fc91942f3d1815c8e"
+    },
+    {
+      "path": "package/dist/providers/command-code/api-language-model.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 3141,
+      "sha256": "7928d7e81910658694b6eb21f6aee948a0ea3921b06548eb86798fd3bf292b17"
+    },
+    {
+      "path": "package/dist/providers/command-code/api-models.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 712,
+      "sha256": "c7bdec79ac5ac789130e64e72d618199d046d4246baf87540132fbe91a9b2736"
+    },
+    {
+      "path": "package/dist/providers/command-code/api-models.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 2383,
+      "sha256": "93a18aad740fd78d21e98c310d1e426f183debfabbfbfae9d6367e6395c28b88"
+    },
+    {
+      "path": "package/dist/providers/ollama/adapter.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 475,
+      "sha256": "fc6fd787486b0ba8dffe342df46bc44247ad979d4792170e144ad252bbe7a54e"
+    },
+    {
+      "path": "package/dist/providers/ollama/adapter.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 2767,
+      "sha256": "751ad40746fcd43ba36bd57ba2c31f56fd2a7c0eb897151c962c581f85e41317"
+    },
+    {
+      "path": "package/dist/providers/ollama/catalog-state.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1017,
+      "sha256": "c701f567eaefe53e9492e50e9e55ee7c52a00a4dbcb27c2e7363df0d24fa78d8"
+    },
+    {
+      "path": "package/dist/providers/ollama/catalog-state.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 2385,
+      "sha256": "df84799e1af6c96dfaa54f97d956c751acbd32edd7a2ac9fc706f9a6782fba6b"
+    },
+    {
+      "path": "package/dist/providers/ollama/cloud-catalog.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 478,
+      "sha256": "04249f7862b4d5610c7321244adc3b27062f9ec4be8e3987b50ab27cc98be656"
+    },
+    {
+      "path": "package/dist/providers/ollama/cloud-catalog.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 2326,
+      "sha256": "52b59c69985aac4a59b4f2fc56565b470716df3d28ccd51ab90189d07bfc92ea"
+    },
+    {
+      "path": "package/dist/providers/ollama/cloud-reference.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 693,
+      "sha256": "1a299b8f58d9ec56af059cade426b7b71d02b7e650a2885f1e37cef510075f8a"
+    },
+    {
+      "path": "package/dist/providers/ollama/cloud-reference.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 3283,
+      "sha256": "9969aed6f83806a0cc8fd3324af0081490f81224a31ff5bda60f17e24c06be26"
+    },
+    {
+      "path": "package/dist/providers/ollama/endpoints.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 307,
+      "sha256": "9ed1d3fd04adfc2529376e3513e5b8f798dd4b06ef8a5fd912ff329360494cab"
+    },
+    {
+      "path": "package/dist/providers/ollama/endpoints.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1548,
+      "sha256": "80c83580a808e6931f20e9a4ce2025b2b4956cc9143dca21af367e33772ab3e6"
+    },
+    {
+      "path": "package/dist/providers/ollama/errors.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 788,
+      "sha256": "81297a6ad6decda5129fa2efc075cd49965f04dd0848fe9c95acfc396ca8d61e"
+    },
+    {
+      "path": "package/dist/providers/ollama/errors.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 515,
+      "sha256": "281cc8bee0fc4f8031aedd14910fc15b12a5291717f8335283e04dec40b8f23e"
+    },
+    {
+      "path": "package/dist/providers/ollama/generate.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 239,
+      "sha256": "f6d34a5c1781ff3f9fb3537065d1c2a8ff240fdf54594523dec97b2b79d01bd8"
+    },
+    {
+      "path": "package/dist/providers/ollama/generate.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1506,
+      "sha256": "a8ea4b172d3df3dcc6e35ed8d7e15f5c6040e0cdc5af15301ca127e6a6eb4c3a"
+    },
+    {
+      "path": "package/dist/providers/ollama/http.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 766,
+      "sha256": "88c763730b2e674db562d738bc00e7213ec8ac6567cf86c49b08fe1b09770770"
+    },
+    {
+      "path": "package/dist/providers/ollama/http.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 3297,
+      "sha256": "6abb70ffb2eb7230b1e30ab3f3feeb8fa9133a9529f09613ab2f3b88dbf6b3bd"
+    },
+    {
+      "path": "package/dist/providers/ollama/language-model.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 609,
+      "sha256": "2abff066f63b3319d7d5b8257a8a56df94f55a9102636bbdf176cf8437ea3dab"
+    },
+    {
+      "path": "package/dist/providers/ollama/language-model.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 2426,
+      "sha256": "6a663a9aefe3ca991540a9f40a067ea870a46f85c0acef35ba9a67f8ad6f8030"
+    },
+    {
+      "path": "package/dist/providers/ollama/local-catalog.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 310,
+      "sha256": "211c777e9d1c77a513c4296a44c07471687b1c632813fac53655a88bfc965261"
+    },
+    {
+      "path": "package/dist/providers/ollama/local-catalog.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1647,
+      "sha256": "6d1d77252e051a60fe93cd3fb7fc203d53c551a85a57d2d3c4e194af22b6f95a"
+    },
+    {
+      "path": "package/dist/providers/ollama/ndjson.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 237,
+      "sha256": "1208253cdac0b292f2d3ca2377bbf352475a5ed9fade6b3e607c92689d26a745"
+    },
+    {
+      "path": "package/dist/providers/ollama/ndjson.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1934,
+      "sha256": "8fd20fcf387e49de7793dddd85a0ee4a8a2274567792402fb87657362331a0ab"
+    },
+    {
+      "path": "package/dist/providers/ollama/prompt.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 372,
+      "sha256": "16738f830de50a8ee7795a080784c3a2272a9e243b8a921465957f1f35051ec4"
+    },
+    {
+      "path": "package/dist/providers/ollama/prompt.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 5670,
+      "sha256": "2c75bcea2c8408aaa6b883aa18e35a87f9e0d7f7d4b58d2fbf4d90cb1dbc633b"
+    },
+    {
+      "path": "package/dist/providers/ollama/protocol.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1869,
+      "sha256": "654554c76859cf1370e106b2a5165664921d3594316fbe84abf240e7611d8444"
+    },
+    {
+      "path": "package/dist/providers/ollama/protocol.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 865,
+      "sha256": "88b913e05fea1039403a8b2a23bdea3c4e0568d54e8c1ef19b26037ac1d3ff1f"
+    },
+    {
+      "path": "package/dist/providers/ollama/runtime.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 585,
+      "sha256": "99ba854f089ff10a3319fe3847a0617eede41dffdd09451ff18ff3274e67f958"
+    },
+    {
+      "path": "package/dist/providers/ollama/runtime.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 5414,
+      "sha256": "5bc32efbf300cc4e8c95a0da09f6d9ae175545412407458fe2719d525d15475c"
+    },
+    {
+      "path": "package/dist/providers/ollama/stream.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 372,
+      "sha256": "5acfd112c43c50c5d585b1cacf569bf63f9ddbbd13c2a6dc4c0f35c7ec9d41c5"
+    },
+    {
+      "path": "package/dist/providers/ollama/stream.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 4434,
+      "sha256": "01e2f0039e5c1244ef78cdad2bc99bd5638a3a2d1b0508379afb7d825dd1c196"
+    },
+    {
+      "path": "package/dist/sdk/claude.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 256,
+      "sha256": "0ac6ca1820dec5431f0701cdee08d76351d2e00ce52c65578e20f65ec27eeeb5"
+    },
+    {
+      "path": "package/dist/sdk/claude.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 222,
+      "sha256": "adfc7be6a155a1c7049f74ad3b6e65f9560edbc66be7223d1910b2c7c8897091"
+    },
+    {
+      "path": "package/dist/sdk/command-code.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 271,
+      "sha256": "21327f66d8cf15d0841005afc1599f1de00fcc7137373f7e2cb6db45cdcb91b4"
+    },
+    {
+      "path": "package/dist/sdk/command-code.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 233,
+      "sha256": "5426f4948e179e75a3bbfd4d1b2b0de00d9757306558913bd34a3df9b3f3d54d"
+    },
+    {
+      "path": "package/dist/sdk/cursor.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 455,
+      "sha256": "f3cc51ba80b0dc6dcd5c9933b7859c1c61f8b65064d361c2fc9381c57e2a728c"
+    },
+    {
+      "path": "package/dist/sdk/cursor.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 518,
+      "sha256": "adb67008b4565280c350fe8f5be77378f556820ff8d424c4a567a96bb0fe5e5f"
+    },
+    {
+      "path": "package/dist/sdk/ollama.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 322,
+      "sha256": "8c9a9c199428bca8e6572d9d9432489b876ad6ce4e0439e123fb5830cad2c371"
+    },
+    {
+      "path": "package/dist/sdk/ollama.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 222,
+      "sha256": "0daddbdf8b647a1315eeba625c29cf10e666be79855329f613441ef588dfc685"
+    },
+    {
+      "path": "package/dist/server.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 358,
+      "sha256": "221ca1260d1621e97c342a688b3cdcede4cafb19855193eed91415d1f929be5d"
+    },
+    {
+      "path": "package/dist/server.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 4450,
+      "sha256": "0efff62de0791e4f909bfc5a84026786caf19efdfb77b65585f7100230cc2fa2"
+    },
+    {
+      "path": "package/dist/v2-entry/server.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 36,
+      "sha256": "6ec2df9122a02a9fbf13d3626603d8e35b518208edc23ad64be7cc740b090a60"
+    },
+    {
+      "path": "package/dist/v2-entry/server.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 36,
+      "sha256": "6ec2df9122a02a9fbf13d3626603d8e35b518208edc23ad64be7cc740b090a60"
+    },
+    {
+      "path": "package/dist/v2.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 113,
+      "sha256": "4a185747e6dfe9298585fecb2b29cc50f020b3f3d90e61a50be815c190ab6205"
+    },
+    {
+      "path": "package/dist/v2.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 254,
+      "sha256": "e39175f62d9fef292dddf5d44daa306b6f1e6aab653c96d6ef578323f202cb9b"
+    },
+    {
+      "path": "package/dist/xai.d.ts",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 109,
+      "sha256": "699105e1509b763aa54ecaf6b4bcc35407876703a0865e4e1dccc35b7d143fc4"
+    },
+    {
+      "path": "package/dist/xai.js",
+      "type": "file",
+      "mode": "-rw-rw-r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 280,
+      "sha256": "c4c9f677cd32aba36e6c565e9e946c763d7678aad98fcf274829eba05bb9edd8"
+    },
+    {
+      "path": "package/docs/README.ko.md",
+      "type": "file",
+      "mode": "-rw-r--r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 16243,
+      "sha256": "e5feaa3c7ed52ac261e22f2fe8a8c0d7aabb05d66014728741a3a12ad31b154c"
+    },
+    {
+      "path": "package/LICENSE",
+      "type": "file",
+      "mode": "-rw-r--r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 1517,
+      "sha256": "49ce51492e9966b82e50b6215446b6d2370011c4740377b578fcf46f0104b8cf"
+    },
+    {
+      "path": "package/package.json",
+      "type": "file",
+      "mode": "-rw-r--r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 2964,
+      "sha256": "aa5d4397381f6b7ba527805025d28ff8e406ccd2869699bae00558158bd4ff1b"
+    },
+    {
+      "path": "package/README.md",
+      "type": "file",
+      "mode": "-rw-r--r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 21019,
+      "sha256": "619bc234c6f47ddb3259e649066e90d585931e51b7c1c87b6b879563b85c5656"
+    },
+    {
+      "path": "package/THIRD_PARTY_NOTICES.md",
+      "type": "file",
+      "mode": "-rw-r--r--",
+      "mtime": "1985-10-26 08:15:00",
+      "bytes": 9048,
+      "sha256": "784f8ac9a9f6c2aed7c0569e0581c57cb47be9bbc0d2d4a51007da89cd7015bc"
+    }
+  ]
+}
