@@ -10,11 +10,10 @@ import { createV1CatalogProjector } from "../../../src/opencode/v1-catalog"
 import { createOllamaCatalogState, parseOllamaEndpoints } from "../../../src/providers/ollama"
 import { FakeClock } from "../../support/clock"
 import { FakeHttpTransport } from "../../support/http"
-import { FakeFetch, htmlResponse, jsonResponse } from "../providers/ollama/http-fake"
+import { enqueueCloudCatalog, enqueueCloudReference } from "../providers/ollama/cloud-fixtures"
+import { FakeFetch, jsonResponse } from "../providers/ollama/http-fake"
 
 const LOCAL_URL = "http://localhost:11434/api/tags"
-const SEARCH_URL = "https://ollama.com/search?c=cloud"
-const FAMILY_URL = "https://ollama.com/library/shared"
 
 function deps(match: OpenCodeAuthMatch | null): ProviderEntryDeps {
   return {
@@ -22,7 +21,6 @@ function deps(match: OpenCodeAuthMatch | null): ProviderEntryDeps {
     transport: new FakeHttpTransport(),
     clock: new FakeClock(),
     authStore: { matchAuth: async (provider) => (provider === "ollama" ? match : null) },
-    writeBackCredentials: false,
   }
 }
 
@@ -43,12 +41,12 @@ describe("Ollama provider registry wiring", () => {
     lease.dispose()
   })
 
-  it("registers Ollama as the fourth provider", () => {
+  it("retains Ollama in the official-only provider registry", () => {
     // Given / When
     const registry = createProviderRegistry()
 
     // Then
-    expect(registry.map(({ id }) => id)).toEqual(["claude", "cursor", "command-code", "ollama"])
+    expect(registry.map(({ id }) => id)).toEqual(["claude", "command-code", "ollama"])
   })
 
   it("projects the normalized configured daemon base and no credential options", () => {
@@ -155,8 +153,8 @@ describe("Ollama provider registry wiring", () => {
     // Given
     const http = new FakeFetch()
     http.enqueue(LOCAL_URL, jsonResponse({ models: [] }))
-    http.enqueue(SEARCH_URL, htmlResponse('<a href="/library/shared">shared</a>'))
-    http.enqueue(FAMILY_URL, htmlResponse('<a href="/library/shared:cloud">cloud</a>'))
+    enqueueCloudCatalog(http, ["shared"])
+    enqueueCloudReference(http, { hostedId: "shared", referenceId: "shared:cloud" })
     const catalog = createOllamaCatalogState({ fetch: http.fetch })
     const entry = createProviderRegistry({ ollama: { fetch: http.fetch, catalog } }).find(
       ({ id }) => id === "ollama",
