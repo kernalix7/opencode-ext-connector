@@ -4,6 +4,10 @@ This file lists third-party source that this repository may derive from.
 The BSD-3-Clause license of this repository does not replace these notices.
 Derived TypeScript files must include a header pointing here.
 
+The legacy session and private-protocol integrations are retired in 0.8.0.
+Their upstream notices remain here for historical attribution; retaining a
+notice does not describe a currently supported integration or grant service access.
+
 ## griffinmartin/opencode-claude-auth
 
 - Repository: https://github.com/griffinmartin/opencode-claude-auth
@@ -41,7 +45,7 @@ SOFTWARE.
 - Version: `1.4.26`
 - Commit: `d80c12704a5136b441e6d86d1cbbd5f05d5fbcf6`
 - License: MIT
-- Used for: Cursor CLI/IDE token cascade and Connect+protobuf `AgentService` patterns.
+- Historically used for: Cursor CLI/IDE token cascade and Connect+protobuf `AgentService` patterns, retired in 0.8.0.
 
 ```
 MIT License
@@ -71,7 +75,7 @@ SOFTWARE.
 
 - Repository: https://github.com/otto-assistant/opencode-cursor
 - License: MIT
-- Used for: Architectural reference for an OpenCode plugin talking to Cursor over HTTP/2 without `cursor-agent`; no current source file is directly derived from this repository.
+- Historically used for: Architectural reference for the now-retired Cursor HTTP/2 integration; no current source file is directly derived from this repository.
 
 ```
 MIT License
@@ -174,7 +178,7 @@ SOFTWARE.
 - Commit: `a1726d53172ba52ecf90999df73778cf416264fd`
 - License: MIT
 - Copyright: Copyright (c) 2025 Colin McDonnell
-- Used for: Runtime schema validation, including code bundled into the published Cursor HTTP/2 bridge.
+- Used for: Runtime schema validation. Earlier releases also bundled Zod into the now-retired Cursor HTTP/2 bridge.
 
 ```
 MIT License
