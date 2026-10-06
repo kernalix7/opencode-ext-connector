@@ -18,8 +18,8 @@ Pull-based adapter + catalog snapshot primitives shared by provider implementati
 | `deadline.ts` | `createDeadline` | Parent abort + clock expiry; dispose cancels schedule |
 | `lifecycle.ts` | `createAsyncDisposable` | Second `dispose()` returns the same promise |
 | `health.ts` | `reduceHealth` | Pure reducer; backoff from `event.atMs`, not wall clock |
-| `options.ts` | `parseConnectorOptions` | `credentialRole` and `credentialManagement` are input-only and normalize to existing fields; owner means external + Claude CLI authority, reader means external without authority; roles conflict with every low-level credential option; owner requires Claude. CLI authority otherwise requires external management plus Claude; omission preserves defaults. `xaiOAuth` is an optional strict `{ mode: "authority" \| "consumer" }` role, independent of every Claude credential option, and is preserved in parsed output as `xaiOAuth` (or `null` when omitted); a missing or unknown `mode` rejects. Present `undefined` defaults (30_000 / 1_000 / 60_000); initial ≤ max |
-| `credential-authority-options.ts` | Authority types, schema, normalization | Only Claude CLI authority is supported. Input is optional; parsed authority is total and deeply frozen, defaulting to disabled / lead 300_000 / retry 300_000. Timings are safe integers: lead is non-negative, retry is positive. Unknown authority keys fail strict parsing |
+| `options.ts` | `parseConnectorOptions` | Defaults to Claude/Command Code/Ollama; `[]` disables all; Cursor rejects. Snapshot/catalog/health defaults: 30_000 / 300_000 / 1_000 / 60_000; present `undefined` uses defaults; initial ≤ max; frozen output |
+| `credential-authority-options.ts` | Legacy pure schema/types | File remains unused by runtime; it does not enable CLI authority or make retired options valid |
 | `logger.ts` | `createConnectorLogger` | Sink only; recursive key + URL query redaction |
 | `http.ts` | `HttpTransport` | Interface; body is `Uint8Array` |
 | `process.ts` | `ProcessSupervisor` / `SupervisedProcess` | Interface only; provider runtimes own process boundaries |
@@ -30,14 +30,16 @@ Tests: `tests/unit/core/<same>.test.ts`. Fakes: `tests/support/{clock,http,proce
 
 - Zod objects `.strict()` + nested `.readonly()`.
 - `HttpTransport` / `ProcessSupervisor` stay unimplemented here.
-- Core defines the CLI authority options and process interfaces only; provider
-  scheduling and production process I/O stay outside this layer.
-- Keep `credentialRole` provider-agnostic at the input boundary: normalize it
-  into existing policy and authority fields, and do not expose it in parsed
-  output or branch on it inside providers.
+- Process interfaces remain pure; production process I/O stays outside this layer.
+- `options.ts` explicitly rejects present `credentialRole`, `credentialManagement`,
+  `credentialAuthority`, `credentialRefresh`, `writeBackCredentials`, and `xaiOAuth`,
+  including disabled or `undefined` values. No credential-policy normalization remains.
+- Timer inputs are integers capped at 2_147_483_647; snapshot/health are positive,
+  catalog reload is non-negative. `ollamaBaseURL` stays at the host/SDK boundary.
 - No barrel `index.ts` — import the file.
 
 ## ANTI-PATTERNS
 
-- Hard-code provider IDs in this folder.
+- Hard-code provider IDs in generic primitives; the existing connector option allow-list
+  belongs only in `options.ts` and does not constrain the ID brands.
 - Push-style adapters or mixing protocol parsers into `refreshProviderCatalog`.
