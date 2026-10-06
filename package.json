@@ -1,6 +1,6 @@
 {
   "name": "opencode-ext-connector",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "External provider connector for OpenCode",
   "type": "module",
   "license": "BSD-3-Clause",
@@ -24,6 +24,10 @@
       "types": "./dist/xai.d.ts",
       "import": "./dist/xai.js"
     },
+    "./claude": {
+      "types": "./dist/sdk/claude.d.ts",
+      "import": "./dist/sdk/claude.js"
+    },
     "./command-code": {
       "types": "./dist/sdk/command-code.d.ts",
       "import": "./dist/sdk/command-code.js"
@@ -35,6 +39,14 @@
     "./ollama": {
       "types": "./dist/sdk/ollama.d.ts",
       "import": "./dist/sdk/ollama.js"
+    },
+    "./server": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./v2": {
+      "types": "./dist/v2.d.ts",
+      "import": "./dist/v2.js"
     }
   },
   "files": [
@@ -46,8 +58,7 @@
     "THIRD_PARTY_NOTICES.md"
   ],
   "scripts": {
-    "build": "bun run clean && tsc -p tsconfig.build.json && bun run build:h2-bridge",
-    "build:h2-bridge": "bun run scripts/build-cursor-h2-bridge.ts",
+    "build": "bun run clean && tsc -p tsconfig.build.json",
     "check": "bun run lint && bun run typecheck && bun run check:policy && bun run check:loc && bun run test:foundation",
     "check:loc": "bun run scripts/check-file-size.ts",
     "check:policy": "bun run scripts/check-source-policy.ts",
@@ -55,6 +66,7 @@
     "lint": "biome check .",
     "test": "bun test",
     "test:e2e": "bun test tests/e2e/opencode-legacy-loader.test.ts tests/e2e/opencode-provider-lifecycle.test.ts tests/e2e/ollama-lifecycle.test.ts tests/e2e/opencode-package-install.test.ts",
+    "test:e2e:v2": "OPENCODE_V2_BIN=${OPENCODE_V2_BIN:-opencode2} bun test tests/e2e/opencode-v2-harness.test.ts tests/e2e/opencode-v2-empty.test.ts tests/e2e/opencode-v2-ollama.test.ts",
     "test:foundation": "bun test tests/unit/scripts",
     "test:integration": "bun test tests/integration",
     "test:provider": "bun test tests/unit/providers",
@@ -63,8 +75,11 @@
     "verify:package": "bun pm pack --dry-run"
   },
   "dependencies": {
-    "@ai-sdk/provider": "3.0.8",
+    "@ai-sdk/anthropic": "3.0.127",
+    "@ai-sdk/openai": "3.0.123",
+    "@ai-sdk/provider": "3.0.18",
     "@opencode-ai/plugin": "1.18.18",
+    "@opencode/plugin": "2.0.20",
     "zod": "4.1.8"
   },
   "devDependencies": {

@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.8.0 - 2026-10-01
+
+- Migrate Claude and Command Code to official API-key integrations and SDKs.
+  Claude uses a dedicated `claude` connection; Command Code routes only through
+  endpoints advertised by its official Provider API catalog.
+- Exclude Cursor until a supported, permission-safe model integration is
+  established. Remove its private protocol, child bridge, and CLI-token reuse.
+- Retire consumer OAuth, CLI identity compatibility, refresh/writeback,
+  credential authority helpers, and xAI access projection. Reject their old
+  options explicitly; xAI API keys use OpenCode's native provider.
+- Preserve the six named V1 root exports with inactive Cursor/xAI root hooks;
+  retain explicit retirement errors on their dedicated entries.
+- Add the `./claude` SDK entry and generation-bound V1 model views. Changed
+  credentials and owner disposal invalidate cached host models; standalone
+  explicit API keys remain supported without ambient fallback.
+- Add the separate V2 default plugin for Claude, Command Code, and Ollama,
+  targeting `@opencode/plugin` and private CLI `2.0.20`.
+- Add the V1-only `./server` alias, Node-only `./v2` import, and the local
+  `dist/v2-entry` directory facade required by the V2 CLI loader.
+- Add isolated V2 lifecycle, routing, auth, packed-package, and local-generation
+  regressions; require the pinned private V2 CLI lane before release packing.
+- Keep trusted Ollama daemon behavior and document API billing, breaking
+  configuration changes, and ordinary-host/container secret provisioning.
+- Replace Ollama Cloud HTML discovery with the public global JSON catalog at
+  `https://ollama.com/api/tags`, independent of locally installed models. Verify
+  candidate daemon references through official registry manifests/config with
+  exact hosted IDs, the approved HTTPS remote host, config size/digest checks,
+  and zero weight layers. Require a complete refresh and retain the last complete
+  Cloud list on unresolved mappings; candidate names do not establish a universal
+  suffix contract or comprehensive mapping/permission. Preserve automatic
+  lightweight pull of absent verified, catalog-authorized references on the
+  configured daemon, with generation/auth remaining daemon-side. Reverify the
+  exact selected manifest/config against retained original hosted-ID provenance
+  in the shared pull flight, without alternate-candidate substitution; then
+  recheck active lease and unchanged reference authorization before daemon pull.
+  Recheck lease disposal and cancellation after discovery before publishing a
+  catalog refresh.
+- Cancel and join sibling Cloud discovery workers on failure, and recheck each
+  first-use caller's original catalog authorization after pull before chat.
+  Preserve shared-pull cancellation and already-installed local-model behavior.
+
 ## 0.7.1 - 2026-09-23
 
 - Restrict the `credentialAuthority` schema to a strict, deeply-frozen Claude CLI
