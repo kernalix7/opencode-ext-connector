@@ -157,6 +157,7 @@ describe("release workflow", () => {
       "bun run test:e2e",
       "bun run test:e2e:v2",
       "bun pm pack --destination release --quiet",
+      "bun scripts/check-release-payload.ts",
       "sha256sum",
     ] as const
     const positions = commands.map((command) => scripts.findIndex((run) => run.includes(command)))
@@ -168,6 +169,14 @@ describe("release workflow", () => {
     expect(positions.every((position) => position >= 0)).toBe(true)
     expect(positions).toEqual([...positions].sort((left, right) => left - right))
     expect(scripts.filter((run) => run.includes("bun pm pack")).length).toBe(1)
+    const packScript = scripts.find((run) => run.includes("bun pm pack")) ?? ""
+    expect(packScript).toContain('bun scripts/check-release-payload.ts "$' + '{tarballs[0]}"')
+    expect(packScript.indexOf("check-release-payload.ts")).toBeGreaterThan(
+      packScript.lastIndexOf("bun pm pack"),
+    )
+    expect(packScript.indexOf("sha256sum")).toBeGreaterThan(
+      packScript.indexOf("check-release-payload.ts"),
+    )
     expect(scripts.every((run) => !run.includes("--dry-run"))).toBe(true)
     expect(JSON.stringify(workflow)).not.toContain("bun run verify:package")
     expect(upload?.with).toEqual({

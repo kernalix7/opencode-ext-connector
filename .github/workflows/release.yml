@@ -61,10 +61,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release
+          umask 002
           bun pm pack --destination release --quiet
           shopt -s nullglob
           tarballs=(release/*.tgz)
           test "${#tarballs[@]}" -eq 1
+          bun scripts/check-release-payload.ts "${tarballs[0]}"
           sha256sum "${tarballs[0]}" > "${tarballs[0]}.sha256"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
