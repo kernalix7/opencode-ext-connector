@@ -4,8 +4,6 @@ import { join } from "node:path"
 
 import { z } from "zod"
 
-import { buildCursorH2Bridge } from "../../scripts/build-cursor-h2-bridge"
-
 export const TEST_PACKAGE_ROOT_ENV = "OPENCODE_EXT_CONNECTOR_TEST_PACKAGE_ROOT"
 
 const TestPackageRootSchema = z.string().min(1).brand("TestPackageRoot")
@@ -72,7 +70,6 @@ export async function prepareTestPackage(): Promise<TestPackage> {
     )
     const exitCode = await compiler.exited
     if (exitCode !== 0) throw new TestPackageBuildError(exitCode)
-    await buildCursorH2Bridge({ outdir: join(dist, "providers", "cursor") })
     return { root, dist, cleanup }
   } catch (error) {
     await cleanup()
