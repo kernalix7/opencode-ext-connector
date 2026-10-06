@@ -1,7 +1,7 @@
 {
   "name": "opencode-ext-connector",
   "version": "0.8.0",
-  "originalTarballSha256": "123d8a2608c0fad5c2ebd5210d4f200f84e69a083355939bd9f2eaa849668d8e",
+  "originalTarballSha256": "3b9e8e2e2a97e45ea39f9b9250bfd7cb54954ed57edf1e218bfa56efc6f215eb",
   "ignoredContainerMetadata": ["member order", "numeric ownership", "gzip header mtime"],
   "members": [
     {
@@ -793,8 +793,8 @@
       "type": "file",
       "mode": "-rw-rw-r--",
       "mtime": "1985-10-26 08:15:00",
-      "bytes": 2385,
-      "sha256": "df84799e1af6c96dfaa54f97d956c751acbd32edd7a2ac9fc706f9a6782fba6b"
+      "bytes": 2656,
+      "sha256": "6136e01b0d7e6b939ade886c578ebaadecfab772b1fefee829a5aff126fba1c2"
     },
     {
       "path": "package/dist/providers/ollama/cloud-catalog.d.ts",
