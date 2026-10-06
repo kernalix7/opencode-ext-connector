@@ -4,8 +4,10 @@ export {
   type OllamaCatalogLease,
   type OllamaCatalogState,
   type OllamaCatalogStateOptions,
+  type OllamaCloudPullAuthorization,
 } from "./catalog-state.js"
 export { discoverOllamaCloudModels } from "./cloud-catalog.js"
+export type { OllamaCloudReference } from "./cloud-reference.js"
 export {
   DEFAULT_OLLAMA_BASE_URL,
   type OllamaEndpoints,
