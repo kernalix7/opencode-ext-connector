@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test"
+import { NoSuchModelError } from "@ai-sdk/provider"
 
 import * as pluginModule from "../../../src/index"
 import {
@@ -37,25 +38,21 @@ describe("plugin export", () => {
     expect(typeof xaiAuthServer).toBe("function")
   })
 
-  it("exposes Cursor as an AI SDK factory", () => {
-    // Given / When
+  it("rejects retired Cursor models before generation", () => {
+    // Given
     const provider = createCursor()
-    const model = provider.languageModel("auto")
-    // Then
-    expect(model.provider).toBe("cursor")
-    expect(model.modelId).toBe("auto")
+
+    // When / Then
+    expect(() => provider.languageModel("auto")).toThrow(NoSuchModelError)
   })
 
-  it("ignores malformed Ollama options when constructing a Cursor model", () => {
+  it("rejects Cursor even when unrelated options are supplied", () => {
     // Given
     const provider = createCursor({ ollamaBaseURL: null })
 
     // When
-    const model = provider.languageModel("auto")
-
     // Then
-    expect(model.provider).toBe("cursor")
-    expect(model.modelId).toBe("auto")
+    expect(() => provider.languageModel("auto")).toThrow(NoSuchModelError)
   })
 
   it("ignores malformed Ollama options when constructing a Command Code model", () => {
