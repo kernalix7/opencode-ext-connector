@@ -1,14 +1,7 @@
-import { createClaudeAdapter } from "../providers/claude/adapter.js"
-import { createClaudeTokenManager, readClaudeCredentials } from "../providers/claude/auth.js"
-import { createClaudeVersionResolver } from "../providers/claude/cli-version.js"
-import type { ClaudeCredentials } from "../providers/claude/credentials.js"
-import { listClaudeModels } from "../providers/claude/models.js"
-import { createCommandCodeAdapter } from "../providers/command-code/adapter.js"
-import { readCommandCodeAccessToken } from "../providers/command-code/auth.js"
-import { listCommandCodeModels } from "../providers/command-code/models.js"
-import { createCursorAdapter } from "../providers/cursor/adapter.js"
-import { readCursorAccessToken } from "../providers/cursor/auth.js"
-import { listCursorUsableModels } from "../providers/cursor/models.js"
+import { createClaudeAdapter } from "../providers/claude/api-adapter.js"
+import { listClaudeModels } from "../providers/claude/api-models.js"
+import { createCommandCodeAdapter } from "../providers/command-code/api-adapter.js"
+import { listCommandCodeModels } from "../providers/command-code/api-models.js"
 import { createOllamaAdapter } from "../providers/ollama/adapter.js"
 import type { OllamaCatalogState } from "../providers/ollama/catalog-state.js"
 import type { OllamaEndpoints } from "../providers/ollama/endpoints.js"
@@ -16,22 +9,12 @@ import { type OllamaFetch, productionOllamaFetch } from "../providers/ollama/htt
 import { probeLocalOllama } from "./ollama-probe.js"
 import { getProductionOllamaBundle } from "./ollama-production.js"
 import type { ProviderEntry, ProviderEntryDeps } from "./provider-entry.js"
-import { createAnthropicCliAuth } from "./v1-anthropic-auth.js"
-import {
-  createCommandCodeSessionAuth,
-  createCursorSessionAuth,
-  createOllamaSessionAuth,
-} from "./v1-session-auth.js"
+import { createApiKeyAuthHook } from "./v1-api-auth.js"
+import { createOllamaSessionAuth } from "./v1-session-auth.js"
 
 export type ProviderConnectionActive = (integrationId: string) => Promise<boolean>
 
-export type ClaudeCredentialWriter = (
-  env: Readonly<Record<string, string | undefined>>,
-  credentials: ClaudeCredentials,
-) => Promise<void>
-
 export type ProviderRegistryOptions = {
-  readonly writeClaudeCredentials?: ClaudeCredentialWriter
   readonly ollama?: {
     readonly fetch: OllamaFetch
     readonly catalog: OllamaCatalogState
@@ -39,22 +22,16 @@ export type ProviderRegistryOptions = {
   }
 }
 
-async function readCommandCodeToken(
+export async function readProviderApiKey(
   deps: ProviderEntryDeps,
-  signal: AbortSignal,
+  provider: "claude" | "command-code",
+  _signal: AbortSignal,
 ): Promise<string | null> {
-  const match = await deps.authStore.matchAuth("command-code")
-  if (match === null) {
-    return null
-  }
-  switch (match.kind) {
-    case "api-key":
-      return match.key
-    case "marker":
-      return readCommandCodeAccessToken(deps.env, signal)
-    case "oauth":
-      return null
-  }
+  const match = await deps.authStore.matchAuth(provider)
+  if (match?.kind === "api-key") return match.key
+  if (match !== null || deps.allowEnvironmentKeys !== true) return null
+  const key = deps.env[provider === "claude" ? "ANTHROPIC_API_KEY" : "COMMAND_CODE_API_KEY"]
+  return key && !key.startsWith("cli-session:") ? key : null
 }
 
 export function selectConfiguredProviders(
@@ -71,9 +48,7 @@ export async function selectActiveProviders(
 ): Promise<readonly ProviderEntry[]> {
   const selected: ProviderEntry[] = []
   for (const entry of entries) {
-    if (await isActive(entry.integrationId)) {
-      selected.push(entry)
-    }
+    if (await isActive(entry.integrationId)) selected.push(entry)
   }
   return selected
 }
@@ -81,7 +56,6 @@ export async function selectActiveProviders(
 export function createProviderRegistry(
   options: ProviderRegistryOptions = {},
 ): readonly ProviderEntry[] {
-  const writeClaudeCredentials = options.writeClaudeCredentials
   const productionOllama = getProductionOllamaBundle()
   const configuredOllama = options.ollama ?? {
     fetch: productionOllamaFetch,
@@ -96,81 +70,32 @@ export function createProviderRegistry(
     {
       id: "claude",
       displayName: "Claude",
-      integrationId: "anthropic",
-      integrationMethod: { type: "env", names: ["CLAUDE_EXT_CONNECTOR_ENABLED"] },
-      createAdapter: (deps) => {
-        const readVersion = createClaudeVersionResolver(deps)
-        return createClaudeAdapter({
-          readAccessToken: async (signal) => {
-            const credentials = await readClaudeCredentials(deps.env, signal)
-            return credentials?.accessToken ?? null
-          },
-          listModels: async (token, signal) => {
-            const version = await readVersion(signal)
-            return version === null
-              ? []
-              : listClaudeModels({ transport: deps.transport, token, signal, version })
-          },
-        })
-      },
-      createAuthHook: (deps) => {
-        const tokenManager = createClaudeTokenManager({
-          env: deps.env,
-          clock: deps.clock,
-          transport: deps.transport,
-          ...(deps.credentialRefresh === undefined ? {} : { refresh: deps.credentialRefresh }),
-          ...(deps.writeBackCredentials && writeClaudeCredentials !== undefined
-            ? {
-                writeBack: (credentials) => writeClaudeCredentials(deps.env, credentials),
-              }
-            : {}),
-        })
-        return createAnthropicCliAuth({
-          provider: "anthropic",
-          readCredentials: (signal) => readClaudeCredentials(deps.env, signal),
-          readAccessToken: tokenManager.readAccessToken,
-          forceRefreshAccessToken: tokenManager.forceRefreshAccessToken,
-          readVersion: createClaudeVersionResolver(deps),
-        })
-      },
-      isConnected: async (deps) => {
-        if ((await deps.authStore.matchAuth("anthropic")) === null) {
-          return false
-        }
-        const signal = new AbortController().signal
-        return (await readClaudeCredentials(deps.env, signal)) !== null
-      },
-    },
-    {
-      id: "cursor",
-      displayName: "Cursor",
-      integrationId: "cursor",
-      integrationMethod: { type: "env", names: ["CURSOR_EXT_CONNECTOR_ENABLED"] },
-      fallbackModelIds: ["default"],
+      integrationId: "claude",
+      integrationMethod: { type: "env", names: ["ANTHROPIC_API_KEY"] },
       createAdapter: (deps) =>
-        createCursorAdapter({
-          readAccessToken: (signal) => readCursorAccessToken(deps.env, signal),
-          listModels: (token, signal) => listCursorUsableModels(token, signal),
+        createClaudeAdapter({
+          readApiKey: (signal) => readProviderApiKey(deps, "claude", signal),
+          listModels: (apiKey, signal) =>
+            listClaudeModels({ transport: deps.transport, apiKey, signal }),
         }),
-      createAuthHook: (deps) => createCursorSessionAuth(deps.env),
+      createAuthHook: () => createApiKeyAuthHook("claude"),
       isConnected: async (deps) =>
-        (await deps.authStore.matchAuth("cursor")) !== null &&
-        (await readCursorAccessToken(deps.env, new AbortController().signal)) !== null,
+        (await readProviderApiKey(deps, "claude", new AbortController().signal)) !== null,
     },
     {
       id: "command-code",
       displayName: "Command Code",
       integrationId: "command-code",
       integrationMethod: { type: "env", names: ["COMMAND_CODE_API_KEY"] },
-      fallbackModelIds: ["Qwen/Qwen3.8-Max"],
       createAdapter: (deps) =>
         createCommandCodeAdapter({
-          readAccessToken: (signal) => readCommandCodeToken(deps, signal),
-          listModels: (token, signal) => listCommandCodeModels(deps.transport, token, signal),
+          readApiKey: (signal) => readProviderApiKey(deps, "command-code", signal),
+          listModels: (apiKey, signal) =>
+            listCommandCodeModels({ transport: deps.transport, apiKey, signal }),
         }),
-      createAuthHook: (deps) => createCommandCodeSessionAuth(deps.env),
+      createAuthHook: () => createApiKeyAuthHook("command-code"),
       isConnected: async (deps) =>
-        (await readCommandCodeToken(deps, new AbortController().signal)) !== null,
+        (await readProviderApiKey(deps, "command-code", new AbortController().signal)) !== null,
     },
     {
       id: "ollama",
