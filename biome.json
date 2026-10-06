@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!**/node_modules", "!**/dist", "!**/coverage", "!**/.omo"]
+    "includes": ["**", "!node_modules", "!dist", "!coverage", "!.omo"]
   },
   "formatter": {
     "enabled": true,
@@ -50,7 +50,7 @@
   },
   "overrides": [
     {
-      "includes": ["src/index.ts", "src/server.ts"],
+      "includes": ["src/index.ts", "src/server.ts", "src/v2.ts", "src/v2-entry/server.ts"],
       "linter": {
         "rules": {
           "style": {
