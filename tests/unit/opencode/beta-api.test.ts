@@ -4,9 +4,19 @@ import {
   type CatalogDraft,
   type CatalogHooks,
   type CatalogProviderRecord,
+  CredentialV2,
   define,
+  ModelV2,
   type Plugin,
   type PluginContext,
+  PluginV2,
+  type PluginV2ConnectionInfo,
+  type PluginV2Context,
+  type PluginV2IntegrationEditor,
+  type PluginV2IntegrationMethodRegistration,
+  type PluginV2ProviderEditor,
+  type PluginV2Registration,
+  ProviderV2,
   type Registration,
 } from "../../../src/opencode/beta-api"
 
@@ -50,5 +60,28 @@ describe("opencode beta-api re-exports", () => {
     useType<AISDKHooks>(undefined)
     useType<CatalogHooks>(undefined)
     expect(true).toBe(true)
+  })
+
+  it("re-exports V2 namespaces without replacing the legacy define export", () => {
+    // Given
+    const plugin = {
+      id: "opencode-ext-connector",
+      setup: (_ctx: PluginV2Context) => {},
+    }
+
+    // When
+    const defined = PluginV2.define(plugin)
+
+    // Then
+    expect(defined).toBe(plugin)
+    expect(define).not.toBe(PluginV2.define)
+    expect(typeof ProviderV2.ID.make).toBe("function")
+    expect(typeof ModelV2.ID.make).toBe("function")
+    expect(typeof CredentialV2.ID.make).toBe("function")
+    useType<PluginV2ProviderEditor>(undefined)
+    useType<PluginV2IntegrationEditor>(undefined)
+    useType<PluginV2IntegrationMethodRegistration>(undefined)
+    useType<PluginV2ConnectionInfo>(undefined)
+    useType<PluginV2Registration>(undefined)
   })
 })
