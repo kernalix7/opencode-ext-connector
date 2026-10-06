@@ -25,6 +25,15 @@ const workflowSchema = z.object({
   permissions: z.record(z.string(), z.string()),
 })
 
+const v2InstallManifestSchema = z.object({
+  dependencies: z
+    .object({
+      "@opencode/cli": z.literal("2.0.20"),
+    })
+    .strict(),
+  trustedDependencies: z.tuple([z.literal("@opencode/cli")]),
+})
+
 const workflowPath = new URL("../../../.github/workflows/ci.yml", import.meta.url)
 
 async function readWorkflow(): Promise<z.infer<typeof workflowSchema>> {
@@ -45,6 +54,34 @@ describe("CI workflow", () => {
     expect(install?.run?.trim()).toBe("npm install -g opencode-ai@1.18.27")
     expect(verify?.run?.trim()).toBe("opencode --version")
     expect(JSON.stringify(workflow)).not.toContain("curl")
+  })
+
+  it("installs isolated OpenCode V2 from the pinned package", async () => {
+    // Given
+    const workflow = await readWorkflow()
+
+    // When
+    const install = workflow.jobs.check.steps.find(
+      (step) => step.name === "Install isolated OpenCode V2 CLI",
+    )
+    const script = install?.run ?? ""
+    const marker = "<<'EOF'\n"
+    const start = script.indexOf(marker)
+    const end = script.indexOf("\nEOF", start)
+    const manifest = v2InstallManifestSchema.parse(
+      JSON.parse(script.slice(start + marker.length, end)),
+    )
+
+    // Then
+    expect(manifest).toEqual({
+      dependencies: { "@opencode/cli": "2.0.20" },
+      trustedDependencies: ["@opencode/cli"],
+    })
+    expect(script).toContain('install_dir="$RUNNER_TEMP/opencode-v2"')
+    expect(script).toContain(
+      `echo "OPENCODE_V2_BIN=\${install_dir}/node_modules/.bin/opencode2" >> "$GITHUB_ENV"`,
+    )
+    expect(install?.["continue-on-error"]).not.toBe(true)
   })
 
   it("pins CI actions and runtime versions", async () => {
@@ -72,7 +109,7 @@ describe("CI workflow", () => {
     const { check } = workflow.jobs
     const projectCommands = check.steps
       .flatMap((step) => (step.run === undefined ? [] : [step.run.trim()]))
-      .slice(-8)
+      .slice(-9)
 
     // Then
     expect(projectCommands).toEqual([
@@ -83,6 +120,7 @@ describe("CI workflow", () => {
       "bun run test:provider",
       "bun run test:integration",
       "bun run test:e2e",
+      "bun run test:e2e:v2",
       "bun run verify:package",
     ])
     expect(workflow.permissions).toEqual({ contents: "read" })

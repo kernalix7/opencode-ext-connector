@@ -23,6 +23,28 @@ jobs:
         run: npm install -g opencode-ai@1.18.27
       - name: Verify OpenCode CLI
         run: opencode --version
+      - name: Install isolated OpenCode V2 CLI
+        run: |
+          install_dir="$RUNNER_TEMP/opencode-v2"
+          mkdir -p "$install_dir"
+          cat > "$install_dir/package.json" <<'EOF'
+          {
+            "name": "opencode-v2-ci",
+            "private": true,
+            "dependencies": {
+              "@opencode/cli": "2.0.20"
+            },
+            "trustedDependencies": ["@opencode/cli"]
+          }
+          EOF
+          # Trust postinstall: it copies the verified npm optional binary.
+          bun install --cwd "$install_dir" --trust
+          echo "OPENCODE_V2_BIN=${install_dir}/node_modules/.bin/opencode2" >> "$GITHUB_ENV"
+      - name: Verify OpenCode V2 CLI
+        run: |
+          set -euo pipefail
+          test -x "$OPENCODE_V2_BIN"
+          test "$("$OPENCODE_V2_BIN" --version)" = "opencode v2.0.20"
       - run: bun install --frozen-lockfile
       - run: bun run check
       - run: bun run build
@@ -30,4 +52,5 @@ jobs:
       - run: bun run test:provider
       - run: bun run test:integration
       - run: bun run test:e2e
+      - run: bun run test:e2e:v2
       - run: bun run verify:package
