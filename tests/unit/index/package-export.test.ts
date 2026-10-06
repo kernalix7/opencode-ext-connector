@@ -4,7 +4,7 @@ import { pathToFileURL } from "node:url"
 
 import { z } from "zod"
 
-import { HostV2 as Host } from "../../../src/opencode/beta-api"
+import { inspectPackageHost } from "../../support/package-host"
 import { getTestPackageRoot } from "../../support/test-package"
 
 const v1ExportNames = [
@@ -26,6 +26,17 @@ const V1ModuleSchema = z
     cursorAuthServer: z.unknown().refine(isFunction),
     ollamaAuthServer: z.unknown().refine(isFunction),
     xaiAuthServer: z.unknown().refine(isFunction),
+  })
+  .strict()
+
+const V1ExportTypesSchema = z
+  .object({
+    claudeAuthServer: z.literal("function"),
+    commandCodeAuthServer: z.literal("function"),
+    connectorServer: z.literal("function"),
+    cursorAuthServer: z.literal("function"),
+    ollamaAuthServer: z.literal("function"),
+    xaiAuthServer: z.literal("function"),
   })
   .strict()
 
@@ -119,7 +130,7 @@ describe("package exports", () => {
     })
   })
 
-  it("resolves the server alias to the V1 root", () => {
+  it("resolves the server alias to the V1 root", async () => {
     // Given
     const root = getTestPackageRoot()
     const rootFile = pathToFileURL(join(root, "dist", "index.js")).href
@@ -128,14 +139,13 @@ describe("package exports", () => {
     ).href
 
     // When
-    const entrypoints = Host.resolve({
-      directory: root,
-      name: "opencode-ext-connector",
-    })
+    const { entrypoints } = await inspectPackageHost()
 
     // Then
     expect(entrypoints.server).toBe(rootFile)
     expect(entrypoints.server).toBe(publishedServer)
+    expect(entrypoints.tui).toBeUndefined()
+    expect(entrypoints.rpc).toBeUndefined()
   })
 
   it("keeps the built package root on the six V1 named functions", async () => {
@@ -155,15 +165,17 @@ describe("package exports", () => {
   it("loads the resolved server with only the six V1 named functions", async () => {
     // Given
     const root = getTestPackageRoot()
-    const server = z
-      .string()
-      .parse(Host.resolve({ directory: root, name: "opencode-ext-connector" }).server)
 
     // When
-    const loaded: unknown = await Host.load(server)
+    const { entrypoints, exportTypes } = await inspectPackageHost()
 
     // Then
-    expect(Object.keys(V1ModuleSchema.parse(loaded)).sort()).toEqual([...v1ExportNames].sort())
+    expect(entrypoints.server).toBe(pathToFileURL(join(root, "dist", "index.js")).href)
+    expect(Object.keys(V1ExportTypesSchema.parse(exportTypes)).sort()).toEqual(
+      [...v1ExportNames].sort(),
+    )
+    expect(Object.values(exportTypes).every((type) => type === "function")).toBe(true)
+    expect(exportTypes["default"]).toBeUndefined()
   })
 
   it("keeps the V2 subpath on the default-only plugin", async () => {
