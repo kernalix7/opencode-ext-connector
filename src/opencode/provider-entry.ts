@@ -3,7 +3,6 @@ import type { AuthHook } from "@opencode-ai/plugin"
 import type { ProviderAdapter } from "../core/adapter.js"
 import type { Clock } from "../core/clock.js"
 import type { HttpTransport } from "../core/http.js"
-import type { CredentialRefreshPolicy } from "../core/options.js"
 import type { OpenCodeAuthStore } from "./auth-store.js"
 import type { IntegrationEnvMethod } from "./beta-api.js"
 
@@ -12,8 +11,7 @@ export type ProviderEntryDeps = {
   readonly transport: HttpTransport
   readonly clock: Clock
   readonly authStore: OpenCodeAuthStore
-  readonly writeBackCredentials: boolean
-  readonly credentialRefresh?: CredentialRefreshPolicy
+  readonly allowEnvironmentKeys?: boolean
 }
 
 export type ProviderEntry = {
