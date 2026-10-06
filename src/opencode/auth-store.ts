@@ -5,16 +5,6 @@ import { join } from "node:path"
 import { z } from "zod"
 
 const authRootSchema = z.record(z.string(), z.unknown())
-const oauthRecordSchema = z
-  .object({
-    type: z.literal("oauth"),
-    access: z.string().min(1),
-    refresh: z.string().min(1),
-    expires: z.number().finite(),
-    accountId: z.string().optional(),
-    enterpriseUrl: z.string().optional(),
-  })
-  .strict()
 const apiRecordSchema = z
   .object({
     type: z.literal("api"),
@@ -23,12 +13,11 @@ const apiRecordSchema = z
   })
   .strict()
 
-export type OpenCodeAuthProvider = "anthropic" | "cursor" | "command-code" | "ollama"
+export type OpenCodeAuthProvider = "claude" | "command-code" | "ollama"
 
 export type OpenCodeAuthMatch =
-  | { readonly kind: "oauth" }
-  | { readonly kind: "marker" }
-  | { readonly kind: "api-key"; readonly key: string }
+  | { readonly kind: "marker"; readonly connectionId?: string }
+  | { readonly kind: "api-key"; readonly key: string; readonly connectionId?: string }
 
 export type OpenCodeAuthStore = {
   readonly matchAuth: (provider: OpenCodeAuthProvider) => Promise<OpenCodeAuthMatch | null>
@@ -66,27 +55,16 @@ function isMissingFile(error: unknown): boolean {
 
 function parseAuthMatch(provider: OpenCodeAuthProvider, value: unknown): OpenCodeAuthMatch | null {
   switch (provider) {
-    case "anthropic":
-      return oauthRecordSchema.safeParse(value).success ? { kind: "oauth" } : null
-    case "cursor": {
+    case "claude":
+    case "command-code": {
       const parsed = apiRecordSchema.safeParse(value)
-      return parsed.success && parsed.data.key === "cli-session:cursor" ? { kind: "marker" } : null
+      return parsed.success && !parsed.data.key.startsWith("cli-session:")
+        ? { kind: "api-key", key: parsed.data.key }
+        : null
     }
     case "ollama": {
       const parsed = apiRecordSchema.safeParse(value)
       return parsed.success && parsed.data.key === "cli-session:ollama" ? { kind: "marker" } : null
-    }
-    case "command-code": {
-      const parsed = apiRecordSchema.safeParse(value)
-      if (!parsed.success) {
-        return null
-      }
-      if (parsed.data.key === "cli-session:command-code") {
-        return { kind: "marker" }
-      }
-      return parsed.data.key.startsWith("cli-session:")
-        ? null
-        : { kind: "api-key", key: parsed.data.key }
     }
   }
 }
