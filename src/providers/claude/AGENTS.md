@@ -1,62 +1,38 @@
 # CLAUDE PROVIDER
 
-Existing Claude Code credentials, Anthropic compatibility transforms, model discovery,
-LanguageModelV3 generation, optional credential persistence, and opt-in CLI authority.
+Official Anthropic API-key catalog and Messages generation through SDK 3,
+exposing LanguageModelV3 (`@ai-sdk/provider@3.0.18`). Provider/integration ID: `claude`.
 
 ## WHERE TO LOOK
 
 | Concern | Location | Contract |
 |---------|----------|----------|
-| Credential schema | `credentials.ts` | Parse the Claude OAuth blob; keep tokens opaque |
-| Credential lookup | `auth.ts` | macOS Keychain first, then `CLAUDE_CONFIG_DIR` file |
-| Token refresh | `refresh.ts`, `auth.ts` | Single in-flight refresh with clock-based retry backoff |
-| Client version | `cli-version.ts` | `ANTHROPIC_CLI_VERSION`, then an installed binary, then the npm registry; never a constant |
-| Catalog | `adapter.ts`, `models.ts` | No credentials/version means no published models |
-| OpenCode compatibility | `compat-request.ts`, `compat-*.ts` | Request headers/body and response transforms |
-| Direct language model | `language-model.ts`, `prompt.ts` | V3 generate/stream over Anthropic messages |
-| SSE stream | `sse.ts`, `sse-convert.ts`, `emit-stream.ts` | Provider-local event parsing and V3 emission |
-| Credential persistence | `writeback.ts`, `auth-json.ts`, `atomic-private-file.ts` | Files, OpenCode auth, and macOS Keychain |
-| CLI credential authority | `credential-authority-scheduler.ts` | Linux-only expiry scheduling, shared `flock`, retry, and disposal |
-| Tests | `tests/unit/providers/claude/` | Auth, compatibility, stream, refresh, and writeback |
+| Catalog adapter | `api-adapter.ts` | Key-scoped cached models; key change clears cache; missing key is unavailable |
+| Model discovery | `api-models.ts` | Paginated `GET /v1/models`, `x-api-key`; parse IDs; reject missing/repeated continuation cursors |
+| Generation | `api-language-model.ts` | Official `/v1/messages` via `@ai-sdk/anthropic`; read API key per generate/stream call; injected transport |
+| V1 auth/key lookup | `src/opencode/{auth-store,providers,v1-api-auth}.ts` | Dedicated `claude` API record precedes `ANTHROPIC_API_KEY`; no subscription OAuth/marker reuse |
+| V1 account binding | `src/opencode/v1-{binding,owner,generation,language}.ts` | Opaque `connectorV1` binding; pinned key, membership/lifetime checks before requests |
+| V2 selected connection | `src/opencode/v2-{auth,refresh,language}.ts` | Host `active` / `resolve` only; key/ID scope reset; per-dispatch revalidation |
+| Standalone SDK | `src/sdk/claude.ts` | `./claude` exports `createClaude`; unbound explicit `apiKey` honored |
+| Tests | `tests/unit/providers/claude/api-*.test.ts`, `tests/unit/opencode/v1-account-binding.test.ts` | Offline catalog, generation, cancellation, account isolation |
 
 ## CONVENTIONS
 
-- Parse credential files and Keychain payloads through `ClaudeCredentials`; malformed sources
-  are unavailable, not partially accepted.
-- Token refresh stays single-flight. Transient failures use the injected `Clock`; a failed
-  refresh may return the still-usable cached access token.
-- `CredentialRefreshPolicy` from `core/options` decides refresh: `auto` refreshes `leadMs`
-  before expiry; `never` skips the OAuth endpoint entirely and only re-reads the credential
-  source on a forced refresh so an externally synced file can take effect.
-- No vendor binary is required unless the CLI authority is explicitly enabled. Normal version
-  and credential lookup stays lazy, so a missing `claude` never yields the `anthropic` provider
-  back to OpenCode.
-- CLI authority requires external credential management, Linux, util-linux `flock`, and Claude
-  Code >=2.1.265. It schedules one restricted single-turn request, treats lock exit `75` as silent
-  contention, retries transient failures, and never owns OAuth or credential writes.
-- Authority child invocations inherit every defined string from the parent environment, but
-  `ANTHROPIC_API_KEY` is always stripped so the stored OAuth login is used regardless of any
-  in-memory key. The parent environment itself is never mutated; the child sees a frozen object
-  built for each spawn.
-- Core normalizes `credentialRole: "owner"` to this existing external-management CLI authority
-  configuration and `"reader"` to external management without it. Provider code consumes only
-  normalized fields and must not branch on the public role name.
-- Keep production spawning in `src/process/production-supervisor.ts` and compose/dispose the
-  scheduler only from `connectorServer`; standalone auth servers do not start it.
-- `src/opencode/v1-anthropic-auth.ts` is the host-facing compatibility hook;
-  request/response protocol transforms remain in this directory.
-- Keep compatibility metadata, beta selection, model override, and signing in the existing
-  `compat-*` modules rather than folding them into transport or core.
-- Streaming converts Anthropic SSE into LanguageModelV3 parts inside this provider.
-- Writeback is injected only when `writeBackCredentials` is enabled. Preserve unrelated JSON
-  fields and refuse compare-and-swap updates when the prior token changed.
+- Parse official catalog responses at the boundary into branded model IDs; keep keys opaque.
+- Keep protocol parsing and SDK request construction in this provider, not core.
+- Same-key transient catalog failures can retain stale models; never carry cached models
+  across a key change. Cancellation remains cancellation, not stale success.
+- V1 bound models use their owner's generation-pinned view. Missing/malformed/retired
+  `connectorV1` fails without falling back to standalone or environment credentials.
+- V2 has no V1-store or alternative process-env fallback. Retained models must pass current
+  connection, generation, membership, and lifetime checks before dispatch.
+- No Claude Code credentials, Keychain, credential files, CLI/version discovery,
+  compatibility signing, OAuth refresh, authority timer, or writeback path remains.
 - Retain SPDX/source notices on files derived from `opencode-claude-auth`.
 
 ## ANTI-PATTERNS
 
 - Minting OAuth or treating the connector as a login authority.
-- Persisting refreshed credentials when writeback is disabled.
-- Sending compatibility requests without a resolved client version and token state.
-- Hard-coding a Claude Code version or making the optional `claude` CLI path mandatory.
-- Starting authority scheduling from standalone auth servers or bypassing process-shared locking.
-- Replacing schema parsing with permissive object access or normalizing malformed credentials.
+- Reusing subscription OAuth/CLI markers as API keys or persisting refreshed credentials.
+- Bypassing auth/catalog readiness or reusing a prior account's catalog/model view.
+- Replacing schema parsing with permissive object access or normalizing malformed inputs.
