@@ -9,6 +9,13 @@
     "outDir": "./dist",
     "rootDir": "./src"
   },
-  "include": ["src/**/*.ts"],
+  "include": [
+    "src/index.ts",
+    "src/v2.ts",
+    "src/v2-entry/server.ts",
+    "src/xai.ts",
+    "src/sdk/*.ts",
+    "src/opencode/v2-sdk.ts"
+  ],
   "exclude": ["dist", "node_modules", "scripts", "tests"]
 }
