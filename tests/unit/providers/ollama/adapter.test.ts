@@ -1,24 +1,33 @@
 import { describe, expect, it } from "bun:test"
 
 import { createOllamaAdapter, createOllamaCatalogState } from "../../../../src/providers/ollama"
-import { FakeFetch, htmlResponse, jsonResponse } from "./http-fake"
+import { cloudManifestUrl, enqueueCloudCatalog, enqueueCloudReference } from "./cloud-fixtures"
+import { FakeFetch, jsonResponse } from "./http-fake"
 
 const LOCAL_URL = "http://localhost:11434/api/tags"
-const SEARCH_URL = "https://ollama.com/search?c=cloud"
-const FAMILY_URL = "https://ollama.com/library/shared"
 
-function enqueueComplete(http: FakeFetch, local: readonly string[], cloud: string): void {
+function enqueueComplete(
+  http: FakeFetch,
+  local: readonly string[],
+  cloud: { readonly hostedId: string; readonly referenceId: string },
+): void {
   http.enqueue(LOCAL_URL, jsonResponse({ models: local.map((name) => ({ name })) }))
-  http.enqueue(SEARCH_URL, htmlResponse('<a href="/library/shared">shared</a>'))
-  http.enqueue(FAMILY_URL, htmlResponse(`<a href="/library/${cloud}">cloud</a>`))
+  enqueueCloudCatalog(http, [cloud.hostedId])
+  enqueueCloudReference(http, cloud)
 }
 
 describe("createOllamaAdapter", () => {
   it("merges local-first with exact dedupe on every scheduler-compatible snapshot", async () => {
     // Given
     const http = new FakeFetch()
-    enqueueComplete(http, ["local:latest", "shared:cloud"], "shared:cloud")
-    enqueueComplete(http, ["new-local:latest"], "shared:next-cloud")
+    enqueueComplete(http, ["local:latest", "shared:cloud"], {
+      hostedId: "shared",
+      referenceId: "shared:cloud",
+    })
+    enqueueComplete(http, ["new-local:latest"], {
+      hostedId: "shared:next",
+      referenceId: "shared:next-cloud",
+    })
     const state = createOllamaCatalogState({ fetch: http.fetch })
     const adapter = createOllamaAdapter({ fetch: http.fetch, catalog: state })
     // When
@@ -39,13 +48,14 @@ describe("createOllamaAdapter", () => {
   it("merges current local models with prior complete cloud models after cloud failure", async () => {
     // Given
     const http = new FakeFetch()
-    enqueueComplete(http, ["local:latest"], "shared:cloud")
+    enqueueComplete(http, ["local:latest"], { hostedId: "shared", referenceId: "shared:cloud" })
     http.enqueue(
       LOCAL_URL,
       jsonResponse({ models: [{ name: "changed:latest" }, { name: "shared:cloud" }] }),
     )
-    http.enqueue(SEARCH_URL, htmlResponse('<a href="/library/shared">shared</a>'))
-    http.enqueue(FAMILY_URL, htmlResponse("<p>empty</p>"))
+    enqueueCloudCatalog(http, ["shared"])
+    http.enqueue(cloudManifestUrl("shared:cloud"), jsonResponse({}, 404))
+    http.enqueue(cloudManifestUrl("shared:latest-cloud"), jsonResponse({}, 404))
     const adapter = createOllamaAdapter({
       fetch: http.fetch,
       catalog: createOllamaCatalogState({ fetch: http.fetch }),
@@ -63,7 +73,7 @@ describe("createOllamaAdapter", () => {
   it("retains the prior complete merged snapshot when local tags fail", async () => {
     // Given
     const http = new FakeFetch()
-    enqueueComplete(http, ["local:latest"], "shared:cloud")
+    enqueueComplete(http, ["local:latest"], { hostedId: "shared", referenceId: "shared:cloud" })
     http.enqueue(LOCAL_URL, new TypeError("daemon unavailable"))
     const adapter = createOllamaAdapter({
       fetch: http.fetch,
