@@ -5,27 +5,15 @@ import {
   discoverOllamaCloudModels,
   OllamaCatalogError,
 } from "../../../../src/providers/ollama"
-import { FakeFetch, htmlResponse } from "./http-fake"
-
-const SEARCH_URL = "https://ollama.com/search?c=cloud"
-const libraryUrl = (family: string): string => `https://ollama.com/library/${family}`
+import { cloudManifestUrl, enqueueCloudCatalog, enqueueCloudReference } from "./cloud-fixtures"
+import { FakeFetch, jsonResponse } from "./http-fake"
 
 describe("discoverOllamaCloudModels", () => {
-  it("discovers exact cloud tags from validated official family links without trusting text", async () => {
+  it("discovers exact cloud tags from digest-verified remote metadata", async () => {
     // Given
     const http = new FakeFetch()
-    http.enqueue(
-      SEARCH_URL,
-      htmlResponse(
-        '<a href="/library/glm-5.3-flash">wrong</a><a href="https://evil.test/library/x">x</a>',
-      ),
-    )
-    http.enqueue(
-      libraryUrl("glm-5.3-flash"),
-      htmlResponse(
-        '<a href="/library/glm-5.3-flash:cloud">not cloud</a><a href="/library/glm-5.3-flash:preview">cloud</a><a href="/library/other:cloud">cloud</a>',
-      ),
-    )
+    enqueueCloudCatalog(http, ["glm-5.3-flash"])
+    enqueueCloudReference(http, { hostedId: "glm-5.3-flash", referenceId: "glm-5.3-flash:cloud" })
     // When
     const models = await discoverOllamaCloudModels(http.fetch, new AbortController().signal)
     // Then
@@ -35,52 +23,42 @@ describe("discoverOllamaCloudModels", () => {
   it("includes tags ending in -cloud and deduplicates exact IDs", async () => {
     // Given
     const http = new FakeFetch()
-    http.enqueue(SEARCH_URL, htmlResponse('<a href="/library/gpt-oss">gpt</a>'))
-    http.enqueue(
-      libraryUrl("gpt-oss"),
-      htmlResponse(
-        '<a href="/library/gpt-oss:120b-cloud">a</a><a href="/library/gpt-oss:120b-cloud">b</a>',
-      ),
-    )
+    enqueueCloudCatalog(http, ["gpt-oss:120b", "gpt-oss:120b"])
+    enqueueCloudReference(http, { hostedId: "gpt-oss:120b", referenceId: "gpt-oss:120b-cloud" })
     // When
     const models = await discoverOllamaCloudModels(http.fetch, new AbortController().signal)
     // Then
     expect(models.map(({ id }) => String(id))).toEqual(["gpt-oss:120b-cloud"])
   })
 
-  it("bounds concurrent family fetches", async () => {
+  it("bounds concurrent reference fetches", async () => {
     // Given
     const http = new FakeFetch()
     const families = ["one", "two", "three", "four"]
-    http.enqueue(
-      SEARCH_URL,
-      htmlResponse(families.map((family) => `<a href="/library/${family}">${family}</a>`).join("")),
-    )
+    enqueueCloudCatalog(http, families)
     for (const family of families) {
-      const url = libraryUrl(family)
-      http.enqueue(url, htmlResponse(`<a href="/library/${family}:cloud">cloud</a>`))
+      const url = cloudManifestUrl(`${family}:cloud`)
+      enqueueCloudReference(http, { hostedId: family, referenceId: `${family}:cloud` })
       http.block(url)
     }
     const promise = discoverOllamaCloudModels(http.fetch, new AbortController().signal, 2)
-    await Promise.resolve()
-    await Promise.resolve()
+    await http.waitForRequest(cloudManifestUrl("one:cloud"))
+    await http.waitForRequest(cloudManifestUrl("two:cloud"))
     // When
-    for (const family of families) http.release(libraryUrl(family))
+    for (const family of families) http.release(cloudManifestUrl(`${family}:cloud`))
     const models = await promise
     // Then
     expect(models).toHaveLength(4)
     expect(http.maximumActive).toBe(2)
   })
 
-  it("rejects the complete refresh when any family is empty", async () => {
+  it("rejects the complete refresh when any hosted model has no resolved reference", async () => {
     // Given
     const http = new FakeFetch()
-    http.enqueue(
-      SEARCH_URL,
-      htmlResponse('<a href="/library/one">one</a><a href="/library/two">two</a>'),
-    )
-    http.enqueue(libraryUrl("one"), htmlResponse('<a href="/library/one:cloud">cloud</a>'))
-    http.enqueue(libraryUrl("two"), htmlResponse("<p>none</p>"))
+    enqueueCloudCatalog(http, ["one", "two"])
+    enqueueCloudReference(http, { hostedId: "one", referenceId: "one:cloud" })
+    http.enqueue(cloudManifestUrl("two:cloud"), jsonResponse({}, 404))
+    http.enqueue(cloudManifestUrl("two:latest-cloud"), jsonResponse({}, 404))
     // When
     const promise = discoverOllamaCloudModels(http.fetch, new AbortController().signal)
     // Then
@@ -92,10 +70,10 @@ describe("OllamaCatalogState", () => {
   it("publishes additions and retirements only after complete successful refreshes", async () => {
     // Given
     const http = new FakeFetch()
-    http.enqueue(SEARCH_URL, htmlResponse('<a href="/library/one">one</a>'))
-    http.enqueue(libraryUrl("one"), htmlResponse('<a href="/library/one:cloud">cloud</a>'))
-    http.enqueue(SEARCH_URL, htmlResponse('<a href="/library/two">two</a>'))
-    http.enqueue(libraryUrl("two"), htmlResponse('<a href="/library/two:cloud">cloud</a>'))
+    enqueueCloudCatalog(http, ["one"])
+    enqueueCloudReference(http, { hostedId: "one", referenceId: "one:cloud" })
+    enqueueCloudCatalog(http, ["two"])
+    enqueueCloudReference(http, { hostedId: "two", referenceId: "two:cloud" })
     const state = createOllamaCatalogState({ fetch: http.fetch })
     const lease = state.acquire()
     await lease.refresh(new AbortController().signal)
@@ -110,10 +88,10 @@ describe("OllamaCatalogState", () => {
   it("atomically retains the previous complete catalog on refresh failure", async () => {
     // Given
     const http = new FakeFetch()
-    http.enqueue(SEARCH_URL, htmlResponse('<a href="/library/one">one</a>'))
-    http.enqueue(libraryUrl("one"), htmlResponse('<a href="/library/one:cloud">cloud</a>'))
-    http.enqueue(SEARCH_URL, htmlResponse('<a href="/library/two">two</a>'))
-    http.enqueue(libraryUrl("two"), htmlResponse("<p>empty</p>"))
+    enqueueCloudCatalog(http, ["one"])
+    enqueueCloudReference(http, { hostedId: "one", referenceId: "one:cloud" })
+    enqueueCloudCatalog(http, ["two"])
+    http.enqueue(cloudManifestUrl("two:cloud"), jsonResponse({ schemaVersion: 2, layers: [] }))
     const lease = createOllamaCatalogState({ fetch: http.fetch }).acquire()
     await lease.refresh(new AbortController().signal)
     // When
@@ -126,8 +104,8 @@ describe("OllamaCatalogState", () => {
   it("keeps shared authorization until the last active lease is disposed", async () => {
     // Given
     const http = new FakeFetch()
-    http.enqueue(SEARCH_URL, htmlResponse('<a href="/library/one">one</a>'))
-    http.enqueue(libraryUrl("one"), htmlResponse('<a href="/library/one:cloud">cloud</a>'))
+    enqueueCloudCatalog(http, ["one"])
+    enqueueCloudReference(http, { hostedId: "one", referenceId: "one:cloud" })
     const state = createOllamaCatalogState({ fetch: http.fetch })
     const first = state.acquire()
     const second = state.acquire()

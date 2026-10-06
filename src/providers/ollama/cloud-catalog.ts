@@ -1,91 +1,78 @@
 import { z } from "zod"
 
 import type { AdapterModel } from "../../core/models.js"
-import { parseAdapterModel } from "../../core/models.js"
+import {
+  HostedCloudIdSchema,
+  type OllamaCloudReference,
+  resolveCloudReference,
+} from "./cloud-reference.js"
 import { OllamaCatalogError } from "./errors.js"
-import { extractOfficialLibraryPaths } from "./html-links.js"
 import { type OllamaFetch, requestOllamaCatalog } from "./http.js"
 
-const CLOUD_SEARCH_URL = "https://ollama.com/search?c=cloud"
-const FAMILY_CONCURRENCY = 4
-const FamilySchema = z.string().regex(/^[A-Za-z0-9._-]+$/)
-const TagSchema = z.string().min(1).max(256)
-
-function searchFamilies(html: string): readonly string[] {
-  const families: string[] = []
-  const seen = new Set<string>()
-  for (const path of extractOfficialLibraryPaths(html)) {
-    const match = /^\/library\/([^/:]+)$/.exec(path)
-    const parsed = FamilySchema.safeParse(match?.[1])
-    if (parsed.success && !seen.has(parsed.data)) {
-      seen.add(parsed.data)
-      families.push(parsed.data)
-    }
-  }
-  if (families.length === 0) throw new OllamaCatalogError("cloud-search", "invalid-data")
-  return families
-}
-
-function familyModels(family: string, html: string): readonly AdapterModel[] {
-  const models: AdapterModel[] = []
-  const seen = new Set<string>()
-  for (const path of extractOfficialLibraryPaths(html)) {
-    const match = /^\/library\/([^/:]+):([^/]+)$/.exec(path)
-    if (match?.[1] !== family) continue
-    const tag = TagSchema.safeParse(match[2])
-    if (!tag.success || (tag.data !== "cloud" && !tag.data.endsWith("-cloud"))) continue
-    const id = `${family}:${tag.data}`
-    if (!seen.has(id)) {
-      seen.add(id)
-      models.push(parseAdapterModel({ id }))
-    }
-  }
-  if (models.length === 0) throw new OllamaCatalogError("cloud-family", "invalid-data")
-  return models
-}
-
-async function discoverFamily(
-  family: string,
-  fetch: OllamaFetch,
-  signal: AbortSignal,
-): Promise<readonly AdapterModel[]> {
-  const html = await requestOllamaCatalog({
-    url: `https://ollama.com/library/${family}`,
-    accept: "text/html",
-    operation: "cloud-family",
-    fetch,
-    signal,
+const ModelSchema = z
+  .object({
+    name: HostedCloudIdSchema.optional(),
+    model: HostedCloudIdSchema.optional(),
   })
-  return familyModels(family, html)
-}
+  .refine(
+    ({ name, model }) =>
+      (name !== undefined || model !== undefined) &&
+      (name === undefined || model === undefined || name === model),
+  )
+  .transform(({ name, model }) => HostedCloudIdSchema.parse(model ?? name))
+const CatalogSchema = z.object({ models: z.array(ModelSchema).min(1).max(1024) })
 
 export async function discoverOllamaCloudModels(
   fetch: OllamaFetch,
   signal: AbortSignal,
-  concurrency: number = FAMILY_CONCURRENCY,
+  concurrency: number = 4,
 ): Promise<readonly AdapterModel[]> {
+  const references = await discoverOllamaCloudReferences(fetch, signal, concurrency)
+  return references.map(({ model }) => model)
+}
+
+export async function discoverOllamaCloudReferences(
+  fetch: OllamaFetch,
+  signal: AbortSignal,
+  concurrency: number = 4,
+): Promise<readonly OllamaCloudReference[]> {
   const workerCount = z.number().int().min(1).max(8).parse(concurrency)
-  const searchHtml = await requestOllamaCatalog({
-    url: CLOUD_SEARCH_URL,
-    accept: "text/html",
+  const text = await requestOllamaCatalog({
+    url: "https://ollama.com/api/tags",
+    accept: "application/json",
     operation: "cloud-search",
     fetch,
     signal,
   })
-  const families = searchFamilies(searchHtml)
-  const results: Array<readonly AdapterModel[]> = Array.from({ length: families.length }, () => [])
-  let nextFamily = 0
+  let ids: readonly z.infer<typeof HostedCloudIdSchema>[]
+  try {
+    const value: unknown = JSON.parse(text)
+    ids = [...new Set(CatalogSchema.parse(value).models)]
+  } catch (error) {
+    if (error instanceof SyntaxError || error instanceof z.ZodError) {
+      throw new OllamaCatalogError("cloud-search", "invalid-data")
+    }
+    throw error
+  }
+  const controller = new AbortController()
+  const workerSignal = AbortSignal.any([signal, controller.signal])
+  const results: OllamaCloudReference[] = []
+  let next = 0
   const worker = async (): Promise<void> => {
-    while (nextFamily < families.length) {
-      const index = nextFamily
-      nextFamily += 1
-      const family = families[index]
-      if (family === undefined) return
-      results[index] = await discoverFamily(family, fetch, signal)
+    while (next < ids.length) {
+      const index = next++
+      const id = ids[index]
+      if (id === undefined) return
+      results[index] = { model: await resolveCloudReference(id, fetch, workerSignal), hostedId: id }
     }
   }
-  await Promise.all(Array.from({ length: Math.min(workerCount, families.length) }, worker))
-  const models = results.flat()
-  if (models.length === 0) throw new OllamaCatalogError("cloud-search", "invalid-data")
-  return models
+  const workers = Array.from({ length: Math.min(workerCount, ids.length) }, worker)
+  try {
+    await Promise.all(workers)
+  } catch (error) {
+    controller.abort(error)
+    await Promise.allSettled(workers)
+    throw error
+  }
+  return results
 }
