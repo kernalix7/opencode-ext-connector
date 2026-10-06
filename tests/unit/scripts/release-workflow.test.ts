@@ -155,6 +155,7 @@ describe("release workflow", () => {
       "bun run build",
       "bun test",
       "bun run test:e2e",
+      "bun run test:e2e:v2",
       "bun pm pack --destination release --quiet",
       "sha256sum",
     ] as const
