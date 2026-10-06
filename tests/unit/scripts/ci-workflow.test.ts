@@ -109,7 +109,7 @@ describe("CI workflow", () => {
     const { check } = workflow.jobs
     const projectCommands = check.steps
       .flatMap((step) => (step.run === undefined ? [] : [step.run.trim()]))
-      .slice(-9)
+      .slice(-10, -1)
 
     // Then
     expect(projectCommands).toEqual([
@@ -127,5 +127,21 @@ describe("CI workflow", () => {
     expect(check["runs-on"]).toBe("ubuntu-latest")
     expect(check["continue-on-error"]).not.toBe(true)
     expect(check.steps.every((step) => step["continue-on-error"] !== true)).toBe(true)
+  })
+
+  it("requires the actual final package to pass the payload guard", async () => {
+    // Given
+    const workflow = await readWorkflow()
+    // When
+    const step = workflow.jobs.check.steps.at(-1)
+    const script = step?.run ?? ""
+    // Then
+    expect(script).toContain("set -euo pipefail")
+    expect(script).toContain("bun pm pack --destination release --quiet")
+    expect(script).toContain('bun scripts/check-release-payload.ts "$' + '{tarballs[0]}"')
+    expect(script.indexOf("check-release-payload.ts")).toBeGreaterThan(
+      script.lastIndexOf("bun pm pack"),
+    )
+    expect(step?.["continue-on-error"]).not.toBe(true)
   })
 })

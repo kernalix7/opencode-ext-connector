@@ -54,3 +54,13 @@ jobs:
       - run: bun run test:e2e
       - run: bun run test:e2e:v2
       - run: bun run verify:package
+      - name: Verify the actual release payload
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          umask 002
+          bun pm pack --destination release --quiet
+          shopt -s nullglob
+          tarballs=(release/*.tgz)
+          test "${#tarballs[@]}" -eq 1
+          bun scripts/check-release-payload.ts "${tarballs[0]}"
