@@ -1,12 +1,15 @@
 import { describe, expect, it } from "bun:test"
 import type { LanguageModelV3Prompt } from "@ai-sdk/provider"
 
+import { parseAdapterModel } from "../../../../src/core/models"
 import type { OllamaCatalogState } from "../../../../src/providers/ollama"
 import {
   createOllamaLanguageModel,
   type OllamaFetch,
   parseOllamaEndpoints,
 } from "../../../../src/providers/ollama"
+import { HostedCloudIdSchema } from "../../../../src/providers/ollama/cloud-reference"
+import { enqueueCloudReference } from "./cloud-fixtures"
 import { FakeFetch, jsonResponse } from "./http-fake"
 
 const TAGS_URL = "http://localhost:11434/api/tags"
@@ -19,6 +22,13 @@ const catalog: OllamaCatalogState = {
   },
   activeLeaseCount: () => 1,
   authorizesCloudPull: (id) => id === "m:cloud",
+  cloudPullAuthorization: (id) =>
+    id === "m:cloud"
+      ? {
+          reference: { model: parseAdapterModel({ id }), hostedId: HostedCloudIdSchema.parse("m") },
+          isCurrent: () => true,
+        }
+      : null,
 }
 
 function ndjson(value: unknown): Response {
@@ -29,6 +39,7 @@ describe("Ollama pull coordination", () => {
   it("uses one configured endpoint set for tags, pull, and chat", async () => {
     // Given
     const http = new FakeFetch()
+    enqueueCloudReference(http, { hostedId: "m", referenceId: "m:cloud" })
     const endpoints = parseOllamaEndpoints("https://daemon.example.test/prefix")
     http.enqueue(endpoints.tagsURL, jsonResponse({ models: [] }))
     http.enqueue(endpoints.pullURL, ndjson({ status: "success" }))
@@ -44,6 +55,8 @@ describe("Ollama pull coordination", () => {
     // Then
     expect(http.requests.map(({ url }) => url)).toEqual([
       endpoints.tagsURL,
+      "https://registry.ollama.ai/v2/library/m/manifests/cloud",
+      expect.stringContaining("https://registry.ollama.ai/v2/library/m/blobs/sha256:"),
       endpoints.pullURL,
       endpoints.chatURL,
     ])
@@ -52,6 +65,7 @@ describe("Ollama pull coordination", () => {
   it("shares one pull across concurrent callers for the same absent cloud model", async () => {
     // Given
     const http = new FakeFetch()
+    enqueueCloudReference(http, { hostedId: "m", referenceId: "m:cloud" })
     http.enqueue(TAGS_URL, jsonResponse({ models: [] }))
     http.enqueue(TAGS_URL, jsonResponse({ models: [] }))
     http.enqueue(PULL_URL, ndjson({ status: "success" }))
@@ -67,11 +81,13 @@ describe("Ollama pull coordination", () => {
     await Promise.all([first, second])
     // Then
     expect(http.requests.filter(({ url }) => url === PULL_URL)).toHaveLength(1)
+    expect(http.requests.filter(({ url }) => url.includes("/manifests/"))).toHaveLength(1)
   })
 
   it("lets one pull waiter cancel independently without cancelling the shared pull", async () => {
     // Given
     const http = new FakeFetch()
+    enqueueCloudReference(http, { hostedId: "m", referenceId: "m:cloud" })
     http.enqueue(TAGS_URL, jsonResponse({ models: [] }))
     http.enqueue(TAGS_URL, jsonResponse({ models: [] }))
     http.enqueue(PULL_URL, ndjson({ status: "success" }))
@@ -99,7 +115,11 @@ describe("Ollama pull coordination", () => {
     const replacementStarted = Promise.withResolvers<void>()
     const pullSignals: AbortSignal[] = []
     let pullCount = 0
+    const metadata = new FakeFetch()
+    enqueueCloudReference(metadata, { hostedId: "m", referenceId: "m:cloud" })
+    enqueueCloudReference(metadata, { hostedId: "m", referenceId: "m:cloud" })
     const fetch: OllamaFetch = async (url, init) => {
+      if (url.startsWith("https://registry.ollama.ai/")) return metadata.fetch(url, init)
       if (url === TAGS_URL) return jsonResponse({ models: [] })
       if (url === CHAT_URL) return ndjson({ message: { content: "ok" }, done: true })
       if (url !== PULL_URL) throw new TypeError("unexpected test URL")
