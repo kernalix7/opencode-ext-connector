@@ -1,55 +1,34 @@
 import type { LanguageModelV3 } from "@ai-sdk/provider"
+import { z } from "zod"
 
-import type { Clock } from "../core/clock.js"
 import { createFetchHttpTransport } from "../http/fetch-transport.js"
-import { createConsoleLogger } from "../logging/logger.js"
-import { createClaudeTokenReader } from "../providers/claude/auth.js"
-import { readCursorAccessToken } from "../providers/cursor/auth.js"
-import { createCursorDirectRuntime } from "../providers/cursor/direct-runtime.js"
+import { createOpenCodeAuthStore } from "./auth-store.js"
 import { createConnectorLanguage } from "./language-factory.js"
 import { getProductionOllamaBundle } from "./ollama-production.js"
+import { readProviderApiKey } from "./providers.js"
+import { resolveV1ModelView, unavailableV1Model } from "./v1-binding.js"
 
-const clock: Clock = {
-  nowMs: (): number => Date.now(),
-  schedule: (delayMs: number, callback: () => void) => {
-    const handle = setTimeout(callback, delayMs)
-    handle.unref()
-    const cancel = (): void => {
-      clearTimeout(handle)
-    }
-    return {
-      cancel,
-      [Symbol.dispose]: cancel,
-    }
-  },
-}
+const ApiKeySchema = z
+  .string()
+  .min(1)
+  .refine((key) => !key.startsWith("cli-session:"))
 
 const env = process.env
 const transport = createFetchHttpTransport()
-const logger = createConsoleLogger(clock)
-const cursorRuntime = createCursorDirectRuntime({
-  clock,
-  readAccessToken: (signal) => readCursorAccessToken(env, signal),
-  onBackgroundCleanupError: (error) => {
-    logger.log("warn", "cursor.session.ttl-cleanup-failed", {
-      code: error.code,
-      operation: error.operation,
-      sessionId: error.identity.sessionId,
-      modelId: error.identity.modelId,
-    })
-  },
-})
-const readClaudeToken = createClaudeTokenReader({
+const authStore = createOpenCodeAuthStore({ env })
+const deps = {
+  authStore,
   env,
-  clock,
   transport,
-})
-
-function apiKeyFromOptions(options: Readonly<Record<string, unknown>>): string | undefined {
-  const value = options["apiKey"]
-  return typeof value === "string" && value.length > 0 && !value.startsWith("cli-session:")
-    ? value
-    : undefined
+  allowEnvironmentKeys: true,
+  clock: {
+    nowMs: () => Date.now(),
+    schedule: (delayMs: number, callback: () => void) => {
+      const handle = setTimeout(callback, delayMs)
+      const cancel = (): void => clearTimeout(handle)
+      return { cancel, [Symbol.dispose]: cancel }
+    },
+  },
 }
 
 export function languageForV1Provider(
@@ -57,24 +36,59 @@ export function languageForV1Provider(
   modelId: string,
   options: Readonly<Record<string, unknown>>,
 ): LanguageModelV3 {
-  const commandCodeApiKey = apiKeyFromOptions(options)
+  if (Object.hasOwn(options, "connectorV1")) {
+    const view = resolveV1ModelView(options["connectorV1"], providerID, modelId)
+    const bound = createConnectorLanguage({
+      transport: view.transport,
+      readClaudeApiKey: view.readApiKey,
+      readCommandCodeApiKey: view.readApiKey,
+    })(providerID, modelId)
+    if (bound === null) throw unavailableV1Model(modelId)
+    return {
+      specificationVersion: bound.specificationVersion,
+      provider: bound.provider,
+      modelId: bound.modelId,
+      supportedUrls: bound.supportedUrls,
+      doGenerate: (call) =>
+        bound.doGenerate({
+          ...call,
+          abortSignal:
+            call.abortSignal === undefined
+              ? view.signal
+              : AbortSignal.any([call.abortSignal, view.signal]),
+        }),
+      doStream: (call) =>
+        bound.doStream({
+          ...call,
+          abortSignal:
+            call.abortSignal === undefined
+              ? view.signal
+              : AbortSignal.any([call.abortSignal, view.signal]),
+        }),
+    }
+  }
+  const explicit = Object.hasOwn(options, "apiKey")
+    ? ApiKeySchema.parse(options["apiKey"])
+    : undefined
   const ollamaRuntime =
     providerID === "ollama"
       ? getProductionOllamaBundle(options["ollamaBaseURL"]).runtime
       : undefined
   const createLanguage = createConnectorLanguage({
-    env,
     transport,
-    readClaudeToken,
-    cursorRuntime,
+    readClaudeApiKey: (signal) =>
+      explicit === undefined
+        ? readProviderApiKey(deps, "claude", signal)
+        : Promise.resolve(explicit),
+    readCommandCodeApiKey: (signal) =>
+      explicit === undefined
+        ? readProviderApiKey(deps, "command-code", signal)
+        : Promise.resolve(explicit),
     ...(ollamaRuntime === undefined ? {} : { ollamaRuntime }),
-    ...(commandCodeApiKey === undefined ? {} : { commandCodeApiKey }),
   })
   const model = createLanguage(providerID, modelId)
-  if (model === null) {
-    throw new Error(`${providerID} is unavailable`)
-  }
+  if (model === null) throw unavailableV1Model(modelId)
   return model
 }
 
-export const disposeV1LanguageRuntime: () => Promise<void> = cursorRuntime.dispose
+export const disposeV1LanguageRuntime = async (): Promise<void> => undefined
