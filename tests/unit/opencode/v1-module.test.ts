@@ -14,7 +14,8 @@ import { FakeHttpTransport } from "../../support/http"
 type HostConfig = Parameters<NonNullable<Hooks["config"]>>[0]
 
 const disconnectedAuthStore: OpenCodeAuthStore = {
-  matchAuth: async () => null,
+  matchAuth: async (provider) =>
+    provider === "ollama" ? null : { kind: "api-key", key: `fixture-${provider}` },
 }
 
 function fakeProvider(options: {
@@ -106,7 +107,7 @@ describe("buildV1Hooks", () => {
     // Then
     expect(config.provider?.["claude"]?.npm).toBe("file:///claude")
     expect(config.provider?.["claude"]?.options?.apiKey).toBeUndefined()
-    expect(config.provider?.["cursor"]?.npm).toBe("file:///cursor")
+    expect(config.provider?.["cursor"]).toBeUndefined()
     expect(config.provider?.["command-code"]?.npm).toBe("file:///command-code")
   })
 
@@ -189,7 +190,7 @@ describe("buildV1Hooks", () => {
     expect(config.provider?.["command-code"]).toBeUndefined()
   })
 
-  it("uses fallback models when a connected snapshot has none", async () => {
+  it("does not guess fallback models for an empty official-key catalog", async () => {
     // Given
     const hooks = await buildV1Hooks({
       clock: new FakeClock(),
@@ -217,9 +218,7 @@ describe("buildV1Hooks", () => {
     // When
     await hooks.config?.(config)
     // Then
-    expect(config.provider?.["command-code"]?.models?.["Qwen/Qwen3.8-Max"]?.id).toBe(
-      "Qwen/Qwen3.8-Max",
-    )
+    expect(config.provider?.["command-code"]).toBeUndefined()
   })
 
   it("does not attach a provider auth hook", async () => {

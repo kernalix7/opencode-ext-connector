@@ -13,6 +13,7 @@ import { pickConnectorOptionsInput } from "./host-options.js"
 import type { ProviderEntry, ProviderEntryDeps } from "./provider-entry.js"
 import { scheduleCatalogReload } from "./reload.js"
 import { createV1CatalogProjector } from "./v1-catalog.js"
+import { createV1Owner } from "./v1-owner.js"
 
 export type V1ServerOptions = {
   readonly clock: Clock
@@ -33,7 +34,7 @@ function entryDeps(options: V1ServerOptions): ProviderEntryDeps {
     transport: options.transport,
     clock: options.clock,
     authStore: options.authStore,
-    writeBackCredentials: false,
+    allowEnvironmentKeys: true,
   }
 }
 
@@ -41,19 +42,29 @@ export async function buildV1Hooks(options: V1ServerOptions): Promise<Hooks> {
   const deps = entryDeps(options)
   const providers: ProviderEntry[] = []
   for (const entry of options.providers) {
-    if (await entry.isConnected(deps)) {
+    if (entry.id === "ollama" && (await entry.isConnected(deps))) {
       providers.push(entry)
     }
   }
   const adapters: ProviderAdapter[] = providers.map((entry) => entry.createAdapter(deps))
   const projector = createV1CatalogProjector({
-    entries: providers,
+    entries: options.providers,
     ...(options.npmSpecifiers === undefined ? {} : { npmSpecifiers: options.npmSpecifiers }),
   })
   const lifetime = new AbortController()
+  const apiOwner = createV1Owner({
+    entries: options.providers,
+    deps,
+    projector,
+    health: options.health ?? { initialBackoffMs: 1_000, maximumBackoffMs: 60_000 },
+    logger: options.logger ?? { log: () => undefined },
+    snapshotTimeoutMs: options.snapshotTimeoutMs ?? 30_000,
+    lifetime: lifetime.signal,
+  })
   const healthStore: HealthStore = new Map()
-  const refresh = (): Promise<void> =>
-    refreshAdaptersWithHealth({
+  const refresh = async (): Promise<void> => {
+    await apiOwner.refresh()
+    await refreshAdaptersWithHealth({
       adapters,
       publisher: projector.publisher,
       logger: options.logger ?? { log: () => undefined },
@@ -63,20 +74,41 @@ export async function buildV1Hooks(options: V1ServerOptions): Promise<Hooks> {
       signal: lifetime.signal,
       snapshotTimeoutMs: options.snapshotTimeoutMs ?? 30_000,
     })
-  await refresh()
+  }
+  try {
+    await refresh()
+  } catch (error: unknown) {
+    lifetime.abort()
+    await Promise.allSettled([apiOwner.dispose(), ...adapters.map((adapter) => adapter.dispose())])
+    throw error
+  }
   const reload = scheduleCatalogReload({
     clock: options.clock,
     intervalMs: options.catalogReloadMs ?? 300_000,
     reload: refresh,
   })
   const disposal = createAsyncDisposable(async () => {
-    lifetime.abort()
     await reload.dispose()
-    await Promise.all(adapters.map((adapter) => adapter.dispose()))
+    const results = await Promise.allSettled([
+      apiOwner.dispose(),
+      ...adapters.map((adapter) => adapter.dispose()),
+    ])
+    const failure = results.find(
+      (result): result is PromiseRejectedResult => result.status === "rejected",
+    )
+    if (failure !== undefined) throw failure.reason
   })
   return {
     config: async (config) => projector.attach(config),
-    dispose: disposal.dispose,
+    dispose: () => {
+      lifetime.abort()
+      void apiOwner.dispose().catch((error: unknown) => {
+        options.logger?.log("warn", "v1.owner.cleanup-failed", {
+          name: error instanceof Error ? error.name : "unknown",
+        })
+      })
+      return disposal.dispose()
+    },
   }
 }
 
@@ -90,8 +122,6 @@ export function buildV1AuthHooks(
     ? {
         auth: entry.createAuthHook({
           ...deps,
-          writeBackCredentials: configured.writeBackCredentials,
-          credentialRefresh: configured.credentialRefresh,
         }),
       }
     : {}
