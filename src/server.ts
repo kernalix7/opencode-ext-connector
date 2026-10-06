@@ -11,14 +11,8 @@ import { createOpenCodeAuthStore } from "./opencode/auth-store.js"
 import { pickConnectorOptionsInput, pickOllamaBaseURL } from "./opencode/host-options.js"
 import { getProductionOllamaBundle } from "./opencode/ollama-production.js"
 import { createProviderRegistry, selectConfiguredProviders } from "./opencode/providers.js"
-import { disposeV1LanguageRuntime } from "./opencode/v1-language.js"
 import { buildV1AuthHooks, createV1AuthServer, createV1Server } from "./opencode/v1-module.js"
-import { createProductionProcessSupervisor } from "./process/production-supervisor.js"
-import { createClaudeCredentialAuthorityScheduler } from "./providers/claude/credential-authority-scheduler.js"
-import { writeClaudeCredentials } from "./providers/claude/writeback.js"
 import { productionOllamaFetch } from "./providers/ollama/http.js"
-import { createXaiAuthorityObserver } from "./providers/xai/authority-observer.js"
-import { createXaiConsumerAuth } from "./providers/xai/consumer-auth.js"
 
 const env = process.env
 const transport = createFetchHttpTransport()
@@ -41,18 +35,18 @@ const logger = createConsoleLogger(clock)
 
 const distDirectory = dirname(fileURLToPath(import.meta.url))
 const npmSpecifiers: Record<string, string> = {
-  cursor: pathToFileURL(join(distDirectory, "sdk", "cursor.js")).href,
+  claude: pathToFileURL(join(distDirectory, "sdk", "claude.js")).href,
   "command-code": pathToFileURL(join(distDirectory, "sdk", "command-code.js")).href,
   ollama: pathToFileURL(join(distDirectory, "sdk", "ollama.js")).href,
 }
 
-const registry = createProviderRegistry({ writeClaudeCredentials })
+const registry = createProviderRegistry()
 const providerDeps = {
   env,
   transport,
   clock,
   authStore,
-  writeBackCredentials: false,
+  allowEnvironmentKeys: true,
 }
 
 export const connectorServer: V1Plugin = async (input, options): Promise<Hooks> => {
@@ -62,7 +56,6 @@ export const connectorServer: V1Plugin = async (input, options): Promise<Hooks> 
     : undefined
   const providers = selectConfiguredProviders(
     createProviderRegistry({
-      writeClaudeCredentials,
       ...(ollama === undefined
         ? {}
         : {
@@ -87,32 +80,9 @@ export const connectorServer: V1Plugin = async (input, options): Promise<Hooks> 
     health: connectorOptions.health,
     logger,
   })(input, options)
-  const processSupervisor = createProductionProcessSupervisor()
-  const claudeCliAuthority = connectorOptions.credentialAuthority.claudeCli
-  const claudeCredentialAuthority = createClaudeCredentialAuthorityScheduler({
-    enabled: claudeCliAuthority.enabled,
-    clock,
-    leadMs: claudeCliAuthority.leadMs,
-    retryMs: claudeCliAuthority.retryMs,
-    env,
-    processSupervisor,
-    logger,
-  })
-  const xaiAuthority = createXaiAuthorityObserver({
-    enabled: connectorOptions.xaiOAuth?.mode === "authority",
-    clock,
-    env,
-    processSupervisor,
-  })
   const dispose = hooks.dispose
   const disposal = createAsyncDisposable(async () => {
-    const results = await Promise.allSettled([
-      Promise.resolve().then(() => claudeCredentialAuthority.dispose()),
-      Promise.resolve().then(() => xaiAuthority.dispose()),
-      Promise.resolve().then(() => processSupervisor.dispose()),
-      Promise.resolve().then(() => dispose?.()),
-      Promise.resolve().then(disposeV1LanguageRuntime),
-    ])
+    const results = await Promise.allSettled([Promise.resolve().then(() => dispose?.())])
     const primaryFailure = results.find(
       (result): result is PromiseRejectedResult => result.status === "rejected",
     )
@@ -125,7 +95,6 @@ export const connectorServer: V1Plugin = async (input, options): Promise<Hooks> 
 }
 
 const claudeEntry = registry.find((entry) => entry.id === "claude")
-const cursorEntry = registry.find((entry) => entry.id === "cursor")
 const commandCodeEntry = registry.find((entry) => entry.id === "command-code")
 
 export const claudeAuthServer: V1Plugin =
@@ -133,10 +102,7 @@ export const claudeAuthServer: V1Plugin =
     ? async (): Promise<Hooks> => ({})
     : createV1AuthServer(claudeEntry, providerDeps)
 
-export const cursorAuthServer: V1Plugin =
-  cursorEntry === undefined
-    ? async (): Promise<Hooks> => ({})
-    : createV1AuthServer(cursorEntry, providerDeps)
+export const cursorAuthServer: V1Plugin = async (): Promise<Hooks> => ({})
 
 export const commandCodeAuthServer: V1Plugin =
   commandCodeEntry === undefined
@@ -157,21 +123,4 @@ export const ollamaAuthServer: V1Plugin = async (_input, options): Promise<Hooks
   return entry === undefined ? {} : buildV1AuthHooks(entry, providerDeps, options)
 }
 
-export const xaiAuthServer: V1Plugin = async (_input, options): Promise<Hooks> => {
-  const connectorOptions = parseConnectorOptions(pickConnectorOptionsInput(options))
-  return connectorOptions.xaiOAuth?.mode === "consumer"
-    ? { auth: createXaiConsumerAuth({ env, clock, networkFetch: globalThis.fetch }) }
-    : {}
-}
-
-export type ConnectorPluginModule = {
-  readonly id: "opencode-ext-connector"
-  readonly server: V1Plugin
-}
-
-export const plugin: ConnectorPluginModule = {
-  id: "opencode-ext-connector",
-  server: connectorServer,
-}
-
-export default plugin
+export const xaiAuthServer: V1Plugin = async (): Promise<Hooks> => ({})

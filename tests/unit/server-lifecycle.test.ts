@@ -4,28 +4,12 @@ import { join } from "node:path"
 import { z } from "zod"
 
 const ProbeResultSchema = z.object({
-  standaloneCreationEvents: z.array(z.string()),
   creationEvents: z.array(z.string()),
-  claudeOptions: z.object({
-    enabled: z.boolean(),
-    leadMs: z.number(),
-    retryMs: z.number(),
-    envIsProcessEnv: z.boolean(),
-    supervisorMatches: z.boolean(),
-    hasClock: z.boolean(),
-    hasLogger: z.boolean(),
-  }),
-  xaiOptions: z.object({
-    enabled: z.boolean(),
-    envIsProcessEnv: z.boolean(),
-    supervisorMatches: z.boolean(),
-  }),
-  successfulDisposalEvents: z.array(z.string()),
-  standaloneEvents: z.array(z.string()),
-  standaloneAuthorityHasAuth: z.boolean(),
-  standaloneConsumerMethods: z.number(),
-  failedDisposalEvents: z.array(z.string()),
-  primaryFailure: z.string(),
+  disposalEvents: z.array(z.string()),
+  samePromise: z.boolean(),
+  cursorHasAuth: z.boolean(),
+  xaiHasAuth: z.boolean(),
+  propagated: z.boolean(),
 })
 
 class ServerLifecycleProbeError extends Error {
@@ -51,40 +35,18 @@ async function runProbe(): Promise<z.infer<typeof ProbeResultSchema>> {
 }
 
 describe("connector server lifecycle", () => {
-  it("wires Claude and xAI authorities and preserves the Claude failure when all disposals fail", async () => {
+  it("keeps retired hooks inert and forwards idempotent owner cleanup and failures", async () => {
     // Given / When
     const result = await runProbe()
 
     // Then
     expect(result).toEqual({
-      standaloneCreationEvents: [],
-      creationEvents: ["hooks", "supervisor", "claude-authority", "xai-authority"],
-      claudeOptions: {
-        enabled: true,
-        leadMs: 12_345,
-        retryMs: 67_890,
-        envIsProcessEnv: true,
-        supervisorMatches: true,
-        hasClock: true,
-        hasLogger: true,
-      },
-      xaiOptions: {
-        enabled: true,
-        envIsProcessEnv: true,
-        supervisorMatches: true,
-      },
-      successfulDisposalEvents: [
-        "claude-authority",
-        "xai-authority",
-        "supervisor",
-        "hooks",
-        "runtime",
-      ],
-      standaloneEvents: [],
-      standaloneAuthorityHasAuth: false,
-      standaloneConsumerMethods: 0,
-      failedDisposalEvents: ["claude-authority", "xai-authority", "supervisor", "hooks", "runtime"],
-      primaryFailure: "claude-authority",
+      creationEvents: ["hooks", "hooks"],
+      disposalEvents: ["hooks", "hooks"],
+      samePromise: true,
+      cursorHasAuth: false,
+      xaiHasAuth: false,
+      propagated: true,
     })
   })
 })
