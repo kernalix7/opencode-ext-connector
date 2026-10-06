@@ -4,7 +4,8 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import { z } from "zod"
-
+import { startEgressRecorder } from "../e2e/opencode-v2-ollama-fixture"
+import { cloudDiscoveryResponses } from "../support/cloud-discovery-fixture"
 import { getTestPackageDist, getTestPackageRoot } from "../support/test-package"
 
 const childScript = `
@@ -13,14 +14,14 @@ const sdk = await import(process.env.CONNECTOR_SDK_URL)
 const baseURL = process.env.OLLAMA_BASE_URL
 const options = { providers: JSON.parse(process.env.CONNECTOR_PROVIDERS), ollamaBaseURL: baseURL }
 const requests = []
+const cloudResponses = JSON.parse(process.env.CLOUD_RESPONSES)
 const originalFetch = globalThis.fetch
 const requestURL = (input) => input instanceof Request ? input.url : typeof input === "string" ? input : input.href
 globalThis.fetch = async (input, init) => {
   const url = requestURL(input)
-  requests.push({ url, redirect: init?.redirect ?? null, credentials: init?.credentials ?? null })
-  if (url === "https://ollama.com/search?c=cloud") return new Response('<a href="/library/fixture">fixture</a>')
-  if (url === "https://ollama.com/library/fixture") return new Response('<a href="/library/fixture:cloud">cloud</a>')
-  if (!url.startsWith(baseURL)) throw new Error("unexpected network request: " + url)
+  const request = new Request(input, init)
+  requests.push({ url, redirect: request.redirect, credentials: init?.credentials ?? request.credentials, method: request.method, headers: Object.fromEntries(request.headers) })
+  if (request.method === "GET" && cloudResponses[url] !== undefined) return new Response(cloudResponses[url], { headers: { "content-type": url.includes("/manifests/") ? "application/vnd.docker.distribution.manifest.v2+json" : "application/json" } })
   return originalFetch(input, init)
 }
 try {
@@ -50,6 +51,8 @@ const requestSchema = z.object({
   url: z.string(),
   redirect: z.union([z.literal("error"), z.null()]),
   credentials: z.union([z.literal("omit"), z.null()]),
+  method: z.string(),
+  headers: z.record(z.string(), z.string()),
 })
 
 const resultSchema = z.discriminatedUnion("kind", [
@@ -125,6 +128,7 @@ async function runBuiltPackage(options: RunOptions): Promise<RootResult> {
   )
   const script = join(directory, "root-ollama.mjs")
   await writeFile(script, childScript, "utf8")
+  const egress = await startEgressRecorder()
   try {
     const pluginProcess = Bun.spawn([process.execPath, script], {
       cwd: getTestPackageRoot(),
@@ -138,6 +142,10 @@ async function runBuiltPackage(options: RunOptions): Promise<RootResult> {
         CONNECTOR_SDK_URL: new URL("sdk/ollama.js", `file://${getTestPackageDist()}/`).href,
         CONNECTOR_PROVIDERS: JSON.stringify(options.providers),
         OLLAMA_BASE_URL: options.baseURL,
+        CLOUD_RESPONSES: JSON.stringify(cloudDiscoveryResponses),
+        HTTP_PROXY: egress.proxyUrl,
+        HTTPS_PROXY: egress.proxyUrl,
+        NO_PROXY: "127.0.0.1,localhost",
       },
       stdout: "pipe",
       stderr: "pipe",
@@ -148,8 +156,10 @@ async function runBuiltPackage(options: RunOptions): Promise<RootResult> {
       new Response(pluginProcess.stderr).text(),
     ])
     expect(exitCode, stderr).toBe(0)
+    expect(egress.hosts()).toEqual([])
     return resultSchema.parse(JSON.parse(stdout))
   } finally {
+    await egress.stop()
     await rm(directory, { force: true, recursive: true })
   }
 }
@@ -199,5 +209,19 @@ describe("built root Ollama composition", () => {
     )
     expect(daemon.requests.every(({ hasAuthorization }) => !hasAuthorization)).toBe(true)
     expect(daemon.requests.every(({ hasCookie }) => !hasCookie)).toBe(true)
+    const cloudRequests = result.requests.filter(({ url }) => !url.startsWith(daemon.baseURL))
+    expect([...new Set(cloudRequests.map(({ url }) => url))]).toEqual(
+      Object.keys(cloudDiscoveryResponses),
+    )
+    expect(
+      cloudRequests.every(
+        ({ credentials, redirect, method, headers }) =>
+          credentials === "omit" &&
+          redirect === "error" &&
+          method === "GET" &&
+          !("authorization" in headers) &&
+          !("cookie" in headers),
+      ),
+    ).toBe(true)
   })
 })
