@@ -1,90 +1,12 @@
 import { expect, it, spyOn } from "bun:test"
-import { randomUUID } from "node:crypto"
-import type { LanguageModelV3, LanguageModelV3CallOptions } from "@ai-sdk/provider"
-
-import { getProductionOllamaBundle } from "../../../src/opencode/ollama-production"
 import { OllamaGenerationError } from "../../../src/providers/ollama/errors"
-import { createOllama } from "../../../src/sdk/ollama"
-import { enqueueCloudCatalog, enqueueCloudReference } from "../providers/ollama/cloud-fixtures"
+import {
+  cloudManifestUrl,
+  enqueueCloudCatalog,
+  enqueueCloudReference,
+} from "../providers/ollama/cloud-fixtures"
 import { jsonResponse } from "../providers/ollama/http-fake"
-import { LifecycleFetch } from "../providers/ollama/lifecycle-fetch"
-
-const reference = { hostedId: "one", referenceId: "one:cloud" } as const
-const prompt: LanguageModelV3CallOptions["prompt"] = [
-  { role: "user", content: [{ type: "text", text: "synthetic lifecycle fixture" }] },
-]
-
-function assertNever(_value: never): never {
-  throw new TypeError("Unexpected lifecycle fixture variant")
-}
-
-function fixture() {
-  const http = new LifecycleFetch()
-  const base = `http://sdk-lifecycle.test/${randomUUID()}`
-  const bundle = getProductionOllamaBundle(base)
-  const replacement: typeof fetch = Object.assign(
-    (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) =>
-      http.fetch(
-        typeof input === "string" ? input : input instanceof URL ? input.href : input.url,
-        init,
-      ),
-    { preconnect: () => undefined },
-  )
-  const intercept = spyOn(globalThis, "fetch").mockImplementation(replacement)
-  const caller = new AbortController()
-  const lease = bundle.catalog.acquire()
-  const enqueue = (): void => {
-    enqueueCloudCatalog(http.replies, [reference.hostedId])
-    enqueueCloudReference(http.replies, reference)
-  }
-  const prepare = (): void => {
-    http.replies.enqueue(bundle.endpoints.tagsURL, jsonResponse({ models: [] }))
-    enqueueCloudReference(http.replies, reference)
-    http.replies.enqueue(bundle.endpoints.pullURL, new Response('{"status":"success"}\n'))
-    http.replies.enqueue(
-      bundle.endpoints.chatURL,
-      new Response('{"message":{"content":"ok"},"done":true}\n'),
-    )
-    http.block(bundle.endpoints.pullURL)
-  }
-  const cleanup = async (): Promise<void> => {
-    caller.abort()
-    http.release(bundle.endpoints.pullURL)
-    await lease.dispose()
-    intercept.mockRestore()
-  }
-  return {
-    http,
-    bundle,
-    caller,
-    lease,
-    enqueue,
-    prepare,
-    cleanup,
-    model: createOllama({ ollamaBaseURL: base }).languageModel(reference.referenceId),
-  }
-}
-
-async function invoke(
-  model: LanguageModelV3,
-  mode: "generate" | "stream",
-  signal: AbortSignal,
-): Promise<void> {
-  switch (mode) {
-    case "generate":
-      await model.doGenerate({ prompt, abortSignal: signal })
-      return
-    case "stream": {
-      const result = await model.doStream({ prompt, abortSignal: signal })
-      for await (const _chunk of result.stream) {
-        /* Drain the real SDK stream. */
-      }
-      return
-    }
-    default:
-      return assertNever(mode)
-  }
-}
+import { assertNever, fixture, invoke, reference } from "./ollama-sdk-lifecycle-fixture"
 
 for (const mode of ["generate", "stream"] as const) {
   for (const change of [
@@ -92,10 +14,11 @@ for (const mode of ["generate", "stream"] as const) {
     "remove",
     "replace",
     "refresh-same",
+    "changed-provenance",
     "keep",
     "caller-abort",
   ] as const) {
-    it(`blocks revoked first-use SDK ${mode} after ${change} during a pending pull`, async () => {
+    it(`checks first-use SDK ${mode} after ${change} during a pending pull`, async () => {
       // Given: real SDK and production bundle, only the HTTP boundary is fake.
       const f = fixture()
       let replacementLease: ReturnType<typeof f.bundle.catalog.acquire> | null = null
@@ -109,7 +32,7 @@ for (const mode of ["generate", "stream"] as const) {
           (error: unknown) => error,
         )
         await f.http.started(f.bundle.endpoints.pullURL)
-        // When: revoke after exact preflight and pull dispatch, before completion.
+        // When: apply the lifecycle transition after preflight and pull dispatch.
         switch (change) {
           case "dispose":
             await f.lease.dispose()
@@ -129,6 +52,15 @@ for (const mode of ["generate", "stream"] as const) {
             f.enqueue()
             await f.lease.refresh(f.caller.signal)
             break
+          case "changed-provenance":
+            enqueueCloudCatalog(f.http.replies, ["one:other"])
+            f.http.replies.enqueue(cloudManifestUrl("one:other-cloud"), jsonResponse({}, 404))
+            enqueueCloudReference(f.http.replies, {
+              hostedId: "one:other",
+              referenceId: reference.referenceId,
+            })
+            await f.lease.refresh(f.caller.signal)
+            break
           case "keep":
             break
           case "caller-abort":
@@ -142,6 +74,7 @@ for (const mode of ["generate", "stream"] as const) {
         // Then
         switch (change) {
           case "keep":
+          case "refresh-same":
             expect(outcome).toBeNull()
             break
           case "caller-abort":
@@ -150,7 +83,7 @@ for (const mode of ["generate", "stream"] as const) {
           case "dispose":
           case "remove":
           case "replace":
-          case "refresh-same":
+          case "changed-provenance":
             expect(outcome).toBeInstanceOf(OllamaGenerationError)
             expect(outcome).toMatchObject({ operation: "model-unavailable" })
             break
@@ -159,7 +92,10 @@ for (const mode of ["generate", "stream"] as const) {
         }
         expect(
           f.http.requests.filter(({ url }) => url === f.bundle.endpoints.chatURL),
-        ).toHaveLength(change === "keep" ? 1 : 0)
+        ).toHaveLength(change === "keep" || change === "refresh-same" ? 1 : 0)
+        expect(
+          f.http.requests.filter(({ url }) => url === f.bundle.endpoints.pullURL),
+        ).toHaveLength(1)
       } finally {
         f.caller.abort()
         f.http.release(f.bundle.endpoints.pullURL)
@@ -196,7 +132,7 @@ for (const mode of ["generate", "stream"] as const) {
   })
 }
 
-it("checks each SDK waiter's original authorization when a refreshed caller joins the same pull", async () => {
+it("checks each SDK waiter's original authorization when a reintroduced caller joins the same pull", async () => {
   // Given
   const f = fixture()
   let first: Promise<unknown> | undefined
@@ -210,28 +146,25 @@ it("checks each SDK waiter's original authorization when a refreshed caller join
       (error: unknown) => error,
     )
     await f.http.started(f.bundle.endpoints.pullURL)
+    enqueueCloudCatalog(f.http.replies, ["two"])
+    enqueueCloudReference(f.http.replies, { hostedId: "two", referenceId: "two:cloud" })
+    await f.lease.refresh(f.caller.signal)
     f.enqueue()
     await f.lease.refresh(f.caller.signal)
-    const tagsReturned = Promise.withResolvers<void>()
+    const joined = Promise.withResolvers<void>()
     f.http.replies.enqueue(f.bundle.endpoints.tagsURL, jsonResponse({ models: [] }))
-    const original = f.http.fetch
-    const joiningFetch: typeof fetch = Object.assign(
-      async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
-        const url =
-          typeof input === "string" ? input : input instanceof URL ? input.href : input.url
-        const response = await original(url, init)
-        if (url === f.bundle.endpoints.tagsURL) tagsReturned.resolve()
-        return response
-      },
-      { preconnect: () => undefined },
-    )
-    const intercept = spyOn(globalThis, "fetch").mockImplementation(joiningFetch)
+    const original = f.bundle.catalog.cloudPullAuthorization
+    const intercept = spyOn(f.bundle.catalog, "cloudPullAuthorization").mockImplementation((id) => {
+      const authorization = original(id)
+      joined.resolve()
+      return authorization
+    })
     try {
       second = invoke(f.model, "stream", f.caller.signal).then(
         () => null,
         (error: unknown) => error,
       )
-      await tagsReturned.promise
+      await joined.promise
       // When: both callers complete the same flight with different authorization identities.
       f.http.release(f.bundle.endpoints.pullURL)
       // Then
