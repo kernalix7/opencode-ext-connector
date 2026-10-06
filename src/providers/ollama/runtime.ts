@@ -1,6 +1,7 @@
 import { OperationCancelledError } from "../../core/errors.js"
 import type { AdapterModel } from "../../core/models.js"
 import type { OllamaCatalogState } from "./catalog-state.js"
+import { verifyCloudReference } from "./cloud-reference.js"
 import { type OllamaEndpoints, parseOllamaEndpoints } from "./endpoints.js"
 import { OllamaGenerationError } from "./errors.js"
 import { type OllamaFetch, productionOllamaFetch } from "./http.js"
@@ -70,6 +71,12 @@ export function createOllamaRuntime(options: OllamaRuntimeOptions): OllamaRuntim
     if (existing !== undefined) return existing
     const controller = new AbortController()
     const promise = (async (): Promise<void> => {
+      const authorization = options.catalog.cloudPullAuthorization(modelId)
+      if (authorization === null) throw new OllamaGenerationError("model-unavailable")
+      const verified = await verifyCloudReference(authorization.reference, fetch, controller.signal)
+      if (!verified || !authorization.isCurrent()) {
+        throw new OllamaGenerationError("model-unavailable")
+      }
       const response = await post(
         fetch,
         endpoints.pullURL,
@@ -140,10 +147,14 @@ export function createOllamaRuntime(options: OllamaRuntimeOptions): OllamaRuntim
         throw new OllamaGenerationError("tags")
       }
       if (!local.some(({ id }) => id === request.model)) {
-        if (!options.catalog.authorizesCloudPull(request.model)) {
+        const authorization = options.catalog.cloudPullAuthorization(request.model)
+        if (authorization === null) {
           throw new OllamaGenerationError("model-unavailable")
         }
         await waitForPull(request.model, pull(request.model), signal)
+        if (!authorization.isCurrent()) {
+          throw new OllamaGenerationError("model-unavailable")
+        }
       }
       return post(fetch, endpoints.chatURL, request, signal, "chat")
     },
