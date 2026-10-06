@@ -1,13 +1,22 @@
 import type { HttpRequest, HttpResponse, HttpStreamResponse, HttpTransport } from "../core/http.js"
 
-export function createFetchHttpTransport(): HttpTransport {
+export type FetchImplementation = (
+  input: string | URL | Request,
+  init?: RequestInit,
+) => Promise<Response>
+
+export function createFetchHttpTransport(
+  options: { readonly fetch?: FetchImplementation } = {},
+): HttpTransport {
+  const fetchImpl = options.fetch ?? ((input, init) => fetch(input, init))
   return {
     request: async (request: HttpRequest, signal: AbortSignal): Promise<HttpResponse> => {
-      const response = await fetch(request.url, {
+      const response = await fetchImpl(request.url, {
         method: request.method,
         headers: request.headers,
         body: request.body,
         signal,
+        redirect: "error",
       })
       const headers: { [name: string]: string } = {}
       response.headers.forEach((value, name) => {
@@ -22,11 +31,12 @@ export function createFetchHttpTransport(): HttpTransport {
       }
     },
     stream: async (request: HttpRequest, signal: AbortSignal): Promise<HttpStreamResponse> => {
-      const response = await fetch(request.url, {
+      const response = await fetchImpl(request.url, {
         method: request.method,
         headers: request.headers,
         body: request.body,
         signal,
+        redirect: "error",
       })
       const headers: { [name: string]: string } = {}
       response.headers.forEach((value, name) => {
