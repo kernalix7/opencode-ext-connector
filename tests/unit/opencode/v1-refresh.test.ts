@@ -15,9 +15,12 @@ import { FakeHttpTransport } from "../../support/http"
 type HostConfig = Parameters<NonNullable<Hooks["config"]>>[0]
 type SnapshotStep = ProviderSnapshot | Error | Promise<ProviderSnapshot>
 
-const authStore: OpenCodeAuthStore = { matchAuth: async () => null }
+const authStore: OpenCodeAuthStore = {
+  matchAuth: async (provider) =>
+    provider === "claude" ? { kind: "api-key", key: "fixture-claude-key" } : null,
+}
 const logger: ConnectorLogger = { log: () => undefined }
-const cursorProvider = "cursor"
+const cursorProvider = "claude"
 const unrelatedProvider = "unrelated"
 
 function scriptedProvider(options: {
@@ -27,7 +30,7 @@ function scriptedProvider(options: {
   readonly onSignal?: (signal: AbortSignal) => void
 }): ProviderEntry {
   const adapter: ProviderAdapter = {
-    providerId: parseProviderId("cursor"),
+    providerId: parseProviderId("claude"),
     snapshot: async (signal) => {
       options.onSignal?.(signal)
       const step = options.steps.shift()
@@ -38,12 +41,12 @@ function scriptedProvider(options: {
     dispose: async () => options.onDisposed?.(),
     [Symbol.asyncDispose]: async () => options.onDisposed?.(),
   }
-  const authHook: AuthHook = { provider: "cursor", methods: [] }
+  const authHook: AuthHook = { provider: "claude", methods: [] }
   return {
-    id: "cursor",
-    displayName: "Cursor",
-    integrationId: "cursor",
-    integrationMethod: { type: "env", names: ["CURSOR_ENABLED"] },
+    id: "claude",
+    displayName: "Claude",
+    integrationId: "claude",
+    integrationMethod: { type: "env", names: ["ANTHROPIC_API_KEY"] },
     createAdapter: () => {
       options.onCreated?.()
       return adapter
@@ -56,15 +59,13 @@ function scriptedProvider(options: {
 function ready(modelId: string): ProviderSnapshot {
   return {
     status: "ready",
-    providerId: parseProviderId("cursor"),
+    providerId: parseProviderId("claude"),
     models: [{ id: parseModelId(modelId) }],
   }
 }
 
 async function flush(): Promise<void> {
-  await Promise.resolve()
-  await Promise.resolve()
-  await Promise.resolve()
+  await new Promise<void>((resolve) => setImmediate(resolve))
 }
 
 function runtimeOptions(clock: FakeClock, provider: ProviderEntry) {
@@ -73,7 +74,7 @@ function runtimeOptions(clock: FakeClock, provider: ProviderEntry) {
     transport: new FakeHttpTransport(),
     authStore,
     providers: [provider],
-    npmSpecifiers: { cursor: "file:///cursor" },
+    npmSpecifiers: { claude: "file:///claude" },
     snapshotTimeoutMs: 50,
     catalogReloadMs: 10,
     health: { initialBackoffMs: 20, maximumBackoffMs: 40 },
@@ -102,12 +103,14 @@ describe("legacy V1 catalog refresh", () => {
     const config: HostConfig = {}
     await hooks.config?.(config)
     clock.advanceBy(1_000)
+    const initial = config.provider?.[cursorProvider]?.models?.["initial"]?.id
     await hooks.dispose?.()
     await hooks.dispose?.()
 
     // Then
     const initialModel = "initial"
-    expect(config.provider?.[cursorProvider]?.models?.[initialModel]?.id).toBe(initialModel)
+    expect(initial).toBe(initialModel)
+    expect(config.provider?.[cursorProvider]).toBeUndefined()
     expect(created).toBe(1)
     expect(disposed).toBe(1)
     expect(clock.pendingCount()).toBe(0)
@@ -165,7 +168,7 @@ describe("legacy V1 catalog refresh", () => {
     const provider = scriptedProvider({
       steps: [
         ready("known"),
-        { status: "unavailable", providerId: parseProviderId("cursor"), reason: "process-error" },
+        { status: "unavailable", providerId: parseProviderId("claude"), reason: "process-error" },
       ],
     })
     const hooks = await buildV1Hooks(runtimeOptions(clock, provider))
