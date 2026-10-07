@@ -51,9 +51,8 @@ describe("official V1 auth hook selection", () => {
     "credentialManagement",
     "credentialAuthority",
     "credentialRefresh",
-    "writeBackCredentials",
     "xaiOAuth",
-  ])("rejects retired %s before invoking provider code", (field) => {
+  ])("rejects invalid %s before invoking provider code", (field) => {
     // Given
     let calls = 0
     const entry: ProviderEntry = {
@@ -68,5 +67,29 @@ describe("official V1 auth hook selection", () => {
       ZodError,
     )
     expect(calls).toBe(0)
+  })
+
+  it("accepts read-only ownership before constructing a selected auth hook", () => {
+    // Given
+    const entry = fakeEntry("claude")
+    // When
+    const hooks = buildV1AuthHooks(entry, deps, {
+      providers: ["claude"],
+      credentialRole: "reader",
+    })
+    // Then
+    expect(hooks.auth?.provider).toBe("claude")
+  })
+
+  it("accepts explicitly disabled legacy writeback", () => {
+    // Given
+    const entry = fakeEntry("claude")
+    // When
+    const hooks = buildV1AuthHooks(entry, deps, {
+      providers: ["claude"],
+      writeBackCredentials: false,
+    })
+    // Then
+    expect(hooks.auth?.provider).toBe("claude")
   })
 })

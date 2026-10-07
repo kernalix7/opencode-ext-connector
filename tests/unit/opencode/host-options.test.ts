@@ -3,7 +3,7 @@ import { describe, expect, it } from "bun:test"
 import { ConnectorOptionsSchema, parseConnectorOptions } from "../../../src/core/options"
 import { pickConnectorOptionsInput, pickOllamaBaseURL } from "../../../src/opencode/host-options"
 
-describe("official connector host options", () => {
+describe("connector host options", () => {
   it("retains connector fields without leaking host-only configuration", () => {
     // Given
     const input = {
@@ -19,6 +19,11 @@ describe("official connector host options", () => {
     expect(options).toEqual({
       providers: ["claude"],
       snapshotTimeoutMs: 12_000,
+      writeBackCredentials: false,
+      credentialRefresh: { mode: "auto", leadMs: 60_000 },
+      credentialAuthority: {
+        claudeCli: { enabled: false, leadMs: 300_000, retryMs: 300_000 },
+      },
       catalogReloadMs: 300_000,
       health: { initialBackoffMs: 2_000, maximumBackoffMs: 8_000 },
     })
@@ -31,15 +36,37 @@ describe("official connector host options", () => {
     "credentialRefresh",
     "writeBackCredentials",
     "xaiOAuth",
-  ])("preserves the retired %s field for explicit rejection", (field) => {
+  ])("preserves invalid %s input for boundary rejection", (field) => {
     // Given
-    const input = { [field]: false, extra: true }
+    const input = { [field]: "invalid", extra: true }
     // When
     const result = ConnectorOptionsSchema.safeParse(pickConnectorOptionsInput(input))
     // Then
     expect(result.success).toBe(false)
-    if (result.success) throw new Error("Retired option was accepted")
+    if (result.success) throw new Error("Invalid option was accepted")
     expect(result.error.issues.some((issue) => issue.path[0] === field)).toBe(true)
+  })
+
+  it("retains reader ownership without leaking unrelated host options", () => {
+    // Given
+    const input = { credentialRole: "reader", name: "host" }
+    // When
+    const options = parseConnectorOptions(pickConnectorOptionsInput(input))
+    // Then
+    expect(options.credentialRefresh).toEqual({ mode: "never", leadMs: 60_000 })
+    expect(options.writeBackCredentials).toBe(false)
+    expect(options.credentialAuthority.claudeCli.enabled).toBe(false)
+    expect("credentialRole" in options).toBe(false)
+    expect("name" in options).toBe(false)
+  })
+
+  it("retains ownership conflicts so host extraction cannot authorize them", () => {
+    // Given
+    const input = { credentialRole: "reader", writeBackCredentials: true, extra: true }
+    // When
+    const result = ConnectorOptionsSchema.safeParse(pickConnectorOptionsInput(input))
+    // Then
+    expect(result.success).toBe(false)
   })
 
   it("rejects a selected Cursor provider rather than silently dropping it", () => {
