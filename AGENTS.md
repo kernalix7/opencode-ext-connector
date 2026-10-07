@@ -2,7 +2,7 @@
 
 **Updated:** 2026-10-07
 **Code baseline:** Corrective `v0.9.0` candidate: existing credentials, scoped generation, trusted Ollama, retired Cursor/xAI projection.
-**Candidate:** Based on published main `59808e6` and immutable `v0.7.1` (`29175e3`). Credential protocols and ownership lifecycle are restored. Pinned checks/build and 613 tests pass; exact 222-member payload is frozen. Publication requires parent QA, gate review and exact-commit CI/OIDC.
+**Candidate:** Based on published main `59808e6` and immutable `v0.7.1` (`29175e3`). Credential protocols and ownership lifecycle are restored. Repeated persisted renewal and per-provider credential-failure isolation have regression coverage; pinned checks/build and 618 tests pass. Re-freeze the exact payload after these corrections. Publication requires parent QA, fresh gate review and exact-commit CI/OIDC.
 
 ## OVERVIEW
 
