@@ -1,14 +1,14 @@
 # PROJECT KNOWLEDGE BASE
 
-**Updated:** 2026-10-02
-**Code baseline:** `v0.8.0` candidate (official API-key Claude/Command Code, trusted Ollama, retired Cursor/xAI projection, account-scoped generation).
-**Candidate:** Based on `origin/main` at `29175e3`; migration is active and unpublished. Final checks, frozen hashes, and four release gates remain pending.
+**Updated:** 2026-10-07
+**Code baseline:** Corrective `v0.9.0` candidate: existing credentials, scoped generation, trusted Ollama, retired Cursor/xAI projection.
+**Candidate:** Based on published main `59808e6` and immutable `v0.7.1` (`29175e3`). Credential protocols and ownership lifecycle are restored. Pinned checks/build and 613 tests pass; exact 222-member payload is frozen. Publication requires parent QA, gate review and exact-commit CI/OIDC.
 
 ## OVERVIEW
 
-Unofficial OpenCode plugin exposing Claude and Command Code official APIs plus
-a trusted Ollama daemon from one `opencode.json` entry. Claude and Command Code
-use API keys; Cursor is unsupported and xAI OAuth projection is retired. Source is
+Unofficial OpenCode plugin reusing existing Claude Code and Command Code credentials
+plus a trusted Ollama daemon from one `opencode.json` entry. Standalone API-key SDK
+use is separate and explicit; Cursor is unsupported and xAI OAuth projection is retired. Source is
 BSD-3-Clause; third-party access and terms remain the user's responsibility.
 
 Stack: Bun 1.3.14, TypeScript 6.0.2 strict, Zod 4.1.8,
@@ -23,8 +23,8 @@ src/v2.ts                      V2 default export; does not replace the six root 
 src/server.ts                  catalog/auth composition and process-level dependencies
 src/core/                      frozen provider-agnostic contracts; see AGENTS.md
 src/opencode/                  auth store, registry, V1 hooks, catalog/language wiring
-src/providers/claude/          api-* catalog/adapter/language modules; see AGENTS.md
-src/providers/command-code/    api-* catalog and supported-endpoint dispatch
+src/providers/claude/          credentials, compatibility and optional api-* SDK modules
+src/providers/command-code/    CLI credential/NDJSON protocol and optional api-* SDK modules
 src/providers/cursor/          retirement knowledge document only; SDK stub in src/sdk/
 src/providers/ollama/          trusted daemon endpoints and catalog runtime; see AGENTS.md
 src/providers/xai/             retirement knowledge document only
@@ -46,11 +46,11 @@ tests/                         unit/integration/e2e suites and fakes; see AGENTS
 | Server composition | `src/server.ts` | Registry, transports, auth servers, disposal |
 | Shared contracts | `src/core/AGENTS.md` | No provider protocol or concrete I/O |
 | OpenCode integration | `src/opencode/` | V1 API boundary; actual V2 imports stay in `beta-api.ts` |
-| Claude changes | `src/providers/claude/AGENTS.md` | Official Models/Messages APIs and API-key generation |
+| Claude changes | `src/providers/claude/AGENTS.md` | Existing OAuth source, lineage-aware lifecycle and scoped compatibility generation |
 | Process supervision | `src/process/production-supervisor.ts` | Spawn, abort, termination, and process cleanup |
 | Cursor retirement | `src/sdk/cursor.ts` | `languageModel()` throws `CursorRetiredError` |
 | Ollama changes | `src/providers/ollama/AGENTS.md` | Local/Cloud catalog and configured-daemon generation |
-| Command Code changes | `src/providers/command-code/api-*.ts` | Official catalog and chat/messages/responses routes |
+| Command Code changes | `src/providers/command-code/` | Existing CLI catalog and `/alpha/generate`; api-* is optional SDK only |
 | xAI retirement | `src/xai.ts`, `src/providers/xai/AGENTS.md` | Dedicated entry throws `XaiOAuthRetiredError`; native xAI keys are outside this connector |
 | V1 account binding | `src/opencode/v1-{binding,owner,generation,language,catalog}.ts` | Opaque binding, key-pinned generation, request revalidation |
 | V2 account scope | `src/opencode/v2-{auth,refresh,catalog,language}.ts` | Selected connection, scope rotation, per-dispatch checks |
@@ -68,18 +68,28 @@ tests/                         unit/integration/e2e suites and fakes; see AGENTS
   `xaiAuthServer`.
 - `src/opencode/providers.ts` owns cross-provider registration; protocol code
   stays inside its provider directory.
-- V1 Claude/Command Code use their dedicated `claude` / `command-code` API
-  records, then `ANTHROPIC_API_KEY` / `COMMAND_CODE_API_KEY` when no match exists.
-  OAuth and CLI-session markers are not API keys. Claude's integration ID is
-  `claude`, not `anthropic`. Ollama requires its exact marker and responsive daemon.
-- Claude uses `/v1/models` and `/v1/messages`. Command Code uses
-  `/provider/v1/models` and advertised `supported_endpoints` for
-  `/provider/v1/chat/completions`, `/provider/v1/messages`, or `/provider/v1/responses`.
-  No guessed model IDs, vendor CLI, subscription credential files, CLI identity,
-  private NDJSON/protobuf, authority scheduler, OAuth refresh, or writeback.
-- `credentialRole`, `credentialManagement`, `credentialAuthority`,
-  `credentialRefresh`, `writeBackCredentials`, and `xaiOAuth` reject whenever
-  present, even alone or disabled; none remains an active policy option.
+- V1 Claude uses the existing `anthropic` OAuth record or exact session marker
+  plus its vendor source; provider id is `claude`, integration id is `anthropic`.
+  Command Code uses its exact marker plus existing source or selected direct key.
+  Markers are not outbound tokens; missing sessions never trigger paid API fallback.
+- Default Claude uses bearer Models/Messages with published compatibility metadata.
+  Default Command Code uses its bearer catalog and provider-local `/alpha/generate`
+  NDJSON. Dynamic versions resolve from override, optional binary, then npm.
+  No vendor generation CLI is required by default; owner authority is separate.
+- The connector accepts and normalizes `credentialRole`,
+  `credentialManagement`, `credentialAuthority`, `credentialRefresh`, and
+  `writeBackCredentials`. Policies are wired to the shared per-scope Claude manager;
+  writeback requires explicit capability. `xaiOAuth` still rejects whenever present.
+- Restore necessary published protocol compatibility inside the current account,
+  membership and lifetime boundaries, not by reverting unscoped host loaders.
+  No inspected source established authentication-signature forgery or an access-control
+  bypass. Do not add new evasion/identity/signature mechanisms or advertise an
+  unverified neutral protocol. Lack of official support is not proof that source
+  restoration is technically impossible, and licensed source grants no service permission.
+- Preserve existing-credential/no-required-native-generation-CLI/no-paid-fallback
+  conditions. Optional standalone API SDKs remain a separate explicitly selected path.
+  Managed refresh descendants may retain scope only while the source/gate is current;
+  unknown external credential/source replacement must revoke captured views.
 - Root Cursor/xAI auth functions return empty hooks. The Cursor SDK rejects
   generation; the dedicated `/xai` entry rejects loading. Use native OpenCode
   xAI API keys outside this connector.
@@ -99,9 +109,9 @@ tests/                         unit/integration/e2e suites and fakes; see AGENTS
 - `ollamaBaseURL` is a flat connector and standalone SDK option. It defaults to
   `http://localhost:11434`; explicit remote/self-hosted bases preserve path
   prefixes and are normalized for Ollama state. Do not add it to core options.
-- Ordinary hosts and sandbox guests both use API keys available to their own
-  OpenCode runtime and writable protected auth storage. Subscription credential
-  mounts are not used. Guest Ollama needs an explicit reachable host route when
+- Ordinary hosts and guests reuse credential sources available to their own runtime.
+  Shared readers use externally managed, read-only sources and separate protected
+  writable OpenCode auth storage. Guest Ollama needs an explicit reachable host route when
   guest `localhost` is not the daemon host; daemon-side Cloud login stays separate.
 
 ## WORKSPACE HANDOFF
