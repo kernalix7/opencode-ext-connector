@@ -8,7 +8,7 @@ const roots: string[] = []
 const script = new URL("../../../scripts/check-release-payload.ts", import.meta.url).pathname
 const mtime = "1985-10-26 08:15:00"
 const payload = "reviewed payload\n"
-const packageJson = '{"name":"opencode-ext-connector","version":"0.8.0"}'
+const packageJson = '{"name":"opencode-ext-connector","version":"0.9.0"}'
 const hash = (bytes: string | Uint8Array): string =>
   createHash("sha256").update(bytes).digest("hex")
 
@@ -26,7 +26,7 @@ async function fixture(): Promise<string> {
     join(root, "manifest.json"),
     JSON.stringify({
       name: "opencode-ext-connector",
-      version: "0.8.0",
+      version: "0.9.0",
       originalTarballSha256: "0".repeat(64),
       ignoredContainerMetadata: ["member order", "numeric ownership", "gzip header mtime"],
       members: [
@@ -109,7 +109,7 @@ describe("release payload guard", () => {
           options.push("--transform=s|package/payload.js|package/../payload.js|")
           break
         case "version":
-          await writeFile(join(root, "package/package.json"), packageJson.replace("0.8.0", "0.8.1"))
+          await writeFile(join(root, "package/package.json"), packageJson.replace("0.9.0", "0.9.1"))
           break
         case "link":
           await rm(join(root, "package/payload.js"))
