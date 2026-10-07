@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.9.0 - 2026-10-07
+
+- Correct the 0.8 API-only direction by restoring the original existing-credential
+  plugin purpose: Claude Code OAuth/keychain/files and Command Code CLI
+  credentials/files or an explicitly selected direct key. No mandatory native
+  generation CLI and no implicit paid API fallback; standalone API SDKs remain
+  separate and voluntary. This correction does not imply user approval of 0.8.
+- Restore scoped V1 `claude` provider → `anthropic` integration gates and exact
+  CLI-session markers plus vendor credentials. V2 uses only selected `active` /
+  `resolve`, without V1-store or alternative process-env fallback.
+- Restore Claude-compatible bearer Models/Messages and Command Code
+  `GET /provider/v1/models` plus `/alpha/generate` NDJSON. Resolve client versions
+  dynamically from env, optional installed `--version`, then npm; never constants.
+- Restore Claude owner/reader and low-level credential policy: omitted auto/
+  `60_000` without writeback, connector auto/writeback, external never/no-write.
+  One Linux owner per shared login may opt into the flock-coordinated Claude CLI
+  authority (>=2.1.265); its real request may consume usage. Readers remain
+  external without authority; roles exclude low-level policy, while deprecated
+  refresh/writeback remain accepted alone. `xaiOAuth` remains rejected.
+- Retain account/source/gate/lifetime isolation. Unknown external token, account,
+  or source replacement revokes old model views and requires fresh catalog binding;
+  only known managed-refresh descendants may retain scope. Do not silently replay
+  an old prompt under a replacement account. Restore read-only host credential
+  mounts/readers with separate protected writable guest OpenCode auth storage.
+- Keep the three-provider default, Cursor exclusion, xAI retirement, six V1 root/
+  server exports, separate V2 default and CLI 2.0.20 `dist/v2-entry` directory loader.
+- Preserve global Ollama JSON discovery, exact manifest/config/digest/remote-host/
+  zero-layer proof, exact selected-reference pre-pull revalidation, trusted-daemon
+  auto-pull/chat, local-first behavior, leases, cancellation and last-complete
+  refresh retention. No static Cloud list or direct Cloud credential fallback.
+- Preserve unofficial branding, attribution and full bilingual disclaimers.
+  Third-party credential reuse may be restricted by service terms; protocols may
+  break and accounts may be restricted. Source licensing is not vendor permission.
+  Offline fakes and isolated real host/loopback tests do not prove live entitlement,
+  vendor acceptance, zero-cost use or billing treatment.
+
 ## 0.8.0 - 2026-10-01
 
 - Migrate Claude and Command Code to official API-key integrations and SDKs.
