@@ -1,7 +1,9 @@
 import { OperationCancelledError } from "../core/errors.js"
 import type { HealthPolicy } from "../core/health.js"
+import { parseProviderId } from "../core/ids.js"
 import { createAsyncDisposable } from "../core/lifecycle.js"
 import type { ConnectorLogger } from "../core/logger.js"
+import { type HealthStore, recordCredentialFailure } from "./health-refresh.js"
 import type { ProviderEntry, ProviderEntryDeps } from "./provider-entry.js"
 import type { SubscriptionObservation } from "./subscription-scope.js"
 import { createSubscriptionScope } from "./subscription-scope.js"
@@ -37,6 +39,7 @@ export function createV1Owner(options: {
   const generations = new Map<V1ApiProvider, V1Generation>()
   const observations = new Map<V1ApiProvider, Promise<V1Generation | undefined>>()
   const pendingDisposals = new Set<Promise<void>>()
+  const credentialHealth: HealthStore = new Map()
   const disposalErrors: unknown[] = []
   let disposed = false
   let refreshing: Promise<void> | undefined
@@ -88,7 +91,35 @@ export function createV1Owner(options: {
                 } satisfies SubscriptionObservation)
               : null
         } else {
-          observation = await scope.observe(provider, caller)
+          const current = credentialHealth.get(parseProviderId(provider))
+          if (
+            current?.retryAtMs !== null &&
+            current?.retryAtMs !== undefined &&
+            options.deps.clock.nowMs() < current.retryAtMs
+          )
+            return undefined
+          try {
+            observation = await scope.observe(provider, caller)
+            credentialHealth.delete(parseProviderId(provider))
+          } catch (error: unknown) {
+            if (
+              caller.aborted ||
+              lifetime.aborted ||
+              error instanceof OperationCancelledError ||
+              (error instanceof DOMException && error.name === "AbortError")
+            )
+              throw error
+            retire(provider)
+            recordCredentialFailure({
+              providerId: parseProviderId(provider),
+              error,
+              clock: options.deps.clock,
+              health: options.health,
+              store: credentialHealth,
+              logger: options.logger,
+            })
+            return undefined
+          }
         }
       } catch (error: unknown) {
         retire(provider)
