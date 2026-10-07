@@ -143,7 +143,11 @@ export function createClaudeTokenManager(options: ClaudeTokenOptions): ClaudeTok
       failures = 0
       retryAt = 0
       if (current?.lineageId !== observed.lineageId) return null
-      current = { ...current, credentials: result.credentials }
+      current = {
+        ...current,
+        credentials: result.credentials,
+        revision: source?.revision ?? current.revision,
+      }
       return result.credentials.accessToken
     })()
     flight = operation.finally(() => {
