@@ -3,12 +3,12 @@ import type { LanguageModelV3CallOptions } from "@ai-sdk/provider"
 import { NoSuchModelError } from "@ai-sdk/provider"
 import type { Hooks } from "@opencode-ai/plugin"
 
-import { createProviderRegistry } from "../../../src/opencode/providers"
 import { languageForV1Provider } from "../../../src/opencode/v1-language"
 import { buildV1Hooks } from "../../../src/opencode/v1-module"
 import { createClaude } from "../../../src/sdk/claude"
 import { FakeClock } from "../../support/clock"
 import { FakeHttpTransport } from "../../support/http"
+import { apiTestEntry } from "./api-test-entry"
 
 type HostConfig = Parameters<NonNullable<Hooks["config"]>>[0]
 const prompt: LanguageModelV3CallOptions["prompt"] = [
@@ -39,7 +39,7 @@ async function fixture() {
       matchAuth: async (provider) =>
         provider === "claude" && key !== null ? { kind: "api-key", key } : null,
     },
-    providers: createProviderRegistry().filter((entry) => entry.id === "claude"),
+    providers: [apiTestEntry()],
     npmSpecifiers: { claude: "file:///fixture/claude.js" },
   })
   const config: HostConfig = {}

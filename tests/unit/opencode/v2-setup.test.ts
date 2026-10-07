@@ -10,7 +10,7 @@ import { createV2Host, credentialConnection } from "./v2-host"
 
 function deps(transport: FakeHttpTransport): V2SetupDependencies {
   return {
-    env: {},
+    env: { COMMAND_CODE_CLI_VERSION: "9.9.9", PATH: "" },
     clock: new FakeClock(),
     createTransport: () => transport,
     createLogger: () => ({ log: () => undefined }),
@@ -23,7 +23,7 @@ function catalog(transport: FakeHttpTransport): void {
     headers: {},
     body: new TextEncoder().encode(
       JSON.stringify({
-        data: [{ id: "qwen-test", supported_endpoints: ["/provider/v1/chat/completions"] }],
+        data: [{ id: "qwen-test" }],
       }),
     ),
   })
@@ -71,7 +71,7 @@ describe("official V2 setup", () => {
     // When
     const cleanup = await setupV2Connector(host, deps(new FakeHttpTransport()))
     // Then
-    expect(host.methods.every((method) => method.integrationID === "claude")).toBe(true)
+    expect(host.methods.every((method) => method.integrationID === "anthropic")).toBe(true)
     await cleanup()
   })
 
@@ -114,24 +114,13 @@ describe("official V2 setup", () => {
     },
   )
 
-  it("generates through the advertised official endpoint with the selected key", async () => {
+  it("generates through the selected direct key on the existing Command Code protocol", async () => {
     // Given
     const state = await connected()
-    catalog(state.transport)
     state.transport.enqueueResponse({
       status: 200,
-      headers: { "content-type": "application/json" },
-      body: new TextEncoder().encode(
-        JSON.stringify({
-          id: "chat_fixture",
-          created: 1700000000,
-          model: "qwen-test",
-          choices: [
-            { index: 0, message: { role: "assistant", content: "hello" }, finish_reason: "stop" },
-          ],
-          usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
-        }),
-      ),
+      headers: { "content-type": "application/x-ndjson" },
+      body: new TextEncoder().encode('{"type":"text-delta","text":"hello"}\n{"type":"finish"}'),
     })
     // When
     const generated = await state.language.doGenerate({
@@ -139,9 +128,7 @@ describe("official V2 setup", () => {
     })
     // Then
     expect(generated.content).toContainEqual({ type: "text", text: "hello" })
-    expect(state.transport.requests.at(-1)?.url).toBe(
-      "https://api.commandcode.ai/provider/v1/chat/completions",
-    )
+    expect(state.transport.requests.at(-1)?.url).toBe("https://api.commandcode.ai/alpha/generate")
     expect(state.transport.requests.at(-1)?.headers["authorization"]).toBe("Bearer fixture-key")
     await state.cleanup()
   })

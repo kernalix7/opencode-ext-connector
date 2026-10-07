@@ -10,6 +10,7 @@ import { createClaude } from "../../../src/sdk/claude"
 import { FakeClock } from "../../support/clock"
 import { FakeHttpTransport } from "../../support/http"
 import { getTestPackageDist } from "../../support/test-package"
+import { apiTestEntry } from "./api-test-entry"
 import { cleanups, fixture } from "./v1-generation-edge-fixtures"
 
 type HostConfig = Parameters<NonNullable<Hooks["config"]>>[0]
@@ -163,7 +164,12 @@ describe("V1 generation edges", () => {
       env: {},
       catalogReloadMs: 0,
       authStore: { matchAuth: async () => ({ kind: "api-key", key: "fixture-built" }) },
-      providers: builtProviders.createProviderRegistry().filter((entry) => entry.id === "claude"),
+      providers: [
+        {
+          ...builtProviders.createProviderRegistry().find((entry) => entry.id === "claude"),
+          ...apiTestEntry(),
+        },
+      ],
       npmSpecifiers: { claude: pathToFileURL(join(dist, "sdk/claude.js")).href },
     })
     cleanups.push(async () => {

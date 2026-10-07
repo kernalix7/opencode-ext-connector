@@ -41,6 +41,12 @@ describe("V2 post-await dispatch membership", () => {
         generation: () => 1,
         lifetime: new AbortController().signal,
         providerIds: ["claude"],
+        scope: {
+          observe: async () => null,
+          forceClaude: async () => null,
+          dispose: async () => undefined,
+        },
+        matchesSource: async () => "fixture-key",
         isConnected: async () => {
           checks += 1
           if (checks === 4) {

@@ -12,13 +12,13 @@ it("uses only the configured OpenCode data location", () => {
   expect(paths).toEqual(["/isolated/data/opencode/auth.json"])
 })
 
-it("reads dedicated API records without consulting native anthropic or xai", async () => {
+it("reads only the existing anthropic session marker, not a dedicated Claude API key", async () => {
   // Given
   const store = createOpenCodeAuthStore({
     env: { XDG_DATA_HOME: "/isolated/data" },
     readFile: async () =>
       JSON.stringify({
-        anthropic: { type: "api", key: "native-key" },
+        anthropic: { type: "api", key: "cli-session:anthropic" },
         xai: { type: "api", key: "native-xai-key" },
         claude: { type: "api", key: "dedicated-key" },
       }),
@@ -26,13 +26,13 @@ it("reads dedicated API records without consulting native anthropic or xai", asy
   // When
   const match = await store.matchAuth("claude")
   // Then
-  expect(match).toEqual({ kind: "api-key", key: "dedicated-key" })
+  expect(match).toEqual({ kind: "marker" })
 })
 
-it("rejects OAuth, CLI markers and malformed dedicated key records", async () => {
+it("rejects wrong markers, API keys and incomplete subscription records", async () => {
   // Given
   const records = [
-    { type: "oauth", access: "old", refresh: "old", expires: 99 },
+    { type: "oauth", refresh: "old", expires: 99 },
     { type: "api", key: "cli-session:claude" },
     { type: "api", key: "key", extra: "not-supported" },
   ]
@@ -41,7 +41,7 @@ it("rejects OAuth, CLI markers and malformed dedicated key records", async () =>
     records.map(async (claude) =>
       createOpenCodeAuthStore({
         env: { XDG_DATA_HOME: "/isolated/data" },
-        readFile: async () => JSON.stringify({ claude }),
+        readFile: async () => JSON.stringify({ anthropic: claude }),
       }).matchAuth("claude"),
     ),
   )

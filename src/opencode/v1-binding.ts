@@ -25,6 +25,10 @@ export type V1ApiProvider = "claude" | "command-code"
 export type V1ModelView = {
   readonly signal: AbortSignal
   readonly transport: HttpTransport
+  readonly readAccessToken: (signal: AbortSignal) => Promise<string | null>
+  readonly forceRefreshAccessToken: (signal: AbortSignal) => Promise<string | null>
+  readonly env: Readonly<Record<string, string | undefined>>
+  readonly route: "api" | "subscription"
   readonly readApiKey: (signal: AbortSignal) => Promise<string | null>
 }
 export type V1BindingOwner = {

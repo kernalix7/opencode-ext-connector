@@ -18,26 +18,9 @@ const prompt: LanguageModelV3CallOptions = {
 function enqueueGeneration(transport: FakeHttpTransport): void {
   transport.enqueueResponse({
     status: 200,
-    headers: {},
+    headers: { "content-type": "application/x-ndjson" },
     body: new TextEncoder().encode(
-      JSON.stringify({
-        data: [{ id: "qwen-test", supported_endpoints: ["/provider/v1/chat/completions"] }],
-      }),
-    ),
-  })
-  transport.enqueueResponse({
-    status: 200,
-    headers: { "content-type": "application/json" },
-    body: new TextEncoder().encode(
-      JSON.stringify({
-        id: "chat_fixture",
-        created: 1700000000,
-        model: "qwen-test",
-        choices: [
-          { index: 0, message: { role: "assistant", content: "fresh" }, finish_reason: "stop" },
-        ],
-        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
-      }),
+      '{"type":"start"}\n{"type":"text-delta","text":"fresh"}\n{"type":"finish","finishReason":"stop","totalUsage":{}}',
     ),
   })
 }
@@ -54,12 +37,12 @@ async function connectedScope() {
     headers: {},
     body: new TextEncoder().encode(
       JSON.stringify({
-        data: [{ id: "qwen-test", supported_endpoints: ["/provider/v1/chat/completions"] }],
+        data: [{ id: "qwen-test" }],
       }),
     ),
   })
   const cleanup = await setupV2Connector(host, {
-    env: {},
+    env: { COMMAND_CODE_CLI_VERSION: "9.9.9", PATH: "" },
     clock: new FakeClock(),
     createTransport: () => transport,
     createLogger: (clock) => createConnectorLogger(clock, new MemoryLogSink()),
@@ -168,7 +151,7 @@ describe("V2 scoped language lifetime", () => {
         expect(sdkCache.has(current.sdkKey)).toBe(false)
         expect(selected).not.toBe(cached)
         expect(generated.content).toEqual([{ type: "text", text: "fresh" }])
-        expect(second.transport.requests.at(-1)?.url).toEndWith("/provider/v1/chat/completions")
+        expect(second.transport.requests.at(-1)?.url).toEndWith("/alpha/generate")
         expect(first.transport.requests).toHaveLength(previousRequests)
         expect(materializedModel(second.host).languageKey).toBe(current.languageKey)
         expect(materializedModel(second.host).sdkKey).toBe(current.sdkKey)

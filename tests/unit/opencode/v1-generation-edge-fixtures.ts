@@ -1,18 +1,18 @@
 import type { Hooks } from "@opencode-ai/plugin"
 
 import type { HttpTransport } from "../../../src/core/http"
-import { createProviderRegistry } from "../../../src/opencode/providers"
 import { createV1CatalogProjector } from "../../../src/opencode/v1-catalog"
 import { createV1Owner } from "../../../src/opencode/v1-owner"
 import { FakeClock } from "../../support/clock"
 import { FakeHttpTransport } from "../../support/http"
+import { apiTestEntry } from "./api-test-entry"
 
 export const cleanups: (() => Promise<void>)[] = []
 
 export function fixture(keyValue: string, transport: HttpTransport = new FakeHttpTransport()) {
   let key = keyValue
   const clock = new FakeClock()
-  const providers = createProviderRegistry().filter((entry) => entry.id === "claude")
+  const providers = [apiTestEntry()]
   const deps = {
     clock,
     transport,

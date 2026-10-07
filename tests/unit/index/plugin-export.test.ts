@@ -57,7 +57,7 @@ describe("plugin export", () => {
 
   it("ignores malformed Ollama options when constructing a Command Code model", () => {
     // Given
-    const provider = createCommandCode({ ollamaBaseURL: null })
+    const provider = createCommandCode({ apiKey: "synthetic-api-key", ollamaBaseURL: null })
 
     // When
     const model = provider.languageModel("Qwen/Qwen3.8-Max")

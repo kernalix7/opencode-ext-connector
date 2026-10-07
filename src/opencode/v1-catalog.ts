@@ -101,7 +101,11 @@ export function createV1CatalogProjector(options: {
         break
       case "ready":
       case "stale": {
-        const models = modelRecord(snapshot, entry, !bindings.has(entry.id))
+        const models = modelRecord(
+          snapshot,
+          entry,
+          entry.id !== "claude" && entry.id !== "command-code" && !bindings.has(entry.id),
+        )
         if (Reflect.ownKeys(models).length === 0) modelsByProvider.delete(entry.id)
         else modelsByProvider.set(entry.id, models)
         break

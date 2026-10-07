@@ -4,6 +4,11 @@ import type { ConnectorLogger } from "../core/logger.js"
 import { type HealthStore, refreshAdaptersWithHealth } from "./health-refresh.js"
 import type { ProviderEntry, ProviderEntryDeps } from "./provider-entry.js"
 import {
+  type SubscriptionObservation,
+  type SubscriptionScope,
+  sameSubscription,
+} from "./subscription-scope.js"
+import {
   unavailableV1Model,
   type V1ApiProvider,
   type V1Binding,
@@ -12,7 +17,7 @@ import {
 import type { V1CatalogProjector } from "./v1-catalog.js"
 
 export type V1Generation = {
-  readonly key: string
+  readonly matches: (observation: SubscriptionObservation) => boolean
   readonly binding: V1Binding
   readonly refresh: () => Promise<void>
   readonly bind: (modelId: string) => V1ModelView
@@ -22,7 +27,8 @@ export type V1Generation = {
 export function createV1Generation(options: {
   readonly entry: ProviderEntry
   readonly provider: V1ApiProvider
-  readonly key: string
+  readonly observation: SubscriptionObservation
+  readonly scope: SubscriptionScope
   readonly binding: V1Binding
   readonly deps: ProviderEntryDeps
   readonly projector: V1CatalogProjector
@@ -37,13 +43,31 @@ export function createV1Generation(options: {
   const signal = AbortSignal.any([options.lifetime, controller.signal])
   const health: HealthStore = new Map()
   const membership = new Set<string>()
+  const readAccessToken = async (caller: AbortSignal): Promise<string | null> => {
+    await options.observe(caller)
+    const current =
+      options.entry.route === "api"
+        ? await options.deps.authStore
+            .matchAuth(options.provider)
+            .then((gate) =>
+              gate?.kind === "api-key"
+                ? { gate, token: gate.key, sourceIdentity: "selected-connection" }
+                : null,
+            )
+        : await options.scope.observe(options.provider, caller)
+    if (
+      signal.aborted ||
+      !options.isCurrent() ||
+      current === null ||
+      !sameSubscription(options.observation, current)
+    )
+      throw unavailableV1Model(options.entry.id)
+    return current.token
+  }
   const adapter: ProviderAdapter = options.entry.createAdapter({
     ...options.deps,
     allowEnvironmentKeys: false,
-    authStore: {
-      matchAuth: async (provider) =>
-        provider === options.provider ? { kind: "api-key", key: options.key } : null,
-    },
+    readAccessToken,
   })
   let disposal: Promise<void> | undefined
   const authorize = async (modelId: string, caller: AbortSignal): Promise<AbortSignal> => {
@@ -56,7 +80,7 @@ export function createV1Generation(options: {
     return combined
   }
   return {
-    key: options.key,
+    matches: (observation) => sameSubscription(options.observation, observation),
     binding: options.binding,
     refresh: () =>
       refreshAdaptersWithHealth({
@@ -85,9 +109,18 @@ export function createV1Generation(options: {
       }
       return {
         signal,
-        readApiKey: async (caller) => {
+        env: options.deps.env,
+        route: options.entry.route ?? "subscription",
+        readApiKey: readAccessToken,
+        readAccessToken: async (caller) => {
           await authorize(modelId, caller)
-          return options.key
+          return readAccessToken(caller)
+        },
+        forceRefreshAccessToken: async (caller) => {
+          await authorize(modelId, caller)
+          if (options.provider !== "claude") return null
+          await options.scope.forceClaude(caller)
+          return readAccessToken(caller)
         },
         transport: {
           request: async (request, caller) => {

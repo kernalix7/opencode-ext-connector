@@ -3,6 +3,8 @@ import type { AuthHook } from "@opencode-ai/plugin"
 import type { ProviderAdapter } from "../core/adapter.js"
 import type { Clock } from "../core/clock.js"
 import type { HttpTransport } from "../core/http.js"
+import type { CredentialRefreshPolicy } from "../core/options.js"
+import type { ClaudeAuthLookup, ClaudeTokenManager } from "../providers/claude/auth.js"
 import type { OpenCodeAuthStore } from "./auth-store.js"
 import type { IntegrationEnvMethod } from "./beta-api.js"
 
@@ -12,6 +14,11 @@ export type ProviderEntryDeps = {
   readonly clock: Clock
   readonly authStore: OpenCodeAuthStore
   readonly allowEnvironmentKeys?: boolean
+  readonly claudeAuthLookup?: ClaudeAuthLookup
+  readonly claudeTokenManager?: ClaudeTokenManager
+  readonly credentialRefresh?: CredentialRefreshPolicy
+  readonly writeBackCredentials?: boolean
+  readonly readAccessToken?: (signal: AbortSignal) => Promise<string | null>
 }
 
 export type ProviderEntry = {
@@ -19,9 +26,12 @@ export type ProviderEntry = {
   readonly displayName: string
   readonly integrationId: string
   readonly integrationMethod: IntegrationEnvMethod
+  readonly route?: "api" | "subscription"
   readonly fallbackModelIds?: readonly string[]
   readonly providerOptions?: Readonly<Record<string, unknown>>
   readonly createAdapter: (deps: ProviderEntryDeps) => ProviderAdapter
-  readonly createAuthHook: (deps: ProviderEntryDeps) => AuthHook
+  readonly createAuthHook: (
+    deps: ProviderEntryDeps,
+  ) => AuthHook & { readonly dispose?: () => Promise<void> }
   readonly isConnected: (deps: ProviderEntryDeps) => Promise<boolean>
 }

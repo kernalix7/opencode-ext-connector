@@ -18,27 +18,34 @@ function source(
 
 describe("V2 selected connection", () => {
   it.each([
-    ["claude", "ANTHROPIC_API_KEY"],
+    ["claude", "CLAUDE_EXT_CONNECTOR_ENABLED"],
     ["command-code", "COMMAND_CODE_API_KEY"],
   ] as const)("resolves the selected %s env key through the host", async (provider, name) => {
     // Given
     const store = createV2AuthStore({
       entries,
-      connection: source({ type: "env", name }, "selected-key"),
+      connection: source(
+        { type: "env", name },
+        provider === "claude" ? "cli-session:anthropic" : "selected-key",
+      ),
     })
 
     // When
     const match = await store.matchAuth(provider)
 
     // Then
-    expect(match).toEqual({ kind: "api-key", key: "selected-key", connectionId: name })
+    expect(match).toEqual(
+      provider === "claude"
+        ? { kind: "marker", connectionId: name }
+        : { kind: "api-key", key: "selected-key", connectionId: name },
+    )
   })
 
   it("refuses an unresolved selected env even when a process key exists", async () => {
     // Given
     const store = createV2AuthStore({
       entries,
-      connection: source({ type: "env", name: "ANTHROPIC_API_KEY" }, undefined),
+      connection: source({ type: "env", name: "CLAUDE_EXT_CONNECTOR_ENABLED" }, undefined),
     })
 
     // When
@@ -71,7 +78,7 @@ describe("V2 selected connection", () => {
     expect(oauthMatch).toBeNull()
   })
 
-  it("refuses retired markers and exposes only the dedicated key connection identity", async () => {
+  it("accepts the exact session marker and refuses an API key on the same connection", async () => {
     // Given
     const selected = {
       type: "credential",
@@ -82,7 +89,7 @@ describe("V2 selected connection", () => {
     const store = createV2AuthStore({ entries, connection: source(selected, "account-two-key") })
     const marker = createV2AuthStore({
       entries,
-      connection: source(selected, "cli-session:claude"),
+      connection: source(selected, "cli-session:anthropic"),
     })
 
     // When
@@ -90,8 +97,8 @@ describe("V2 selected connection", () => {
     const retired = await marker.matchAuth("claude")
 
     // Then
-    expect(match).toEqual({ kind: "api-key", key: "account-two-key", connectionId: "account-two" })
-    expect(retired).toBeNull()
+    expect(match).toBeNull()
+    expect(retired).toEqual({ kind: "marker", connectionId: "account-two" })
   })
 
   it("keeps Ollama's exact marker rule", async () => {

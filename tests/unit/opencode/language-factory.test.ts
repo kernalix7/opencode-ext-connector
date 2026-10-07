@@ -4,13 +4,14 @@ import { createConnectorLanguage } from "../../../src/opencode/language-factory"
 import type { OllamaRuntime } from "../../../src/providers/ollama"
 import { FakeHttpTransport } from "../../support/http"
 
-describe("official connector language routing", () => {
+describe("connector language routing", () => {
   it("does not register a Cursor or xAI language implementation", () => {
     // Given
     const createLanguage = createConnectorLanguage({
       transport: new FakeHttpTransport(),
-      readClaudeApiKey: async () => null,
-      readCommandCodeApiKey: async () => null,
+      env: {},
+      readAccessToken: async () => null,
+      forceRefreshAccessToken: async () => null,
     })
     // When
     const cursor = createLanguage("cursor", "auto")
@@ -30,8 +31,9 @@ describe("official connector language routing", () => {
     }
     const createLanguage = createConnectorLanguage({
       transport: new FakeHttpTransport(),
-      readClaudeApiKey: async () => null,
-      readCommandCodeApiKey: async () => null,
+      env: {},
+      readAccessToken: async () => null,
+      forceRefreshAccessToken: async () => null,
       ollamaRuntime,
     })
     const model = createLanguage("ollama", "local-model")

@@ -6,7 +6,9 @@ import type { HealthPolicy } from "../core/health.js"
 import type { HttpTransport } from "../core/http.js"
 import { createAsyncDisposable } from "../core/lifecycle.js"
 import type { ConnectorLogger } from "../core/logger.js"
+import type { CredentialRefreshPolicy } from "../core/options.js"
 import { parseConnectorOptions } from "../core/options.js"
+import type { ClaudeAuthLookup } from "../providers/claude/auth.js"
 import type { OpenCodeAuthStore } from "./auth-store.js"
 import { type HealthStore, refreshAdaptersWithHealth } from "./health-refresh.js"
 import { pickConnectorOptionsInput } from "./host-options.js"
@@ -26,6 +28,9 @@ export type V1ServerOptions = {
   readonly health?: HealthPolicy
   readonly logger?: ConnectorLogger
   readonly npmSpecifiers?: Readonly<Record<string, string>>
+  readonly credentialRefresh?: CredentialRefreshPolicy
+  readonly writeBackCredentials?: boolean
+  readonly claudeAuthLookup?: ClaudeAuthLookup
 }
 
 function entryDeps(options: V1ServerOptions): ProviderEntryDeps {
@@ -35,6 +40,15 @@ function entryDeps(options: V1ServerOptions): ProviderEntryDeps {
     clock: options.clock,
     authStore: options.authStore,
     allowEnvironmentKeys: true,
+    ...(options.credentialRefresh === undefined
+      ? {}
+      : { credentialRefresh: options.credentialRefresh }),
+    ...(options.writeBackCredentials === undefined
+      ? {}
+      : { writeBackCredentials: options.writeBackCredentials }),
+    ...(options.claudeAuthLookup === undefined
+      ? {}
+      : { claudeAuthLookup: options.claudeAuthLookup }),
   }
 }
 
@@ -42,7 +56,12 @@ export async function buildV1Hooks(options: V1ServerOptions): Promise<Hooks> {
   const deps = entryDeps(options)
   const providers: ProviderEntry[] = []
   for (const entry of options.providers) {
-    if (entry.id === "ollama" && (await entry.isConnected(deps))) {
+    if (
+      entry.route === undefined &&
+      entry.id !== "cursor" &&
+      entry.id !== "xai" &&
+      (await entry.isConnected(deps))
+    ) {
       providers.push(entry)
     }
   }
@@ -102,6 +121,7 @@ export async function buildV1Hooks(options: V1ServerOptions): Promise<Hooks> {
     config: async (config) => projector.attach(config),
     dispose: () => {
       lifetime.abort()
+      for (const entry of providers) projector.remove(entry.id)
       void apiOwner.dispose().catch((error: unknown) => {
         options.logger?.log("warn", "v1.owner.cleanup-failed", {
           name: error instanceof Error ? error.name : "unknown",
@@ -118,13 +138,13 @@ export function buildV1AuthHooks(
   options: unknown,
 ): Hooks {
   const configured = parseConnectorOptions(pickConnectorOptionsInput(options))
-  return configured.providers.some((providerId) => providerId === entry.id)
-    ? {
-        auth: entry.createAuthHook({
-          ...deps,
-        }),
-      }
-    : {}
+  if (!configured.providers.some((providerId) => providerId === entry.id)) return {}
+  const { dispose, ...auth } = entry.createAuthHook({
+    ...deps,
+    credentialRefresh: configured.credentialRefresh,
+    writeBackCredentials: configured.writeBackCredentials,
+  })
+  return { auth, ...(dispose === undefined ? {} : { dispose }) }
 }
 
 export function createV1AuthServer(entry: ProviderEntry, deps: ProviderEntryDeps): V1Plugin {

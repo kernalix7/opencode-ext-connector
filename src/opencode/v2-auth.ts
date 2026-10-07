@@ -14,13 +14,13 @@ export type V2AuthStoreOptions = {
   readonly entries: readonly ProviderEntry[]
 }
 
-const authProviders = ["claude", "command-code", "ollama"] as const
+const authProviders = ["anthropic", "command-code", "ollama"] as const
 
 function assertNever(value: never): never {
   throw new InvalidArgumentError("v2-connection", value)
 }
 
-function isAuthProvider(value: string): value is OpenCodeAuthProvider {
+function isAuthProvider(value: string): value is (typeof authProviders)[number] {
   return authProviders.some((provider) => provider === value)
 }
 
@@ -40,7 +40,9 @@ function matchKey(
     return key === "cli-session:ollama"
       ? { kind: "marker", ...(connectionId === undefined ? {} : { connectionId }) }
       : null
-  if (key.length === 0 || key.startsWith("cli-session:")) return null
+  if (key === (provider === "claude" ? "cli-session:anthropic" : "cli-session:command-code"))
+    return { kind: "marker", ...(connectionId === undefined ? {} : { connectionId }) }
+  if (provider === "claude" || key.length === 0 || key.startsWith("cli-session:")) return null
   return { kind: "api-key", key, ...(connectionId === undefined ? {} : { connectionId }) }
 }
 
@@ -49,7 +51,6 @@ async function matchCredential(
   provider: OpenCodeAuthProvider,
   connection: PluginV2ConnectionInfo,
 ): Promise<OpenCodeAuthMatch | null> {
-  if (connection.type === "credential" && connection.method === "oauth") return null
   let value: CredentialV2.Value | undefined
   try {
     value = await source.resolve(connection)
@@ -58,6 +59,11 @@ async function matchCredential(
     throw error
   }
   if (value === undefined) return null
+  if (connection.type === "credential" && connection.method === "oauth") {
+    return provider === "claude" && value.type === "oauth"
+      ? { kind: "oauth", key: value.access, connectionId: connection.id }
+      : null
+  }
   switch (value.type) {
     case "oauth":
       return null
@@ -73,18 +79,18 @@ async function matchCredential(
 }
 
 export function createV2AuthStore(options: V2AuthStoreOptions): OpenCodeAuthStore {
-  const entries = new Map(
+  const entries = new Map<string, ProviderEntry>(
     options.entries.flatMap((entry) =>
       isAuthProvider(entry.integrationId) ? [[entry.integrationId, entry] as const] : [],
     ),
   )
   return {
     matchAuth: async (provider): Promise<OpenCodeAuthMatch | null> => {
-      const entry = entries.get(provider)
+      const entry = entries.get(provider === "claude" ? "anthropic" : provider)
       if (entry === undefined) return null
       let connection: PluginV2ConnectionInfo | undefined
       try {
-        connection = await options.connection.active(provider)
+        connection = await options.connection.active(entry.integrationId)
       } catch (error: unknown) {
         if (isBoundaryFailure(error)) return null
         throw error
@@ -96,7 +102,10 @@ export function createV2AuthStore(options: V2AuthStoreOptions): OpenCodeAuthStor
             ? matchCredential(options.connection, provider, connection)
             : null
         case "credential":
-          return matchCredential(options.connection, provider, connection)
+          return connection.method === "key" ||
+            (provider === "claude" && connection.method === "oauth")
+            ? matchCredential(options.connection, provider, connection)
+            : null
         default:
           return assertNever(connection)
       }
@@ -114,7 +123,8 @@ export function registerV2IntegrationMethods(
       integrationID: entry.integrationId,
       method: {
         type: "key",
-        label: entry.integrationId === "ollama" ? "Ollama daemon" : "API key",
+        label:
+          entry.integrationId === "command-code" ? "Command Code key or session" : "CLI session",
       },
     })
   }

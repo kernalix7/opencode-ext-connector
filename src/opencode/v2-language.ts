@@ -7,7 +7,7 @@ import type { OllamaRuntime } from "../providers/ollama/runtime.js"
 import type { PluginV2Registration } from "./beta-api.js"
 import { createConnectorLanguage } from "./language-factory.js"
 import type { ProviderEntryDeps } from "./provider-entry.js"
-import { readProviderApiKey } from "./providers.js"
+import type { SubscriptionScope } from "./subscription-scope.js"
 import { CONNECTOR_AISDK_PACKAGE, CONNECTOR_MODULE } from "./v2-catalog.js"
 
 export type V2LanguageBindings = {
@@ -18,6 +18,8 @@ export type V2LanguageBindings = {
   readonly generation: (providerId: string) => number
   readonly providerIds: readonly string[]
   readonly lifetime: AbortSignal
+  readonly scope: SubscriptionScope
+  readonly matchesSource: (providerId: string, signal: AbortSignal) => Promise<string | null>
 }
 
 export type V2ModelHookInput = {
@@ -89,19 +91,21 @@ function scopedLanguage(
           },
         }),
   }
-  const readApiKey = async (
-    provider: "claude" | "command-code",
-    signal: AbortSignal,
-  ): Promise<string | null> => {
+  const readAccessToken = async (signal: AbortSignal): Promise<string | null> => {
     await requireConnection("credentials")
-    const key = await readProviderApiKey(bindings.deps, provider, signal)
+    const key = await bindings.matchesSource(providerId, signal)
     await requireConnection("credentials")
     return key
   }
   const model = createConnectorLanguage({
     transport,
-    readClaudeApiKey: (signal) => readApiKey("claude", signal),
-    readCommandCodeApiKey: (signal) => readApiKey("command-code", signal),
+    env: bindings.deps.env,
+    readAccessToken,
+    forceRefreshAccessToken: async (signal) => {
+      await requireConnection("credentials")
+      await bindings.scope.forceClaude(signal)
+      return readAccessToken(signal)
+    },
     ...(bindings.ollamaRuntime === undefined ? {} : { ollamaRuntime: bindings.ollamaRuntime }),
   })(providerId, modelId)
   if (model === null) return null

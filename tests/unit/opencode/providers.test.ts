@@ -3,7 +3,7 @@ import { expect, it } from "bun:test"
 import type { ProviderEntryDeps } from "../../../src/opencode/provider-entry"
 import {
   createProviderRegistry,
-  readProviderApiKey,
+  readProviderAccessToken,
   selectActiveProviders,
   selectConfiguredProviders,
 } from "../../../src/opencode/providers"
@@ -28,7 +28,7 @@ it("registers only dedicated Claude, Command Code and Ollama integrations", () =
   const entries = createProviderRegistry()
   // Then
   expect(entries.map((entry) => [entry.id, entry.integrationId])).toEqual([
-    ["claude", "claude"],
+    ["claude", "anthropic"],
     ["command-code", "command-code"],
     ["ollama", "ollama"],
   ])
@@ -39,27 +39,27 @@ it("selects configured and host-active providers without instantiating an adapte
   const entries = createProviderRegistry()
   // When
   const configured = selectConfiguredProviders(entries, ["claude"])
-  const active = await selectActiveProviders(configured, async (id) => id === "claude")
+  const active = await selectActiveProviders(configured, async (id) => id === "anthropic")
   // Then
   expect(active.map((entry) => entry.id)).toEqual(["claude"])
 })
 
-it("prefers the dedicated API record over an explicit V1 environment key", async () => {
+it("does not substitute a Claude API record for an existing session", async () => {
   // Given
   const state = deps("dedicated-key", { ANTHROPIC_API_KEY: "environment-key" })
   // When
-  const key = await readProviderApiKey(state, "claude", new AbortController().signal)
+  const key = await readProviderAccessToken(state, "claude", new AbortController().signal)
   // Then
-  expect(key).toBe("dedicated-key")
+  expect(key).toBeNull()
 })
 
-it("accepts explicit V1 env only, never the unrelated native record", async () => {
+it("does not substitute an API environment key for a missing session", async () => {
   // Given
   const state = deps(null, { ANTHROPIC_API_KEY: "environment-key" })
   // When
-  const key = await readProviderApiKey(state, "claude", new AbortController().signal)
+  const key = await readProviderAccessToken(state, "claude", new AbortController().signal)
   // Then
-  expect(key).toBe("environment-key")
+  expect(key).toBeNull()
 })
 
 it("does not fall back to process env for an unresolved V2 selection", async () => {
@@ -69,7 +69,7 @@ it("does not fall back to process env for an unresolved V2 selection", async () 
     allowEnvironmentKeys: false,
   }
   // When
-  const key = await readProviderApiKey(state, "claude", new AbortController().signal)
+  const key = await readProviderAccessToken(state, "claude", new AbortController().signal)
   // Then
   expect(key).toBeNull()
 })

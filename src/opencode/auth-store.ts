@@ -12,12 +12,16 @@ const apiRecordSchema = z
     metadata: z.record(z.string(), z.string()).optional(),
   })
   .strict()
+const oauthRecordSchema = z
+  .object({ type: z.literal("oauth"), access: z.string().min(1) })
+  .passthrough()
 
 export type OpenCodeAuthProvider = "claude" | "command-code" | "ollama"
 
 export type OpenCodeAuthMatch =
   | { readonly kind: "marker"; readonly connectionId?: string }
   | { readonly kind: "api-key"; readonly key: string; readonly connectionId?: string }
+  | { readonly kind: "oauth"; readonly key: string; readonly connectionId?: string }
 
 export type OpenCodeAuthStore = {
   readonly matchAuth: (provider: OpenCodeAuthProvider) => Promise<OpenCodeAuthMatch | null>
@@ -55,12 +59,21 @@ function isMissingFile(error: unknown): boolean {
 
 function parseAuthMatch(provider: OpenCodeAuthProvider, value: unknown): OpenCodeAuthMatch | null {
   switch (provider) {
-    case "claude":
+    case "claude": {
+      const oauth = oauthRecordSchema.safeParse(value)
+      if (oauth.success) return { kind: "oauth", key: oauth.data.access }
+      const parsed = apiRecordSchema.safeParse(value)
+      return parsed.success && parsed.data.key === "cli-session:anthropic"
+        ? { kind: "marker" }
+        : null
+    }
     case "command-code": {
       const parsed = apiRecordSchema.safeParse(value)
-      return parsed.success && !parsed.data.key.startsWith("cli-session:")
-        ? { kind: "api-key", key: parsed.data.key }
-        : null
+      if (!parsed.success) return null
+      if (parsed.data.key === "cli-session:command-code") return { kind: "marker" }
+      return parsed.data.key.startsWith("cli-session:")
+        ? null
+        : { kind: "api-key", key: parsed.data.key }
     }
     case "ollama": {
       const parsed = apiRecordSchema.safeParse(value)
@@ -95,7 +108,10 @@ export function createOpenCodeAuthStore(options: OpenCodeAuthStoreOptions): Open
         }
         const root = authRootSchema.safeParse(parsedJson)
         if (root.success) {
-          const match = parseAuthMatch(provider, root.data[provider])
+          const match = parseAuthMatch(
+            provider,
+            root.data[provider === "claude" ? "anthropic" : provider],
+          )
           if (match !== null) {
             return match
           }

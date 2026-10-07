@@ -8,6 +8,7 @@ import { parseConnectorOptions } from "./core/options.js"
 import { createFetchHttpTransport } from "./http/fetch-transport.js"
 import { createConsoleLogger } from "./logging/logger.js"
 import { createOpenCodeAuthStore } from "./opencode/auth-store.js"
+import { startClaudeOwnerAuthority } from "./opencode/claude-authority.js"
 import { pickConnectorOptionsInput, pickOllamaBaseURL } from "./opencode/host-options.js"
 import { getProductionOllamaBundle } from "./opencode/ollama-production.js"
 import { createProviderRegistry, selectConfiguredProviders } from "./opencode/providers.js"
@@ -79,10 +80,21 @@ export const connectorServer: V1Plugin = async (input, options): Promise<Hooks> 
     catalogReloadMs: connectorOptions.catalogReloadMs,
     health: connectorOptions.health,
     logger,
+    credentialRefresh: connectorOptions.credentialRefresh,
+    writeBackCredentials: connectorOptions.writeBackCredentials,
   })(input, options)
+  const authority = startClaudeOwnerAuthority({
+    authority: connectorOptions.credentialAuthority,
+    env,
+    clock,
+    logger,
+  })
   const dispose = hooks.dispose
   const disposal = createAsyncDisposable(async () => {
-    const results = await Promise.allSettled([Promise.resolve().then(() => dispose?.())])
+    const results = await Promise.allSettled([
+      Promise.resolve().then(() => dispose?.()),
+      authority.dispose(),
+    ])
     const primaryFailure = results.find(
       (result): result is PromiseRejectedResult => result.status === "rejected",
     )

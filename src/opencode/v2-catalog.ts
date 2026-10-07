@@ -6,6 +6,7 @@ import type { OpenCodeAuthMatch } from "./auth-store.js"
 import type { PluginV2ConnectionInfo, PluginV2ProviderEditor } from "./beta-api.js"
 import { IntegrationV2, ModelV2, ProviderV2 } from "./beta-api.js"
 import type { ProviderEntry } from "./provider-entry.js"
+import { type SubscriptionObservation, sameSubscription } from "./subscription-scope.js"
 
 export const CONNECTOR_MODULE = "opencode-ext-connector"
 export const CONNECTOR_PACKAGE: string = CONNECTOR_MODULE
@@ -33,6 +34,11 @@ export type V2Catalog = {
   readonly rotate: (providerId: string, match: OpenCodeAuthMatch) => void
   readonly matchesConnection: (providerId: string, match: OpenCodeAuthMatch | null) => boolean
   readonly generation: (providerId: string) => number
+  readonly observeSource: (providerId: string, observation: SubscriptionObservation) => void
+  readonly matchesSource: (
+    providerId: string,
+    observation: SubscriptionObservation | null,
+  ) => boolean
 }
 
 function sameMatch(left: OpenCodeAuthMatch | undefined, right: OpenCodeAuthMatch | null): boolean {
@@ -40,6 +46,10 @@ function sameMatch(left: OpenCodeAuthMatch | undefined, right: OpenCodeAuthMatch
   if (left.kind !== right.kind) return false
   if (left.kind === "marker")
     return right.kind === "marker" && left.connectionId === right.connectionId
+  if (left.kind === "oauth")
+    return (
+      right.kind === "oauth" && left.key === right.key && left.connectionId === right.connectionId
+    )
   return (
     right.kind === "api-key" && left.key === right.key && left.connectionId === right.connectionId
   )
@@ -91,6 +101,7 @@ export function createV2Catalog(entries: readonly ProviderEntry[]): V2Catalog {
   const published = new Map<string, PublishedProvider>()
   const pendingConnections = new Map<string, PluginV2ConnectionInfo>()
   const matches = new Map<string, OpenCodeAuthMatch>()
+  const sources = new Map<string, SubscriptionObservation>()
   const generations = new Map<string, number>()
   const increment = (providerId: string): void => {
     generations.set(providerId, (generations.get(providerId) ?? 0) + 1)
@@ -150,6 +161,7 @@ export function createV2Catalog(entries: readonly ProviderEntry[]): V2Catalog {
     },
     forget: (providerId): void => {
       if (matches.delete(providerId)) increment(providerId)
+      sources.delete(providerId)
       published.delete(providerId)
       pendingConnections.delete(providerId)
     },
@@ -157,10 +169,26 @@ export function createV2Catalog(entries: readonly ProviderEntry[]): V2Catalog {
       if (sameMatch(matches.get(providerId), match)) return
       increment(providerId)
       matches.set(providerId, match)
+      sources.delete(providerId)
       published.delete(providerId)
       pendingConnections.delete(providerId)
     },
     matchesConnection: (providerId, match): boolean => sameMatch(matches.get(providerId), match),
+    observeSource: (providerId, observation): void => {
+      const previous = sources.get(providerId)
+      if (previous !== undefined && sameSubscription(previous, observation)) return
+      if (previous !== undefined) {
+        increment(providerId)
+        published.delete(providerId)
+      }
+      sources.set(providerId, observation)
+    },
+    matchesSource: (providerId, observation): boolean => {
+      const previous = sources.get(providerId)
+      return (
+        previous !== undefined && observation !== null && sameSubscription(previous, observation)
+      )
+    },
     generation: (providerId): number => generations.get(providerId) ?? 0,
     rememberConnection: (providerId, connection): void => {
       if (connection?.type === "credential" && connection.status === undefined) {
