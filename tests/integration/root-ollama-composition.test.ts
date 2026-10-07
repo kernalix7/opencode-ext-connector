@@ -39,8 +39,9 @@ try {
     const authResult = await authorization.callback()
     const model = sdk.createOllama({ ollamaBaseURL: baseURL }).languageModel("root:latest")
     const parts = await Array.fromAsync((await model.doStream({ prompt: [{ role: "user", content: [{ type: "text", text: "hello" }] }] })).stream)
+    const providerOptions = config.provider?.ollama?.options
     await hooks.dispose?.()
-    console.log(JSON.stringify({ kind: "active", providerOptions: config.provider?.ollama?.options, authResult, text: parts.flatMap((part) => part.type === "text-delta" ? [part.delta] : []), requests }))
+    console.log(JSON.stringify({ kind: "active", providerOptions, authResult, text: parts.flatMap((part) => part.type === "text-delta" ? [part.delta] : []), requests }))
   }
 } finally {
   globalThis.fetch = originalFetch
