@@ -14,6 +14,25 @@ import type { ConnectorLogger } from "../core/logger.js"
 
 export type HealthStore = Map<ProviderId, HealthState>
 
+export function recordCredentialFailure(options: {
+  readonly providerId: ProviderId
+  readonly error: unknown
+  readonly clock: Clock
+  readonly health: HealthPolicy
+  readonly store: HealthStore
+  readonly logger: ConnectorLogger
+}): void {
+  const current = options.store.get(options.providerId) ?? createInitialHealthState()
+  options.store.set(
+    options.providerId,
+    reduceHealth(current, { status: "unavailable", atMs: options.clock.nowMs() }, options.health),
+  )
+  options.logger.log("warn", "provider.credential.failed", {
+    providerId: options.providerId,
+    name: options.error instanceof Error ? options.error.name : "unknown",
+  })
+}
+
 export async function refreshAdaptersWithHealth(options: {
   readonly adapters: readonly ProviderAdapter[]
   readonly publisher: CatalogPublisher
