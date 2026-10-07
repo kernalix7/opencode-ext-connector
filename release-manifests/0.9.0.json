@@ -1,7 +1,7 @@
 {
   "name": "opencode-ext-connector",
   "version": "0.9.0",
-  "originalTarballSha256": "2d72a5057dadca6ce4e5ef8735ab5cd4f4b85fcecb3605f71f60ee067e2e97b4",
+  "originalTarballSha256": "829f276563231b3a931b433edfc7cae5df31f67bbaf414e8bf4e098e745b2665",
   "ignoredContainerMetadata": ["member order", "numeric ownership", "gzip header mtime"],
   "members": [
     {
@@ -385,16 +385,16 @@
       "type": "file",
       "mode": "-rw-rw-r--",
       "mtime": "1985-10-26 08:15:00",
-      "bytes": 742,
-      "sha256": "848052b3e724da7f9d8a75541efe5d667cc4aa1cde48325daf829b85dc266cea"
+      "bytes": 1010,
+      "sha256": "f438043c3cebfd78f8494e4b0be0b0382c36c3f7b0d6f9581bbdf640d35d9846"
     },
     {
       "path": "package/dist/opencode/health-refresh.js",
       "type": "file",
       "mode": "-rw-rw-r--",
       "mtime": "1985-10-26 08:15:00",
-      "bytes": 1930,
-      "sha256": "b1ec6bb24b4173ceb3ec8bb7420e948a062b1a6264a78d8f5ad251fc9e8ba843"
+      "bytes": 2400,
+      "sha256": "d9fc556f6996d8a0dac4f296f15a4f24cef761d97b450bfb3927e71aacc64056"
     },
     {
       "path": "package/dist/opencode/host-options.d.ts",
@@ -649,8 +649,8 @@
       "type": "file",
       "mode": "-rw-rw-r--",
       "mtime": "1985-10-26 08:15:00",
-      "bytes": 6329,
-      "sha256": "5170bc9e01ddce6a910782798bcbf7af80fcdbe48edd24012a936fe07a1d537d"
+      "bytes": 7757,
+      "sha256": "817a4a3896d83d0bc65f434ecad87f84e843c1ada01e7a35570bb891d734e3a7"
     },
     {
       "path": "package/dist/opencode/v1-session-auth.d.ts",
@@ -697,8 +697,8 @@
       "type": "file",
       "mode": "-rw-rw-r--",
       "mtime": "1985-10-26 08:15:00",
-      "bytes": 5905,
-      "sha256": "83a9036e17fb9ddf71d2487c9517ab6bcfa538f065d0480ae0ae149b2899b9bf"
+      "bytes": 7607,
+      "sha256": "c46922028688a978588b83f70c8ea2b417bd254a1cdc5fa4b8b19f157aabc601"
     },
     {
       "path": "package/dist/opencode/v2-catalog.d.ts",
@@ -1129,8 +1129,8 @@
       "type": "file",
       "mode": "-rw-rw-r--",
       "mtime": "1985-10-26 08:15:00",
-      "bytes": 7777,
-      "sha256": "8c8886613a6d591b99e32ac103258291fbe4ed8df3c6dc4ce3bff50edc824ea2"
+      "bytes": 7886,
+      "sha256": "3466a8d30bdcd27d0789bf7979dbc1ee5512f14a29ef33170d47fb4346b2f65a"
     },
     {
       "path": "package/dist/providers/claude/writeback.d.ts",
@@ -1777,8 +1777,8 @@
       "type": "file",
       "mode": "-rw-rw-r--",
       "mtime": "1985-10-26 08:15:00",
-      "bytes": 9048,
-      "sha256": "784f8ac9a9f6c2aed7c0569e0581c57cb47be9bbc0d2d4a51007da89cd7015bc"
+      "bytes": 9135,
+      "sha256": "f9563224ee1d7e7af96f26b51c6773e3113ebd7ed365a473a3b4102e96a37467"
     }
   ]
 }
