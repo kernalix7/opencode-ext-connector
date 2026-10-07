@@ -1,7 +1,7 @@
 {
   "name": "opencode-ext-connector",
   "version": "0.9.0",
-  "originalTarballSha256": "ea3e48c55b2f10d8cb65245cbec31b3c2f3fe692698465e74a12ab5d60e6301b",
+  "originalTarballSha256": "2d72a5057dadca6ce4e5ef8735ab5cd4f4b85fcecb3605f71f60ee067e2e97b4",
   "ignoredContainerMetadata": ["member order", "numeric ownership", "gzip header mtime"],
   "members": [
     {
@@ -9,8 +9,8 @@
       "type": "file",
       "mode": "-rw-rw-r--",
       "mtime": "1985-10-26 08:15:00",
-      "bytes": 13279,
-      "sha256": "7911f6a993fb755c5962233a3de67d6a3c30f06400f3437308ce51a579f21f02"
+      "bytes": 13218,
+      "sha256": "6b8a5d95ca4e44534f244a9c053d7b0728da708a821df1fe1b4a2c18db6f0dff"
     },
     {
       "path": "package/dist/catalog/parse-ids.d.ts",
@@ -1745,8 +1745,8 @@
       "type": "file",
       "mode": "-rw-rw-r--",
       "mtime": "1985-10-26 08:15:00",
-      "bytes": 22515,
-      "sha256": "ec07007991654a8a04e1abdcf261f68f44338d6eff72c877b59d5ea35a718def"
+      "bytes": 22209,
+      "sha256": "edd19e7cc8dde60ddb383cc2784c913d8a8911515814fb830349e8716783c62f"
     },
     {
       "path": "package/LICENSE",
@@ -1769,8 +1769,8 @@
       "type": "file",
       "mode": "-rw-rw-r--",
       "mtime": "1985-10-26 08:15:00",
-      "bytes": 26296,
-      "sha256": "812a362142a2acf91ebcfba119ef8a4c0495fe82ae1ebcf5baca9de840541e7d"
+      "bytes": 26047,
+      "sha256": "dc540ed617802406637212568c8464f43b2b2dc1277947364e1e9108ba74fe41"
     },
     {
       "path": "package/THIRD_PARTY_NOTICES.md",
