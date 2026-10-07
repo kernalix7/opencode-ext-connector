@@ -13,6 +13,8 @@ processes, fixtures, and loopback servers.
 | Shared fakes | `support/` | Clock, HTTP, process, logging, catalog, package/process helpers |
 | Account binding | `unit/opencode/v1-account-binding.test.ts`, `unit/opencode/v1-generation-edges.test.ts`, `unit/opencode/v2-{auth,scope,routing,lifecycle}.test.ts` | Key/generation/membership/disposal isolation and selected-connection behavior |
 | Official API routes | `unit/providers/claude/api-*.test.ts`, `unit/providers/command-code/api-wire.test.ts` | Offline catalog/generation and supported-endpoint routing |
+| Credential goals | `unit/opencode/{v1,v2}-subscription-goal.test.ts`, `subscription-scope-goal.test.ts` | Actual hooks with synthetic file-only sessions, tools/streams and revocation |
+| Native Claude and shutdown | `unit/opencode/v1-native-claude-*.test.ts`, `v1-owner-shutdown.test.ts` | Gate before renewal, trusted targets, lineage and all-disposer shutdown |
 | Retirement | `unit/index/`, `unit/opencode/v2-xai-option.test.ts`, `support/xai-package-entrypoint.test.ts` | Inert root hooks, Cursor SDK rejection, dedicated xAI retirement, rejected options |
 | Global preload | `setup.ts`, `../bunfig.toml`, `support/test-package.ts` | Compile isolated temporary package before Bun loads tests; cleanup afterward |
 
@@ -34,8 +36,9 @@ processes, fixtures, and loopback servers.
 - Package-install tests operate on a dry packed artifact in temporary directories.
 - Retain the normal package preload: its per-run temporary output avoids cleaning or racing
   the repository `dist`. Package-install coverage includes Node/npm consumption.
-- Old Cursor bridge/run/protobuf fixtures are removed. Use current official API and retirement
-  fixtures; fixture keys are synthetic, never real vendor credentials.
+- Old Cursor bridge/run/protobuf fixtures are removed. Default protocol fixtures use
+  existing credential compatibility; optional official API SDK and retirement fixtures
+  remain independent. All fixture credentials are synthetic, never vendor secrets.
 - V1 and V2 end-to-end lanes use two binaries: the original installed OpenCode CLI, and a
   private V2 binary from `OPENCODE_V2_BIN` or `opencode2`. Target `@opencode/cli@2.0.20` and
   `@opencode/plugin@2.0.20`. Do not treat an older beta CLI as that target.
