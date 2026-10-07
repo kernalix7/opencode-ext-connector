@@ -142,7 +142,7 @@ describe("packed package installation", () => {
         names: [...rootExportNames],
         kinds: ["function", "function", "function", "function", "function", "function"],
       })
-      expect(Object.keys(auth.data ?? {}).sort()).toEqual(["claude", "command-code", "ollama"])
+      expect(Object.keys(auth.data ?? {}).sort()).toEqual(["anthropic", "command-code", "ollama"])
       expect(providers.data).toBeDefined()
       expect(providers.data?.connected).not.toContain("cursor")
       expect(providers.data?.connected).not.toContain("command-code")
