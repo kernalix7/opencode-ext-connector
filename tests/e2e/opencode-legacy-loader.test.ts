@@ -166,7 +166,7 @@ describe("OpenCode legacy multi-function loader", () => {
       // Then
       expect(auth.data).toBeDefined()
       expect(Object.keys(auth.data ?? {})).toEqual(
-        expect.arrayContaining(["claude", "command-code", "ollama"]),
+        expect.arrayContaining(["anthropic", "command-code", "ollama"]),
       )
     })
   }, 20_000)
