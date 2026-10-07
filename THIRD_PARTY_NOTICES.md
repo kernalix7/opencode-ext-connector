@@ -4,9 +4,10 @@ This file lists third-party source that this repository may derive from.
 The BSD-3-Clause license of this repository does not replace these notices.
 Derived TypeScript files must include a header pointing here.
 
-The legacy session and private-protocol integrations are retired in 0.8.0.
-Their upstream notices remain here for historical attribution; retaining a
-notice does not describe a currently supported integration or grant service access.
+Claude and Command Code credential compatibility paths retired in 0.8.0 are
+restored in 0.9.0; their upstream notices apply to the current derived source.
+Cursor and the xAI OAuth projection remain retired. Historical reference notices
+are retained, and no source license or notice grants permission to access a service.
 
 ## griffinmartin/opencode-claude-auth
 
