@@ -23,11 +23,11 @@ const blockedEnvironmentKeys = [
 
 type LifecycleCase = {
   readonly providerId: "claude" | "command-code"
-  readonly authProvider: "claude" | "command-code"
+  readonly authProvider: "anthropic" | "command-code"
 }
 
 const lifecycleCases: LifecycleCase[] = [
-  { providerId: "claude", authProvider: "claude" },
+  { providerId: "claude", authProvider: "anthropic" },
   { providerId: "command-code", authProvider: "command-code" },
 ]
 
@@ -100,7 +100,7 @@ const clock = {
 }
 const transport = { request: async () => { throw new Error("fixture transport must stay offline") } }
 const definitions = [
-  ["claude", "claude", "fixture-claude-model"],
+  ["claude", "anthropic", "fixture-claude-model"],
   ["command-code", "command-code", "fixture-command-code-model"],
 ]
 const vendorCredentials = new Set(definitions.map(([id]) => id))
@@ -116,7 +116,7 @@ const entries = definitions.map(([id, authProvider, modelId]) => ({
     [Symbol.asyncDispose]: async () => undefined,
   }),
   createAuthHook: () => ({ provider: authProvider, methods: [{ type: "api", label: id }] }),
-  isConnected: async (deps) => vendorCredentials.has(id) && (await deps.authStore.matchAuth(authProvider)) !== null,
+  isConnected: async (deps) => vendorCredentials.has(id) && (await deps.authStore.matchAuth(id)) !== null,
 }))
 const deps = { env, authStore, clock, transport }
 const npmSpecifiers = Object.fromEntries(definitions.map(([id]) => [id, "@ai-sdk/openai-compatible"]))
@@ -140,7 +140,12 @@ async function setAuth(
   provider: LifecycleCase["authProvider"],
 ): Promise<void> {
   switch (provider) {
-    case "claude":
+    case "anthropic":
+      await client.auth.set({
+        path: { id: provider },
+        body: { type: "api", key: "cli-session:anthropic" },
+      })
+      return
     case "command-code":
       await client.auth.set({
         path: { id: provider },
