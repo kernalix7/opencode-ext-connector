@@ -3,7 +3,11 @@ import { OperationCancelledError } from "../core/errors.js"
 import { parseProviderId } from "../core/ids.js"
 import type { OpenCodeAuthProvider } from "./auth-store.js"
 import { PluginV2ClientError, type PluginV2ConnectionInfo } from "./beta-api.js"
-import { type HealthStore, refreshAdaptersWithHealth } from "./health-refresh.js"
+import {
+  type HealthStore,
+  recordCredentialFailure,
+  refreshAdaptersWithHealth,
+} from "./health-refresh.js"
 import type { ProviderEntry } from "./provider-entry.js"
 import type { V2ConnectionSource } from "./v2-auth.js"
 import type { V2RefreshOptions } from "./v2-refresh-types.js"
@@ -42,6 +46,7 @@ export function createV2Capture(
   },
 ): () => Promise<void> {
   const { adapters, healthStore } = state
+  const credentialFailures: HealthStore = new Map()
   let applied = ""
   return async (): Promise<void> => {
     if (options.lifetime.aborted) return
@@ -49,8 +54,44 @@ export function createV2Capture(
     for (const entry of options.entries) {
       if (options.lifetime.aborted) return
       const provider = authProvider(entry)
-      const observation =
-        provider === "ollama" ? null : await options.scope.observe(provider, options.lifetime)
+      let observation: Awaited<ReturnType<typeof options.scope.observe>> = null
+      if (provider !== "ollama") {
+        const current = credentialFailures.get(parseProviderId(entry.id))
+        if (
+          current?.retryAtMs !== null &&
+          current?.retryAtMs !== undefined &&
+          options.clock.nowMs() < current.retryAtMs
+        )
+          continue
+        try {
+          observation = await options.scope.observe(provider, options.lifetime)
+          credentialFailures.delete(parseProviderId(entry.id))
+        } catch (error: unknown) {
+          if (
+            options.lifetime.aborted ||
+            error instanceof OperationCancelledError ||
+            (error instanceof DOMException && error.name === "AbortError")
+          )
+            throw error
+          options.catalog.forget(entry.id)
+          const retired = adapters.get(entry.id)
+          if (retired !== undefined) {
+            adapters.delete(entry.id)
+            await retired.dispose()
+          }
+          recordCredentialFailure({
+            providerId: parseProviderId(entry.id),
+            error,
+            clock: options.clock,
+            health: options.health,
+            store: credentialFailures,
+            logger: options.logger,
+          })
+          const failed = credentialFailures.get(parseProviderId(entry.id))
+          if (failed !== undefined) healthStore.set(parseProviderId(entry.id), failed)
+          continue
+        }
+      }
       const match =
         provider === "ollama"
           ? await options.deps.authStore.matchAuth(provider)
