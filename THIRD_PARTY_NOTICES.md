@@ -6,8 +6,11 @@ Derived TypeScript files must include a header pointing here.
 
 Claude and Command Code credential compatibility paths retired in 0.8.0 are
 restored in 0.9.0; their upstream notices apply to the current derived source.
-Cursor and the xAI OAuth projection remain retired. Historical reference notices
-are retained, and no source license or notice grants permission to access a service.
+Cursor remains retired; opt-in xAI authority observation and V1-only consumer
+projection are restored in 0.9.1. V2 consumer configuration is explicitly rejected
+before allocation; external native V2 manager compatibility remains unverified.
+Historical reference notices are retained,
+and no source license or notice grants permission to access a service.
 
 ## griffinmartin/opencode-claude-auth
 
