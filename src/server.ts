@@ -13,6 +13,7 @@ import { pickConnectorOptionsInput, pickOllamaBaseURL } from "./opencode/host-op
 import { getProductionOllamaBundle } from "./opencode/ollama-production.js"
 import { createProviderRegistry, selectConfiguredProviders } from "./opencode/providers.js"
 import { buildV1AuthHooks, createV1AuthServer, createV1Server } from "./opencode/v1-module.js"
+import { buildV1XaiConsumerHooks, startV1XaiAuthority } from "./opencode/xai-v1-host.js"
 import { productionOllamaFetch } from "./providers/ollama/http.js"
 
 const env = process.env
@@ -69,40 +70,50 @@ export const connectorServer: V1Plugin = async (input, options): Promise<Hooks> 
     }),
     connectorOptions.providers,
   )
-  const hooks = await createV1Server({
-    clock,
-    transport,
-    authStore,
-    env,
-    providers,
-    npmSpecifiers,
-    snapshotTimeoutMs: connectorOptions.snapshotTimeoutMs,
-    catalogReloadMs: connectorOptions.catalogReloadMs,
-    health: connectorOptions.health,
-    logger,
-    credentialRefresh: connectorOptions.credentialRefresh,
-    writeBackCredentials: connectorOptions.writeBackCredentials,
-  })(input, options)
-  const authority = startClaudeOwnerAuthority({
-    authority: connectorOptions.credentialAuthority,
-    env,
-    clock,
-    logger,
-  })
-  const dispose = hooks.dispose
+  const resources: (() => Promise<void> | void)[] = []
   const disposal = createAsyncDisposable(async () => {
-    const results = await Promise.allSettled([
-      Promise.resolve().then(() => dispose?.()),
-      authority.dispose(),
-    ])
+    const results = await Promise.allSettled(
+      resources.map((close) => Promise.resolve().then(close)),
+    )
     const primaryFailure = results.find(
       (result): result is PromiseRejectedResult => result.status === "rejected",
     )
     if (primaryFailure !== undefined) throw primaryFailure.reason
   })
-  return {
-    ...hooks,
-    dispose: disposal.dispose,
+  try {
+    const hooks = await createV1Server({
+      clock,
+      transport,
+      authStore,
+      env,
+      providers,
+      npmSpecifiers,
+      snapshotTimeoutMs: connectorOptions.snapshotTimeoutMs,
+      catalogReloadMs: connectorOptions.catalogReloadMs,
+      health: connectorOptions.health,
+      logger,
+      credentialRefresh: connectorOptions.credentialRefresh,
+      writeBackCredentials: connectorOptions.writeBackCredentials,
+    })(input, options)
+    resources.push(() => hooks.dispose?.())
+    const authority = startClaudeOwnerAuthority({
+      authority: connectorOptions.credentialAuthority,
+      env,
+      clock,
+      logger,
+    })
+    resources.push(authority.dispose)
+    if (connectorOptions.xaiOAuth?.mode === "authority") {
+      const xaiAuthority = await startV1XaiAuthority({ env, clock })
+      resources.push(xaiAuthority.dispose)
+    }
+    return {
+      ...hooks,
+      dispose: disposal.dispose,
+    }
+  } catch (error: unknown) {
+    await Promise.allSettled([disposal.dispose()])
+    throw error
   }
 }
 
@@ -135,4 +146,8 @@ export const ollamaAuthServer: V1Plugin = async (_input, options): Promise<Hooks
   return entry === undefined ? {} : buildV1AuthHooks(entry, providerDeps, options)
 }
 
-export const xaiAuthServer: V1Plugin = async (): Promise<Hooks> => ({})
+export const xaiAuthServer: V1Plugin = async (_input, options): Promise<Hooks> => {
+  const configured = parseConnectorOptions(pickConnectorOptionsInput(options))
+  if (configured.xaiOAuth?.mode !== "consumer") return {}
+  return buildV1XaiConsumerHooks({ env, clock, networkFetch: (input, init) => fetch(input, init) })
+}
