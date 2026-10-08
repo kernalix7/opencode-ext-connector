@@ -1,14 +1,14 @@
 # PROJECT KNOWLEDGE BASE
 
-**Updated:** 2026-10-07
-**Code baseline:** Corrective `v0.9.0` candidate: existing credentials, scoped generation, trusted Ollama, retired Cursor/xAI projection.
-**Candidate:** Based on published main `59808e6` and immutable `v0.7.1` (`29175e3`). Credential protocols and ownership lifecycle are restored. Repeated persisted renewal and per-provider credential-failure isolation have regression coverage; pinned checks/build and 618 tests pass. Re-freeze the exact payload after these corrections. Publication requires parent QA, fresh gate review and exact-commit CI/OIDC.
+**Updated:** 2026-10-08
+**Code baseline:** `v0.9.1` restored V1 xAI consumer and authority observer; V2 consumer explicitly rejected before allocation. Existing Claude/Command Code credentials, scoped generation, trusted Ollama and Cursor exclusion retained.
+**Candidate:** `/workspace/project/.omo/artifacts/release-v091/candidate`, branch `release/v0.9.1-xai`, based on published `0fc41ff` (0.9.0) and immutable `v0.7.1` (`29175e3`). Support boundary is finalized: the original xAI consumer is V1-only, not a V2 session extension. Parent's check and 758-pass/0-fail suite predate the boundary correction. Built root/dedicated consumer and production-supervised synthetic-helper initial/change/removal QA passed on Bun 1.3.14/Node 24.20.0, without live vendors. Parent still owns corrected full-suite gates, final source freeze, fresh packed manifest, gate review, exact-commit CI/OIDC publication and registry verification; no final approval or publication is recorded here.
 
 ## OVERVIEW
 
 Unofficial OpenCode plugin reusing existing Claude Code and Command Code credentials
 plus a trusted Ollama daemon from one `opencode.json` entry. Standalone API-key SDK
-use is separate and explicit; Cursor is unsupported and xAI OAuth projection is retired. Source is
+use is separate and explicit; Cursor is unsupported and xAI OAuth projection is independently opt-in. Source is
 BSD-3-Clause; third-party access and terms remain the user's responsibility.
 
 Stack: Bun 1.3.14, TypeScript 6.0.2 strict, Zod 4.1.8,
@@ -27,11 +27,11 @@ src/providers/claude/          credentials, compatibility and optional api-* SDK
 src/providers/command-code/    CLI credential/NDJSON protocol and optional api-* SDK modules
 src/providers/cursor/          retirement knowledge document only; SDK stub in src/sdk/
 src/providers/ollama/          trusted daemon endpoints and catalog runtime; see AGENTS.md
-src/providers/xai/             retirement knowledge document only
+src/providers/xai/             secure access state, consumer and authority observation
 src/process/                   production child-process supervision and disposal
 src/{catalog,http,logging}/    small shared boundary implementations
 src/sdk/                       claude, command-code, ollama SDKs; cursor retirement stub
-src/xai.ts                     dedicated `/xai` retirement entry
+src/xai.ts                     dedicated `/xai` consumer entry
 src/v2-entry/server.ts         compiled directory loader forwarding to V2
 scripts/                       build, source-policy, and pure-LOC checks
 tests/                         unit/integration/e2e suites and fakes; see AGENTS.md
@@ -41,8 +41,8 @@ tests/                         unit/integration/e2e suites and fakes; see AGENTS
 
 | Task | Location | Notes |
 |------|----------|-------|
-| Public plugin exports | `src/index.ts` | Exactly six named V1 functions; Cursor/xAI auth exports are inert. `./server` aliases this entry. |
-| V2 plugin entry | `src/v2.ts` | Default export only; V2 imports stay in `beta-api.ts`. CLI 2.0.20 config loads the built `dist/v2-entry` directory (`server.js`), not a direct file URL. Root and `./server` remain V1-only; `./v2` is the V2 Node import entry, not a config package spec. Candidate pending audits. No V2 xAI integration. |
+| Public plugin exports | `src/index.ts` | Exactly six named V1 functions; Cursor stays inert, xAI consumer is restored under opt-in mode. `./server` aliases this entry. |
+| V2 plugin entry | `src/v2.ts` | Default export only; V2 imports stay in `beta-api.ts`. CLI 2.0.20 config loads `dist/v2-entry` (`server.js`), not a direct file URL. Root/server stay V1-only; `./v2` is a Node import. Reject xAI consumer setup with a typed error before allocation; authority observes selected active/resolve. |
 | Server composition | `src/server.ts` | Registry, transports, auth servers, disposal |
 | Shared contracts | `src/core/AGENTS.md` | No provider protocol or concrete I/O |
 | OpenCode integration | `src/opencode/` | V1 API boundary; actual V2 imports stay in `beta-api.ts` |
@@ -51,7 +51,7 @@ tests/                         unit/integration/e2e suites and fakes; see AGENTS
 | Cursor retirement | `src/sdk/cursor.ts` | `languageModel()` throws `CursorRetiredError` |
 | Ollama changes | `src/providers/ollama/AGENTS.md` | Local/Cloud catalog and configured-daemon generation |
 | Command Code changes | `src/providers/command-code/` | Existing CLI catalog and `/alpha/generate`; api-* is optional SDK only |
-| xAI retirement | `src/xai.ts`, `src/providers/xai/AGENTS.md` | Dedicated entry throws `XaiOAuthRetiredError`; native xAI keys are outside this connector |
+| xAI restoration | `src/xai.ts`, `src/providers/xai/AGENTS.md` | Dedicated entry exposes only `xaiAuthServer`; secure access-only projection, exact marker, empty login methods and external helper observation |
 | V1 account binding | `src/opencode/v1-{binding,owner,generation,language,catalog}.ts` | Opaque binding, key-pinned generation, request revalidation |
 | V2 account scope | `src/opencode/v2-{auth,refresh,catalog,language}.ts` | Selected connection, scope rotation, per-dispatch checks |
 | V2 SDK bootstrap | `src/opencode/v2-sdk.ts` | Required no-I/O factory before host hooks; fallback models fail closed |
@@ -62,7 +62,10 @@ tests/                         unit/integration/e2e suites and fakes; see AGENTS
 ## CONNECTION MODEL
 
 - `providers` defaults to `claude`, `command-code`, and `ollama`; explicit `[]`
-  disables all. `cursor` is rejected by the options schema.
+  disables those three. `cursor` and `xai` are rejected as list members.
+- Independent strict `xaiOAuth: { mode: "authority" | "consumer" }` is restored.
+  Omission/undefined disables it (normalized null); literal null, invalid/missing
+  mode and extra keys reject. It does not change Claude policy constraints.
 - Public root exports are exactly `connectorServer`, `claudeAuthServer`,
   `cursorAuthServer`, `commandCodeAuthServer`, `ollamaAuthServer`, and
   `xaiAuthServer`.
@@ -79,7 +82,7 @@ tests/                         unit/integration/e2e suites and fakes; see AGENTS
 - The connector accepts and normalizes `credentialRole`,
   `credentialManagement`, `credentialAuthority`, `credentialRefresh`, and
   `writeBackCredentials`. Policies are wired to the shared per-scope Claude manager;
-  writeback requires explicit capability. `xaiOAuth` still rejects whenever present.
+  writeback requires explicit capability. xAI authority/consumer is independent.
 - Restore necessary published protocol compatibility inside the current account,
   membership and lifetime boundaries, not by reverting unscoped host loaders.
   No inspected source established authentication-signature forgery or an access-control
@@ -90,9 +93,28 @@ tests/                         unit/integration/e2e suites and fakes; see AGENTS
   conditions. Optional standalone API SDKs remain a separate explicitly selected path.
   Managed refresh descendants may retain scope only while the source/gate is current;
   unknown external credential/source replacement must revoke captured views.
-- Root Cursor/xAI auth functions return empty hooks. The Cursor SDK rejects
-  generation; the dedicated `/xai` entry rejects loading. Use native OpenCode
-  xAI API keys outside this connector.
+- Root Cursor remains inert and its SDK rejects generation. Root/dedicated xAI
+  consumer requires the exact V1 API marker `cli-session:xai`; sentinel
+  `xai-access-file` is not a credential and `methods: []` adds no login.
+- xAI fresh requests reread secure owned single-link 0600 closed-v1 access-only
+  projection. Pending attempts retain original source/token/expiry/gate/lifetime
+  and block observed drift; targets/cancellation/disposal are rechecked and redirects
+  rejected. Fresh A-to-B rotation through one loader is supported. No 401
+  prompt replay, new grants, connector refresh or paid API fallback.
+- xAI authority observes existing changes and invokes fixed HOME/.local/bin/
+  opensandbox-xai-auth-sync with no args and sanitized HOME/PATH/absolute XDG,
+  polling/retry and disposal. The external manager owns projection, not a package
+  writer or secret mirror; no guest refresh token. The actual helper is absent in
+  this environment and is neither bundled nor installed.
+- Native CLI 2.0.20 `/api/experimental/generate` bypasses all session hooks;
+  nativeModelResolver ignores SDK hooks and exposes no auth-factory interceptor.
+  V2 consumer mode is unsupported and must fail with a typed setup error before
+  allocation, not an unsafe session extension. Do not claim native HTTP/WebSocket
+  interception or global fail-closed native API enforcement. Independent native
+  xAI API-key use and other V2 providers are unchanged when consumer opt-in is unset.
+- V2 authority uses selected active/resolve, including removal into stable absence,
+  not V1 auth storage or unselected-env fallback. External manager compatibility
+  with that native V2 source remains unverified; it owns projection independently.
 - V1 `connectorV1` is private opaque owner/generation nonce metadata, not a user
   option or credential. Key changes retire the old adapter/catalog/health scope;
   generation-pinned model views revalidate effective key, current generation,
