@@ -18,7 +18,7 @@ Pull-based adapter + catalog snapshot primitives shared by provider implementati
 | `deadline.ts` | `createDeadline` | Parent abort + clock expiry; dispose cancels schedule |
 | `lifecycle.ts` | `createAsyncDisposable` | Second `dispose()` returns the same promise |
 | `health.ts` | `reduceHealth` | Pure reducer; backoff from `event.atMs`, not wall clock |
-| `options.ts` | `parseConnectorOptions` | Three-provider defaults and Cursor exclusion retained. Owner/reader and management normalize into refresh/writeback/authority fields; roles are input-only. Normalization performs no I/O and does not wire runtime authority. `xaiOAuth` remains rejected whenever present. |
+| `options.ts` | `parseConnectorOptions` | Three-provider defaults and Cursor exclusion retained. Owner/reader and management normalize into refresh/writeback/authority fields; roles are input-only. Normalization performs no I/O. Independent strict `xaiOAuth.mode` authority/consumer is restored; it is not a provider-list member. |
 | `credential-authority-options.ts` | Pure authority schema/types | Reused by ownership normalization; output is deeply frozen. Configuring authority does not start its scheduler. |
 | `logger.ts` | `createConnectorLogger` | Sink only; recursive key + URL query redaction |
 | `http.ts` | `HttpTransport` | Interface; body is `Uint8Array` |
@@ -37,7 +37,14 @@ Tests: `tests/unit/core/<same>.test.ts`. Fakes: `tests/support/{clock,http,proce
   requires external management plus Claude. Keep normalization free of provider I/O.
 - Omitted policy preserves auto/60_000/no-write; connector selects auto/60_000/write;
   external selects never/60_000/no-write. Legacy refresh/writeback fields remain accepted
-  alone, but not alongside management. Every present `xaiOAuth` remains rejected.
+  alone, but not alongside management. `xaiOAuth` omission/undefined normalizes
+  to null (disabled); literal null, missing/unknown modes and extra fields reject.
+  Both modes remain independent of the three-provider allow-list and Claude policy.
+- The original xAI consumer contract is V1-only. V2 rejects normalized consumer
+  mode with a typed setup error before allocation at the V2 composition boundary;
+  core normalization remains pure and does not allocate an observer or transport.
+  Authority remains available for selected-source observation. Omitted consumer
+  opt-in does not alter independent native API-key use or other V2 providers.
 - Timer inputs are integers capped at 2_147_483_647; snapshot/health are positive,
   catalog reload is non-negative. `ollamaBaseURL` stays at the host/SDK boundary.
 - No barrel `index.ts` — import the file.
