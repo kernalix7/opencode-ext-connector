@@ -15,7 +15,8 @@ processes, fixtures, and loopback servers.
 | Official API routes | `unit/providers/claude/api-*.test.ts`, `unit/providers/command-code/api-wire.test.ts` | Offline catalog/generation and supported-endpoint routing |
 | Credential goals | `unit/opencode/{v1,v2}-subscription-goal.test.ts`, `subscription-scope-goal.test.ts` | Actual hooks with synthetic file-only sessions, tools/streams and revocation |
 | Native Claude and shutdown | `unit/opencode/v1-native-claude-*.test.ts`, `v1-owner-shutdown.test.ts` | Gate before renewal, trusted targets, lineage and all-disposer shutdown |
-| Retirement | `unit/index/`, `unit/opencode/v2-xai-option.test.ts`, `support/xai-package-entrypoint.test.ts` | Inert root hooks, Cursor SDK rejection, dedicated xAI retirement, rejected options |
+| xAI restoration | `unit/core/xai-options.test.ts`, `unit/opencode/xai-host-options.test.ts`, `unit/providers/xai/`, `support/xai-package-entrypoint.test.ts`, `unit/index/` | Strict modes, secure state, root/dedicated V1 consumer, authority lifecycle and typed pre-allocation V2 consumer rejection |
+| Cursor retirement | `unit/index/`, SDK tests | Inert root hook and explicit Cursor SDK rejection remain |
 | Global preload | `setup.ts`, `../bunfig.toml`, `support/test-package.ts` | Compile isolated temporary package before Bun loads tests; cleanup afterward |
 
 ## CONVENTIONS
@@ -37,7 +38,7 @@ processes, fixtures, and loopback servers.
 - Retain the normal package preload: its per-run temporary output avoids cleaning or racing
   the repository `dist`. Package-install coverage includes Node/npm consumption.
 - Old Cursor bridge/run/protobuf fixtures are removed. Default protocol fixtures use
-  existing credential compatibility; optional official API SDK and retirement fixtures
+  existing credential compatibility; optional official API SDK and Cursor retirement fixtures
   remain independent. All fixture credentials are synthetic, never vendor secrets.
 - V1 and V2 end-to-end lanes use two binaries: the original installed OpenCode CLI, and a
   private V2 binary from `OPENCODE_V2_BIN` or `opencode2`. Target `@opencode/cli@2.0.20` and
@@ -46,6 +47,26 @@ processes, fixtures, and loopback servers.
   `bun run test:e2e:v2` sets `OPENCODE_V2_BIN` (default `opencode2`) and does not silently skip.
 - V2 loads the compiled `dist/v2-entry` directory and retains the no-I/O `v2-sdk.ts`
   bootstrap required before external host hooks. Loopback E2E is not live-provider validation.
+- The user's full xAI restoration supersedes prior option-rejection/dedicated-retirement
+  expectations. Product workers own behavioral updates; metadata-only work must not weaken
+  runtime expectations or claim a failing in-progress implementation passed.
+- xAI evidence must distinguish next-fresh-request projection rotation from paused-attempt
+  drift blocking, exact marker, target/selected-source/lifetime checks and disposal.
+  Include same-loader fresh access A-to-B rotation, pending drift blocking, redirect
+  rejection and cancellation. Consumer support is V1-only; V2 must reject opt-in
+  with a typed setup error before allocation. Omitted consumer opt-in must preserve
+  independent native API-key use and other V2 providers.
+- Native CLI 2.0.20 experimental generation bypasses session hooks and native model
+  resolution ignores SDK hooks, with no exposed auth-factory interceptor. Session
+  fakes cannot prove native HTTP/WebSocket interception or global API enforcement.
+  V2 authority tests cover selected active/resolve changes and removal into stable
+  absence without V1-store or unselected-env fallback.
+- The actual external helper is absent here; selected-source V2 manager support is unverified.
+  Built public root/dedicated consumer QA and production-supervised synthetic-helper
+  initial/change/removal QA passed on Bun 1.3.14/Node 24.20.0 without live vendors.
+  Parent's check and 758-pass/0-fail suite predate the V2 correction, not final gates.
+  Parent owns corrected full-suite, frozen packed manifest, exact-commit CI and
+  registry verification; all remain pending and no gate approval is recorded here.
 
 ## ANTI-PATTERNS
 
