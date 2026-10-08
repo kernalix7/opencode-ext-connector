@@ -26,7 +26,7 @@ const memberSchema = z
 const manifestSchema = z
   .object({
     name: z.literal("opencode-ext-connector"),
-    version: z.literal("0.9.0"),
+    version: z.literal("0.9.1"),
     originalTarballSha256: z.string().regex(/^[a-f0-9]{64}$/),
     ignoredContainerMetadata: z
       .tuple([
@@ -88,7 +88,7 @@ function parseJson(source: string): unknown {
 
 export async function checkReleasePayload(
   archivePath: string,
-  manifestPath = new URL("../release-manifests/0.9.0.json", import.meta.url).pathname,
+  manifestPath = new URL("../release-manifests/0.9.1.json", import.meta.url).pathname,
 ): Promise<number> {
   const parsed = manifestSchema.safeParse(parseJson(await Bun.file(manifestPath).text()))
   if (!parsed.success) throw new ReleasePayloadError("invalid manifest")
