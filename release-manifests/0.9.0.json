@@ -1,13 +1,13 @@
 {
   "name": "opencode-ext-connector",
   "version": "0.9.0",
-  "originalTarballSha256": "829f276563231b3a931b433edfc7cae5df31f67bbaf414e8bf4e098e745b2665",
+  "originalTarballSha256": "b76d8cec9165225c7591d60448085836bbc88be5e86181c3bd586832a1b24030",
   "ignoredContainerMetadata": ["member order", "numeric ownership", "gzip header mtime"],
   "members": [
     {
       "path": "package/CHANGELOG.md",
       "type": "file",
-      "mode": "-rw-rw-r--",
+      "mode": "-rw-r--r--",
       "mtime": "1985-10-26 08:15:00",
       "bytes": 13218,
       "sha256": "6b8a5d95ca4e44534f244a9c053d7b0728da708a821df1fe1b4a2c18db6f0dff"
@@ -1743,7 +1743,7 @@
     {
       "path": "package/docs/README.ko.md",
       "type": "file",
-      "mode": "-rw-rw-r--",
+      "mode": "-rw-r--r--",
       "mtime": "1985-10-26 08:15:00",
       "bytes": 22209,
       "sha256": "edd19e7cc8dde60ddb383cc2784c913d8a8911515814fb830349e8716783c62f"
@@ -1751,7 +1751,7 @@
     {
       "path": "package/LICENSE",
       "type": "file",
-      "mode": "-rw-rw-r--",
+      "mode": "-rw-r--r--",
       "mtime": "1985-10-26 08:15:00",
       "bytes": 1517,
       "sha256": "49ce51492e9966b82e50b6215446b6d2370011c4740377b578fcf46f0104b8cf"
@@ -1759,7 +1759,7 @@
     {
       "path": "package/package.json",
       "type": "file",
-      "mode": "-rw-rw-r--",
+      "mode": "-rw-r--r--",
       "mtime": "1985-10-26 08:15:00",
       "bytes": 2964,
       "sha256": "a8d911ae69bdc2bb361084acffe5057f860d18e47123cd23b93871630933b0fd"
@@ -1767,7 +1767,7 @@
     {
       "path": "package/README.md",
       "type": "file",
-      "mode": "-rw-rw-r--",
+      "mode": "-rw-r--r--",
       "mtime": "1985-10-26 08:15:00",
       "bytes": 26047,
       "sha256": "dc540ed617802406637212568c8464f43b2b2dc1277947364e1e9108ba74fe41"
@@ -1775,7 +1775,7 @@
     {
       "path": "package/THIRD_PARTY_NOTICES.md",
       "type": "file",
-      "mode": "-rw-rw-r--",
+      "mode": "-rw-r--r--",
       "mtime": "1985-10-26 08:15:00",
       "bytes": 9135,
       "sha256": "f9563224ee1d7e7af96f26b51c6773e3113ebd7ed365a473a3b4102e96a37467"
