@@ -141,9 +141,16 @@ it.each([
   expect(() => parseConnectorOptions(input)).toThrow()
 })
 
-it.each([false, undefined])("keeps present xaiOAuth rejected: %j", (value) => {
+it("keeps malformed xaiOAuth rejected", () => {
   // Given / When / Then
-  expect(() => parseConnectorOptions({ xaiOAuth: value })).toThrow("xaiOAuth was retired")
+  expect(() => parseConnectorOptions({ xaiOAuth: false })).toThrow()
+})
+
+it("normalizes explicitly undefined xaiOAuth as omitted", () => {
+  // Given / When
+  const options = parseConnectorOptions({ xaiOAuth: undefined })
+  // Then
+  expect(options.xaiOAuth).toBeNull()
 })
 
 it("returns deeply frozen normalized policy", () => {

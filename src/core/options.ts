@@ -16,6 +16,11 @@ export type {
 export type CredentialRefreshMode = "auto" | "never"
 export type CredentialManagement = "connector" | "external"
 export type CredentialRole = "owner" | "reader"
+export type XaiOAuthMode = "authority" | "consumer"
+
+export type XaiOAuthOptions = {
+  readonly mode: XaiOAuthMode
+}
 
 export type CredentialRefreshPolicy = {
   readonly mode: CredentialRefreshMode
@@ -26,6 +31,7 @@ export type ConnectorOptionsInput = {
   readonly providers?: readonly ("claude" | "command-code" | "ollama")[] | undefined
   readonly snapshotTimeoutMs?: number | undefined
   readonly credentialRole?: CredentialRole | undefined
+  readonly xaiOAuth?: XaiOAuthOptions | undefined
   readonly credentialManagement?: CredentialManagement | undefined
   readonly credentialAuthority?: CredentialAuthorityInput | undefined
   /** @deprecated Use credentialManagement instead. */
@@ -52,6 +58,7 @@ export type ConnectorOptions = {
   readonly writeBackCredentials: boolean
   readonly credentialRefresh: CredentialRefreshPolicy
   readonly credentialAuthority: CredentialAuthority
+  readonly xaiOAuth: XaiOAuthOptions | null
   readonly catalogReloadMs: number
   readonly health: HealthPolicy
 }
@@ -60,6 +67,10 @@ const MaximumTimerMs = 2_147_483_647
 const PositiveTimer = z.number().int().positive().max(MaximumTimerMs)
 const NonNegativeTimer = z.number().int().nonnegative().max(MaximumTimerMs)
 const providers = ["claude", "command-code", "ollama"] as const
+const XaiOAuthSchema = z
+  .object({ mode: z.enum(["authority", "consumer"]) })
+  .strict()
+  .readonly()
 
 function resolveCredentialOptions(input: ConnectorOptionsInput): {
   readonly credentialRefresh: CredentialRefreshPolicy
@@ -115,13 +126,10 @@ const InputSchema = z
       .strict()
       .optional(),
     writeBackCredentials: z.boolean().optional(),
-    xaiOAuth: z.unknown().optional(),
+    xaiOAuth: XaiOAuthSchema.optional(),
   })
   .strict()
   .superRefine((input, context) => {
-    if (Object.hasOwn(input, "xaiOAuth")) {
-      context.addIssue({ code: "custom", path: ["xaiOAuth"], message: "xaiOAuth was retired" })
-    }
     if (
       input.credentialRole !== undefined &&
       (input.credentialManagement !== undefined ||
@@ -176,6 +184,7 @@ export const ConnectorOptionsSchema: z.ZodType<ConnectorOptions, ConnectorOption
     Object.freeze({
       providers: Object.freeze(input.providers ?? [...providers]),
       snapshotTimeoutMs: input.snapshotTimeoutMs ?? 30_000,
+      xaiOAuth: input.xaiOAuth ?? null,
       ...resolveCredentialOptions(input),
       credentialAuthority: resolveCredentialAuthority(
         input.credentialAuthority,
