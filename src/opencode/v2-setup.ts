@@ -3,6 +3,7 @@ import type { HttpTransport } from "../core/http.js"
 import { createAsyncDisposable } from "../core/lifecycle.js"
 import type { ConnectorLogger } from "../core/logger.js"
 import { parseConnectorOptions } from "../core/options.js"
+import type { ProcessSupervisor } from "../core/process.js"
 import { createFetchHttpTransport } from "../http/fetch-transport.js"
 import type { ClaudeAuthLookup } from "../providers/claude/auth.js"
 import type { OllamaFetch } from "../providers/ollama/http.js"
@@ -16,6 +17,7 @@ import { createV2Catalog } from "./v2-catalog.js"
 import { registerV2LanguageHooks, type V2ModelHook } from "./v2-language.js"
 import { createV2RefreshController } from "./v2-refresh.js"
 import { createProductionClock, createV2Logger, resolveV2OllamaBundle } from "./v2-resources.js"
+import { registerV2Xai, XaiV2ConsumerUnsupportedError } from "./v2-xai.js"
 
 export type V2SetupDependencies = {
   readonly env?: Readonly<Record<string, string | undefined>>
@@ -24,6 +26,7 @@ export type V2SetupDependencies = {
   readonly createLogger?: (clock: Clock) => ConnectorLogger
   readonly ollamaFetch?: OllamaFetch
   readonly claudeAuthLookup?: ClaudeAuthLookup
+  readonly createXaiSupervisor?: () => ProcessSupervisor
 }
 
 type Cleanup = () => Promise<void>
@@ -55,6 +58,7 @@ export async function setupV2Connector(
   dependencies: V2SetupDependencies = {},
 ): Promise<Cleanup> {
   const connectorOptions = parseConnectorOptions(pickConnectorOptionsInput(context.options))
+  if (connectorOptions.xaiOAuth?.mode === "consumer") throw new XaiV2ConsumerUnsupportedError()
   const lifetime = new AbortController()
   const owned: {
     reload?: () => Promise<void>
@@ -73,6 +77,17 @@ export async function setupV2Connector(
   try {
     const env = dependencies.env ?? process.env
     const clock = dependencies.clock ?? createProductionClock()
+    if (connectorOptions.xaiOAuth !== null) {
+      const xai = await registerV2Xai({
+        connection: context.integration.connection,
+        env,
+        clock,
+        ...(dependencies.createXaiSupervisor === undefined
+          ? {}
+          : { createSupervisor: dependencies.createXaiSupervisor }),
+      })
+      owned.hooks.push(xai)
+    }
     const transport = dependencies.createTransport?.() ?? createFetchHttpTransport()
     const logger = dependencies.createLogger?.(clock) ?? createV2Logger(clock)
     const authority = startClaudeOwnerAuthority({
