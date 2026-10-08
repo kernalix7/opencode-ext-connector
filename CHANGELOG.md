@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.9.1 - 2026-10-08
+
+- Restore the original V1 xAI OAuth authority/consumer functionality,
+  superseding the 0.9.0 retirement decision. Cursor remains excluded. Independent
+  `xaiOAuth: { mode: "authority" | "consumer" }` is opt-in and separate from the
+  three-provider allow-list; omission disables it, while null, invalid modes and
+  extra fields are rejected.
+- Restore V1 root and dedicated `./xai` consumer contracts: exact API marker
+  `cli-session:xai`, non-credential sentinel `xai-access-file`, and `methods: []`.
+  Fresh requests reread secure access-only projections; pending attempts reject
+  observed source/token/expiry/gate drift and recheck target and disposal before
+  dispatch. No 401 prompt replay, new grants, connector refresh or paid fallback.
+- Restore authority observation of existing auth changes and fixed no-argument
+  `${HOME}/.local/bin/opensandbox-xai-auth-sync` invocation with sanitized HOME,
+  PATH and absolute XDG state, polling and retry. The external manager owns
+  projection; no package writer, secret mirror or guest refresh token is introduced.
+  The helper is neither bundled nor installed; native V2 manager compatibility
+  remains unverified.
+- Keep xAI consumer V1-only and reject V2 consumer configuration with a typed
+  setup error before allocation. Native CLI 2.0.20 experimental generation bypasses
+  session hooks, native model resolution ignores SDK hooks, and no auth-factory
+  interceptor is exposed. No native HTTP/WebSocket interception or global native
+  API fail-closed claim is made. Independent native API-key use and other V2
+  providers remain unchanged when consumer opt-in is unset.
+- Restore V2 authority observation through selected `active` / `resolve`, including
+  removal into stable absence, without V1-store or unselected-env fallback.
+  Preserve the separate V2 default and `dist/v2-entry` directory loader.
+- Retain Claude/Command Code credential paths, voluntary standalone API SDKs,
+  nonmandatory generation CLIs and trusted Ollama behavior. After the V2 boundary
+  correction, the parent's `bun run check` passed with exit 0 and the full suite
+  passed with 753 tests, 0 failures, 129 files and 1951 assertions. Built root and
+  dedicated public-entry consumer QA and production-supervised synthetic-helper
+  initial/change/removal QA passed on Bun 1.3.14 and Node 24.20.0, without live
+  vendor calls. Detailed source-freeze, packed-package, CI and registry evidence
+  is maintained in the external parent release ledger.
+- Preserve bilingual BSD/terms/account/billing disclaimers. Offline evidence is
+  not live acceptance, entitlement, vendor permission or a free-use guarantee.
+
 ## 0.9.0 - 2026-10-07
 
 - Correct the 0.8 API-only direction by restoring the original existing-credential

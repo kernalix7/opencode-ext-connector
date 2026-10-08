@@ -18,13 +18,13 @@
 
 ## Status
 
-> Independent unofficial community plugin, version **0.9.0**. Source is BSD-3-Clause. This project is not affiliated with, endorsed by, sponsored by, or authorized by OpenCode or any provider. Full terms are in [License and Disclaimer](#license-and-disclaimer).
+> Independent unofficial community plugin, version **0.9.1**. Source is BSD-3-Clause. This project is not affiliated with, endorsed by, sponsored by, or authorized by OpenCode or any provider. Full terms are in [License and Disclaimer](#license-and-disclaimer).
 
-Version 0.9.0 corrects the 0.8 API-only direction: the plugin again reuses existing Claude Code OAuth/keychain/files and Command Code CLI credentials/files or an explicitly selected direct key. Native vendor CLIs are not mandatory for generation, and failures never select an implicit paid API fallback. Explicit standalone API SDKs remain separate and voluntary. Provider ids are `claude`, `command-code`, and `ollama`; all three are enabled by default. Explicit `providers: []` disables all.
+Version 0.9.0 corrected the 0.8 API-only direction: the plugin again reuses existing Claude Code OAuth/keychain/files and Command Code CLI credentials/files or an explicitly selected direct key. Native vendor CLIs are not mandatory for generation, and failures never select an implicit paid API fallback. Explicit standalone API SDKs remain separate and voluntary. Provider ids are `claude`, `command-code`, and `ollama`; all three are enabled by default. Explicit `providers: []` disables those three, independently of opt-in xAI.
 
 Service terms may restrict third-party credential reuse. Compatibility protocols may break and providers may restrict accounts. The source license is not vendor permission; this project guarantees neither free/zero-cost use, billing treatment, live entitlement, nor vendor acceptance.
 
-Cursor is excluded: there is no private-protocol, SDK generation, or CLI fallback. The xAI OAuth projection is retired; use native OpenCode `xai` API-key authentication instead.
+Cursor is excluded: there is no private-protocol, SDK generation, or CLI fallback. Version 0.9.1 restores the original V1 xAI OAuth consumer through both root and dedicated entries, plus authority observation, superseding its earlier retirement. The consumer is V1-only; opting into consumer mode on V2 produces an explicit setup error before resource allocation. V2 authority observes the selected native connection; external manager compatibility remains unverified.
 
 ## Requirements
 
@@ -36,6 +36,7 @@ Cursor is excluded: there is no private-protocol, SDK generation, or CLI fallbac
 | Claude | Existing Claude Code OAuth credentials in `~/.claude/.credentials.json` (or `CLAUDE_CONFIG_DIR`) and/or macOS Keychain, plus the OpenCode connection gate |
 | Command Code | Existing CLI credentials in `~/.commandcode/auth.json` or `COMMAND_CODE_API_KEY`, or an explicitly selected OpenCode direct key |
 | Ollama | Trusted daemon, default `http://localhost:11434`; daemon-side Cloud login remains separate |
+| Opt-in xAI | Existing authorized session, exact selected connection gate and secure access-only projection; authority additionally needs the external helper/manager described below |
 
 No native vendor generation CLI is required by the default runtime. Client versions resolve dynamically from `ANTHROPIC_CLI_VERSION` / `COMMAND_CODE_CLI_VERSION`, then an optional installed `claude --version` / `command-code --version`, then the npm registry (`@anthropic-ai/claude-code` / `command-code`). They are never a fixed version constant. The opt-in Claude CLI authority has separate prerequisites below.
 
@@ -47,7 +48,7 @@ For V1, choose global `~/.config/opencode/opencode.json` or project-level `openc
 {
   "$schema": "https://opencode.ai/config.json",
   "plugin": [
-    ["opencode-ext-connector@0.9.0", {
+    ["opencode-ext-connector@0.9.1", {
       "providers": ["claude", "command-code", "ollama"]
     }]
   ]
@@ -108,13 +109,18 @@ V2 authenticates only through the selected host connection's `active` / `resolve
 
 Declared Claude OAuth/CLI connection methods reuse existing credentials; they do not perform a new login. A marker alone is insufficient. Ollama still requires a responsive trusted daemon. V2 uses the same user options below.
 
+xAI consumer mode is **V1-only**. On native CLI 2.0.20, `/api/experimental/generate` bypasses all session hooks, `nativeModelResolver` ignores SDK hooks, and no auth-factory interceptor is exposed. V2 therefore rejects `xaiOAuth: { mode: "consumer" }` with a typed configuration/setup error before resource allocation. It does not promise native HTTP/WebSocket interception or global fail-closed enforcement of native API requests. When consumer opt-in is unset, independent native xAI API-key use and other V2 providers remain unchanged.
+
+V2 authority observes only the selected native `xai` connection through `active` / `resolve`, including removal and transition to stable absence; it does not use V1 `auth.json` or an unselected env fallback. The separately supplied fixed helper and external manager own projection. Native V2 manager compatibility is unverified; the helper is neither bundled nor installed by this package.
+
 ## Configuration
 
 These are the user-facing connector options. In V1 they are the second item of the npm tuple; in V2 they are the object's `options` value.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `providers` | `["claude", "command-code", "ollama"]` | Strict allow-list of these ids; `[]` disables all; `cursor` is unsupported |
+| `providers` | `["claude", "command-code", "ollama"]` | Strict allow-list of these ids; `[]` disables those three; `cursor` and `xai` are not list members |
+| `xaiOAuth` | omitted (disabled) | Independent strict `{ "mode": "authority" }` or `{ "mode": "consumer" }`; consumer is V1-only and explicitly rejected during V2 setup before allocation; missing/invalid modes, null and extra fields are rejected |
 | `ollamaBaseURL` | `"http://localhost:11434"` | Absolute `http` or `https` base for a trusted daemon; path prefixes are preserved |
 | `credentialRole` | omitted | Claude shared-login `"owner"` or `"reader"`; ownership is independent of host/guest placement |
 | `credentialManagement` | omitted | Advanced Claude `"connector"` refresh/writeback or `"external"` never-refresh/no-write |
@@ -135,7 +141,7 @@ Use `credentialRole: "reader"` for externally managed, read-only shared credenti
 
 Owner/low-level CLI authority requires Linux, util-linux `flock`, Claude Code >=2.1.265, an authenticated session, and writable persistent authority state. Each restricted authority invocation is a real model request and may consume usage. It is not default generation, does not log in, and cannot revive a revoked session. Low-level authority requires `credentialManagement: "external"` and `credentialAuthority: { claudeCli: { enabled: true } }`. Synchronization remains the operator's responsibility; never let independent refreshers share one rotating login.
 
-With all policy options omitted, Claude retains auto refresh with a `60_000` ms lead and no writeback. `credentialManagement: "connector"` selects auto/`60_000` plus writeback; `"external"` selects never-refresh/no-write and allows credential reread after 401. Deprecated `credentialRefresh` and `writeBackCredentials` remain accepted alone for one migration cycle, but cannot be mixed with `credentialManagement`. Command Code stays read-only and Ollama is unaffected. `xaiOAuth` remains rejected whenever present.
+With all policy options omitted, Claude retains auto refresh with a `60_000` ms lead and no writeback. `credentialManagement: "connector"` selects auto/`60_000` plus writeback; `"external"` selects never-refresh/no-write and allows credential reread after 401. Deprecated `credentialRefresh` and `writeBackCredentials` remain accepted alone for one migration cycle, but cannot be mixed with `credentialManagement`. Command Code stays read-only and Ollama is unaffected. Independent `xaiOAuth` does not alter these Claude policies.
 
 OpenCode builds its active provider registry during instance setup. Catalog refresh does not force instance reconstruction or write generated provider configuration. Restart after changing authentication or model membership.
 
@@ -171,9 +177,40 @@ The daemon may proxy Cloud-tag prompts under its own Cloud login. Run `ollama si
 
 The connector rejects URL credentials, query strings, fragments, direct API-route bases, and `ollama.com` hosts. It does not read `OLLAMA_HOST`, supply credentials, custom headers or cookies, follow redirects, configure custom CAs, bypass TLS verification, or use direct Cloud generation. Only use a daemon and network path you trust; exposure and access policy are the operator's responsibility.
 
-### Package entry points and retired integrations
+### Opt-in xAI authority and V1 consumer
 
-The root and `./server` are **V1-only** and retain exactly six named functions: `connectorServer`, `claudeAuthServer`, `cursorAuthServer`, `commandCodeAuthServer`, `ollamaAuthServer`, and `xaiAuthServer`. The root Cursor and xAI functions are inert compatibility exports; they do not register integrations.
+Omitting `xaiOAuth` disables xAI silently. Choose exactly `{ "mode": "authority" }` or `{ "mode": "consumer" }`; literal null, missing/unknown modes and extra keys fail parsing. xAI is separate from `providers` and Claude's credential role/policy. To use only xAI through the V1 root, disable the three catalog providers explicitly:
+
+```jsonc
+{
+  "plugin": [["opencode-ext-connector@0.9.1", {
+    "providers": [],
+    "xaiOAuth": { "mode": "consumer" }
+  }]]
+}
+```
+
+On the credential-observing instance, use the root tuple with `xaiOAuth: { mode: "authority" }` instead. Authority observes existing auth changes and invokes only `${HOME}/.local/bin/opensandbox-xai-auth-sync`, with no arguments. Child env is limited to absolute `HOME`, `PATH=/usr/local/bin:/usr/bin:/bin` and absolute `XDG_DATA_HOME` when supplied. Polling defaults to 1000 ms; failed observation/helper launch or non-zero exit retries after 5000 ms. Disposal cancels polling and supervised work. V1 observes its existing `xai` auth record; V2 observes the selected native `active` / `resolve` source, including removal into stable absence.
+
+The external manager owns projection and session management. The package neither bundles nor installs the helper, writes access files, mirrors secrets, mints new OAuth grants nor refreshes xAI tokens. The actual helper is not present in the validation environment; native V2 manager compatibility has not been verified. Never transfer refresh tokens to a guest.
+
+The consumer requires exactly `{ "type": "api", "key": "cli-session:xai" }` in V1. This marker is operator-provisioned, not a real API credential. Its loader returns the sentinel `apiKey: "xai-access-file"` plus a wrapped request transport; `methods: []` exposes no new login or `/connect` method. A real native API key is a separate voluntary connection, never an implicit fallback.
+
+The access source is `${XDG_DATA_HOME}/opencode/xai-access.json` when XDG data home is absolute, otherwise `${HOME}/.local/share/opencode/xai-access.json` when XDG is unset/empty and HOME is absolute. Relative XDG paths fail closed. The closed v1 schema accepts only `schema_version: 1`, `provider: "xai"` and either `state: "ready"` with nonempty `access` and integer `expires` (epoch milliseconds), or `state: "unavailable"`. Extra fields, including refresh tokens, fail parsing. The file must be owned by the current user, regular, single-link and exactly `0600`, opened read-only/no-follow; missing, linked, malformed, unavailable or expired state blocks before network dispatch.
+
+Every fresh V1 request rereads the projection, so the same loader can use access A and then updated access B on the next fresh request. A paused attempt remains bound to its original path, token fingerprint, expiry, selected gate and lifetime; observed drift blocks it rather than adopting a replacement or replaying its prompt. Trusted xAI targets, cancellation and disposal are rechecked before dispatch; redirects are rejected. There is no 401 prompt replay, connector refresh, new grant or paid fallback.
+
+The dedicated `./xai` Node entry exposes only `xaiAuthServer`:
+
+```ts
+import { xaiAuthServer } from "opencode-ext-connector/xai"
+```
+
+Its raw npm subpath is not verified as a V1 plugin-loader spec; use the root npm tuple above for V1 configuration. V2 authority uses the plural `plugins` directory URL contract above, with `xaiOAuth: { mode: "authority" }` in `options`; V2 consumer mode is rejected during setup.
+
+### Package entry points and retired Cursor
+
+The root and `./server` are **V1-only** and retain exactly six named functions: `connectorServer`, `claudeAuthServer`, `cursorAuthServer`, `commandCodeAuthServer`, `ollamaAuthServer`, and `xaiAuthServer`. Cursor remains inert. The restoration makes root `xaiAuthServer` functional only in consumer mode; root `connectorServer` owns authority observation in authority mode.
 
 | Entry | Behavior |
 | --- | --- |
@@ -181,7 +218,7 @@ The root and `./server` are **V1-only** and retain exactly six named functions: 
 | `opencode-ext-connector/command-code` | `createCommandCode` standalone LanguageModelV3 SDK factory |
 | `opencode-ext-connector/ollama` | Standalone SDK with `{ ollamaBaseURL }`; Cloud auto-pull requires an active catalog lease for that normalized base |
 | `opencode-ext-connector/cursor` | Generation unavailable; requesting a language model throws `CursorRetiredError`, with no private-protocol or CLI fallback |
-| `opencode-ext-connector/xai` | Retired OAuth projection entry; invoking its dedicated plugin throws `XaiOAuthRetiredError`, while a bare module import does not; use native OpenCode `xai` API keys |
+| `opencode-ext-connector/xai` | Restored dedicated Node consumer entry exposing only `xaiAuthServer`; opt-in consumer mode, exact marker, secure projection and `methods: []` |
 | `opencode-ext-connector/v2` | Separate V2 Node import entry; CLI setup uses `dist/v2-entry` |
 
 Standalone Claude and Command Code API SDKs remain separate, explicitly selected and voluntary. They do not supply a fallback for host-bound compatibility generation. For standalone use, pass an explicit API key from your secret mechanism, not from committed configuration:
@@ -216,7 +253,7 @@ Guest `localhost` is not the host. To reach a trusted host Ollama daemon, use an
 {
   "$schema": "https://opencode.ai/config.json",
   "plugin": [
-    ["opencode-ext-connector@0.9.0", {
+    ["opencode-ext-connector@0.9.1", {
       "providers": ["claude", "command-code", "ollama"],
       "ollamaBaseURL": "http://host.docker.internal:11434",
       "credentialRole": "reader"
@@ -242,10 +279,13 @@ The daemon must listen on an address reachable from that guest. The operator is 
 | V2 plugin not loaded | Use the plural `plugins` object with the directory file URL for `dist/v2-entry`; direct `v2.js` URLs and raw `/v2` npm specs do not load it |
 | Claude or Command Code has no models | Check the allow-list, exact integration gate and usable vendor credential (or selected Command Code direct key); restart after connection changes |
 | V2 connection unavailable despite a process env key | Check the selected host connection and its resolved value; there is no fallback to a different env connection or V1 store |
-| Credential policy rejected | Do not mix roles with low-level policy or management with deprecated refresh/writeback; `xaiOAuth` remains rejected |
+| Credential policy rejected | Do not mix roles with low-level policy or management with deprecated refresh/writeback; `xaiOAuth` accepts only the independent strict authority/consumer object |
 | Client version unavailable | Set the provider's version env override, provide an optional installed binary, or allow npm registry access |
 | Shared Claude login stops refreshing | Check the sole owner, synchronized files, Linux/flock/CLI prerequisites and revoked login state; authority requests may consume usage |
-| Cursor or xAI projection unavailable | Cursor is excluded; use another supported provider. For xAI, use native OpenCode API-key authentication |
+| Cursor unavailable | Cursor is excluded; use another supported provider |
+| xAI projection unavailable | Check consumer mode, exact selected marker, absolute XDG/HOME, owned single-link `0600` file, closed schema and future expiry; no login or 401 replay is offered |
+| xAI consumer rejected on V2 | Consumer is V1-only; use the V1 root tuple or dedicated Node entry. V2 rejects consumer setup before allocation |
+| xAI authority helper unavailable | Supply the external fixed helper/manager separately; failed launches retry, not success. Native V2 selected-source manager compatibility remains unverified |
 | Retained model stops working | Obtain a fresh catalog binding after an unknown token/account/source, gate, generation, membership or lifetime change; do not replay an old prompt under a replacement account |
 | Ollama works on the host but not in the guest | Check the host route, host-gateway mapping, daemon bind address, firewall, egress, and base path prefix |
 | Ollama Cloud generation fails | Check daemon-side Cloud login and plan access; the connector supplies no Cloud credential |
@@ -276,6 +316,8 @@ bun run verify:package
 `check` covers lint, TypeScript, source policy, file-size policy, and foundation tests. `test:e2e` is the V1 lane; the explicit V2 lane targets `@opencode/cli@2.0.20`. `verify:package` is a dry-run package pack.
 
 Tests use deterministic offline credential/transport fakes and loopback endpoints, including real isolated OpenCode host processes under temporary HOME/XDG directories. They must not inherit host credentials or call live vendor endpoints. These checks are not live vendor proof, entitlement evidence, or billing guarantees.
+
+After the V2 boundary correction, the parent's `bun run check` passed with exit 0, and the full suite passed with 753 tests, 0 failures, 129 files and 1951 assertions. Consumer QA through the built root and dedicated public entries and production-supervised synthetic-helper initial/change/removal QA passed on Bun 1.3.14 and Node 24.20.0, without live vendor calls. Detailed source-freeze, packed-package, CI and registry evidence is maintained in the external parent release ledger.
 
 `bun test` skips the V2 lane when `OPENCODE_V2_BIN` is unset and `opencode2` is absent. `bun run test:e2e:v2` defaults the variable to `opencode2` and fails rather than quietly skipping when its binary is missing.
 

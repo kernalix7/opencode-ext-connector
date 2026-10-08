@@ -1,6 +1,6 @@
 # OpenCode External Provider Connector
 
-**기존 Claude Code·Command Code 자격 증명과 신뢰하는 Ollama 데몬을 연결하는 독립·비공식 OpenCode 플러그인, 버전 0.9.0.**
+**기존 Claude Code·Command Code 자격 증명과 신뢰하는 Ollama 데몬을 연결하는 독립·비공식 OpenCode 플러그인, 버전 0.9.1.**
 
 [English](../README.md) · [변경 이력](../CHANGELOG.md) · [라이선스](../LICENSE)
 
@@ -14,7 +14,7 @@
 
 Cursor는 0.8.0에서 제외했습니다. 미공개 프로토콜을 사용하지 않으며, OpenCode 권한 경계를 검증하지 못한 Cursor SDK·CLI 에이전트로 우회하지 않습니다. `./cursor` SDK에서 모델을 요청하면 명시적으로 거절됩니다.
 
-xAI는 OpenCode의 기본 `xai` 프로바이더에 API 키를 설정해 사용하십시오. 이 커넥터는 xAI 인증을 가로채지 않습니다. 과거 OAuth 권한·컨슈머·접근 파일 projection은 제거했으며, `opencode-ext-connector/xai` 항목은 퇴역 오류를 반환합니다.
+0.9.1은 이전 퇴역 결정을 대체하여 원래 V1 xAI OAuth consumer를 루트·전용 진입점 모두에서 복원하고 authority 관찰도 복원합니다. consumer는 V1 전용이며 V2에서 선택하면 리소스 할당 전 명시적인 설정 오류를 반환합니다. V2 authority는 선택된 네이티브 연결을 관찰하지만 외부 manager 호환성은 미검증입니다. xAI는 기본 세 프로바이더 목록과 독립적인 opt-in입니다.
 
 ## 0.9의 방향 교정
 
@@ -23,7 +23,7 @@ xAI는 OpenCode의 기본 `xai` 프로바이더에 API 키를 설정해 사용�
 - Claude Code OAuth·키체인·자격 증명 파일을 다시 사용합니다. 새 OAuth 로그인은 수행하지 않습니다.
 - Command Code는 `GET /provider/v1/models` 카탈로그와 CLI 호환 `/alpha/generate`의 프로바이더 전용 NDJSON 텍스트·툴 이벤트를 사용합니다. 직접 키를 선택하면 벤더 파일로 fallback하지 않습니다.
 - 기본 생성에 네이티브 벤더 CLI를 요구하지 않으며, 실패나 토큰 형태를 근거로 유료 API 경로를 암묵적으로 선택하지 않습니다. 명시적 독립 API SDK는 별도의 자발적 선택입니다.
-- owner/reader와 저수준 자격 증명 정책은 복원합니다. `xaiOAuth`는 여전히 존재하면 거절합니다. `providers`에서 `cursor`와 별도 xAI OAuth 항목은 제거하십시오.
+- owner/reader와 저수준 자격 증명 정책은 복원합니다. `xaiOAuth`는 독립적인 authority/consumer 옵션으로 복원합니다. `providers`에는 `claude`, `command-code`, `ollama`만 허용되며 `cursor`나 `xai`를 넣지 마십시오.
 
 제3자 자격 증명 재사용은 서비스 약관으로 제한될 수 있습니다. 호환 프로토콜은 변경되어 동작하지 않을 수 있고 계정이 제한될 수 있습니다. 소스 라이선스는 벤더 사용 허가가 아닙니다. 무료·무비용 사용, 청구 방식, 실제 이용 자격이나 벤더 승인을 보장하지 않습니다.
 
@@ -46,7 +46,7 @@ xAI는 OpenCode의 기본 `xai` 프로바이더에 API 키를 설정해 사용�
   "$schema": "https://opencode.ai/config.json",
   "plugin": [
     [
-      "opencode-ext-connector@0.9.0",
+      "opencode-ext-connector@0.9.1",
       {
         "providers": ["claude", "command-code", "ollama"],
         "ollamaBaseURL": "http://localhost:11434"
@@ -58,7 +58,7 @@ xAI는 OpenCode의 기본 `xai` 프로바이더에 API 키를 설정해 사용�
 
 해당 런타임에 기존 벤더 자격 증명을 제공하고 `/connect`를 수행한 뒤 **OpenCode를 완전히 종료하고 재시작**하십시오. 설정 리로드는 인스턴스 재생성과 같지 않습니다. 실제 토큰·키를 `opencode.json`에 넣지 마십시오.
 
-루트와 `./server`는 V1 전용이며 다음 여섯 named 함수를 유지합니다: `connectorServer`, `claudeAuthServer`, `cursorAuthServer`, `commandCodeAuthServer`, `ollamaAuthServer`, `xaiAuthServer`. Cursor·xAI 함수는 비활성이며 인증 훅을 등록하지 않습니다. 기본 프로바이더는 `claude`, `command-code`, `ollama` 세 개입니다.
+루트와 `./server`는 V1 전용이며 다음 여섯 named 함수를 유지합니다: `connectorServer`, `claudeAuthServer`, `cursorAuthServer`, `commandCodeAuthServer`, `ollamaAuthServer`, `xaiAuthServer`. Cursor는 비활성입니다. 루트 `xaiAuthServer`는 consumer 모드에서만 인증 훅을 제공하고 `connectorServer`는 authority 관찰을 담당합니다. 기본 프로바이더는 `claude`, `command-code`, `ollama` 세 개이며 xAI는 별도 opt-in입니다.
 
 V1 프로바이더 `claude`는 integration/auth ID `anthropic`으로 연결되며 모델 이름은 `claude/<id>`입니다. 정확한 `cli-session:anthropic` 마커(또는 지원되는 OAuth 레코드)와 사용 가능한 Claude Code 자격 증명이 필요합니다. Command Code의 CLI 연결은 정확한 `cli-session:command-code`와 벤더 자격 증명이 필요하고, 직접 키는 명시적 선택입니다. Ollama는 응답하는 설정 데몬을 `/connect`로 확인한 뒤 정확한 `cli-session:ollama`를 저장합니다. 마커는 벤더 토큰이 아니며 마커만으로 생성할 수 없습니다.
 
@@ -95,11 +95,16 @@ V2는 선택한 호스트 연결의 `active`·`resolve`와 선언된 연결 방�
 
 다른 플러그인의 V2 호환성은 그 플러그인이 제공해야 합니다. 이 패키지가 다른 플러그인을 자동으로 V2에 맞춰 주지는 않습니다.
 
+xAI consumer는 **V1 전용**입니다. 네이티브 CLI 2.0.20의 `/api/experimental/generate`는 모든 세션 훅을 우회하고 `nativeModelResolver`는 SDK 훅을 사용하지 않으며 노출된 auth factory interceptor도 없습니다. 따라서 V2는 `xaiOAuth: { mode: "consumer" }`를 리소스 할당 전 타입이 지정된 설정 오류로 거절합니다. 네이티브 HTTP/WebSocket 가로채기나 네이티브 API 요청 전체의 fail-closed 집행을 약속하지 않습니다. consumer opt-in을 설정하지 않으면 독립적인 네이티브 xAI API 키 사용과 다른 V2 프로바이더는 그대로 유지됩니다.
+
+V2 authority는 V1 `auth.json`이나 선택되지 않은 env 대신 선택한 네이티브 `xai` 연결의 `active`·`resolve`만 관찰하며, 연결 제거와 안정적인 부재 상태로의 전환도 관찰합니다. 별도로 제공하는 고정 helper와 외부 manager가 projection을 소유합니다. 네이티브 V2 manager 호환성은 미검증이며 패키지가 helper를 번들하거나 설치하지 않습니다.
+
 ## 설정
 
 | 옵션 | 기본값 | 의미 |
 | --- | --- | --- |
-| `providers` | `claude`, `command-code`, `ollama` | 엄격한 허용 목록. 명시적 `[]`는 모두 비활성화 |
+| `providers` | `claude`, `command-code`, `ollama` | 엄격한 허용 목록. 명시적 `[]`는 이 세 개를 비활성화하며 xAI와 독립적 |
+| `xaiOAuth` | 생략(비활성) | 엄격한 authority/consumer 객체. consumer는 V1 전용이며 V2 설정 시 할당 전에 명시적으로 거절. null·누락/잘못된 mode·추가 필드는 거절 |
 | `ollamaBaseURL` | `http://localhost:11434` | 신뢰하는 데몬의 절대 HTTP·HTTPS base. 경로 prefix 보존 |
 | `credentialRole` | 생략 | Claude 공유 로그인 `owner` 또는 `reader` |
 | `credentialManagement` | 생략 | 고급 `connector` 갱신/writeback 또는 `external` 외부 관리 |
@@ -118,9 +123,40 @@ V2는 선택한 호스트 연결의 `active`·`resolve`와 선언된 연결 방�
 
 owner/저수준 CLI authority는 Linux, util-linux `flock`, Claude Code >=2.1.265, 인증된 세션과 쓰기 가능한 영구 authority 상태가 필요합니다. 각 제한된 요청은 실제 모델 요청이며 사용량을 소비할 수 있습니다. 기본 생성 경로가 아니며 로그인이나 취소된 세션 복구를 하지 않습니다. 저수준 설정은 `credentialManagement: "external"`과 `credentialAuthority: { claudeCli: { enabled: true } }`를 함께 사용합니다. 동기화는 운영자 책임이며 같은 회전 토큰에서 파생된 로그인을 여러 프로세스가 독립 갱신하면 안 됩니다.
 
-정책을 모두 생략하면 Claude는 auto/`60_000` ms 갱신과 no-write를 유지합니다. `credentialManagement: "connector"`는 auto/`60_000`와 writeback, `"external"`은 never/no-write와 401 후 재읽기를 선택합니다. deprecated `credentialRefresh`·`writeBackCredentials`는 한 마이그레이션 주기 동안 단독으로 허용하지만 management와 혼합할 수 없습니다. Command Code는 읽기 전용이고 Ollama는 영향을 받지 않습니다. `xaiOAuth`는 여전히 존재하면 거절합니다.
+정책을 모두 생략하면 Claude는 auto/`60_000` ms 갱신과 no-write를 유지합니다. `credentialManagement: "connector"`는 auto/`60_000`와 writeback, `"external"`은 never/no-write와 401 후 재읽기를 선택합니다. deprecated `credentialRefresh`·`writeBackCredentials`는 한 마이그레이션 주기 동안 단독으로 허용하지만 management와 혼합할 수 없습니다. Command Code는 읽기 전용이고 Ollama는 영향을 받지 않습니다. 독립적인 `xaiOAuth`는 이 Claude 정책을 바꾸지 않습니다.
 
 V1/V2 모델 뷰는 실제 요청과 내부 재시도 전에 gate/선택 연결, 자격 증명 소스, 세대, 모델 멤버십과 수명을 확인합니다. 외부에서 알 수 없는 토큰·계정·소스로 변경하면 이전 모델 뷰를 폐기하고 새 카탈로그 바인딩을 요구합니다. 현재 소스와 gate가 유지되는 알려진 관리형 갱신의 후손만 scope를 유지할 수 있습니다. 출력 전 정확한 401은 재읽기의 계기가 될 수 있지만, 외부 교체는 옛 프롬프트를 다른 계정으로 조용히 재전송할 권한이 아닙니다. 종료도 바인딩을 폐기합니다. `connectorV1`은 내부 메타데이터이지 사용자 옵션이 아닙니다. 새 모델의 반영은 OpenCode의 정상 인스턴스 재생성을 따르며 커넥터가 강제하지 않습니다.
+
+## 선택적 xAI authority와 V1 consumer
+
+`xaiOAuth`를 생략하면 조용히 비활성화됩니다. 정확히 `{ "mode": "authority" }` 또는 `{ "mode": "consumer" }`를 선택하십시오. literal null, 누락/알 수 없는 mode와 추가 키는 거절합니다. Claude 역할·정책 및 `providers`와 독립적입니다. V1에서 xAI만 사용하려면 **루트 npm tuple**과 빈 세 프로바이더 목록을 사용합니다:
+
+```jsonc
+{
+  "plugin": [["opencode-ext-connector@0.9.1", {
+    "providers": [],
+    "xaiOAuth": { "mode": "consumer" }
+  }]]
+}
+```
+
+기존 자격 증명 변경을 관찰하는 인스턴스는 같은 루트 tuple에서 `xaiOAuth: { mode: "authority" }`를 선택합니다. authority는 기존 인증 변경만 관찰하고 고정 `${HOME}/.local/bin/opensandbox-xai-auth-sync`를 인자 없이 실행합니다. 자식 환경은 절대 `HOME`, `PATH=/usr/local/bin:/usr/bin:/bin`, 지정된 경우 절대 `XDG_DATA_HOME`만 전달합니다. 기본 polling은 1000 ms, 관찰·helper 시작 실패나 non-zero 종료 후 retry는 5000 ms입니다. dispose는 polling과 감독 중인 작업을 취소합니다. V1은 기존 `xai` 인증 레코드, V2는 선택된 네이티브 `active`·`resolve` 소스를 관찰하며 연결 제거 후 안정적인 부재 상태로의 전환도 포함합니다.
+
+projection과 세션 관리는 외부 manager가 소유합니다. 패키지는 helper를 번들·설치하거나 접근 파일을 쓰거나 비밀을 복제하지 않고, 새 OAuth grant·xAI 토큰 갱신을 수행하지 않습니다. 실제 helper는 검증 환경에 없으며 네이티브 V2 manager 호환성은 검증되지 않았습니다. 게스트에 refresh token을 전달하지 마십시오.
+
+V1 consumer는 정확한 `{ "type": "api", "key": "cli-session:xai" }` 마커를 요구합니다. 운영자가 제공하는 마커이며 실제 API 자격 증명이 아닙니다. loader의 `apiKey: "xai-access-file"`도 sentinel일 뿐이고 실제 bearer는 요청 transport가 projection에서 읽습니다. `methods: []`로 새 로그인·`/connect` 방법을 제공하지 않습니다. 실제 네이티브 API 키 연결은 별도의 자발적 선택이며 자동 fallback이 아닙니다.
+
+접근 파일은 절대 XDG일 때 `${XDG_DATA_HOME}/opencode/xai-access.json`, XDG가 없거나 비어 있고 HOME이 절대 경로이면 `${HOME}/.local/share/opencode/xai-access.json`입니다. 상대 XDG는 fail-closed입니다. 닫힌 v1 schema는 `schema_version: 1`, `provider: "xai"`와 `state: "ready"`의 비어 있지 않은 `access`·정수 `expires`(epoch ms), 또는 `state: "unavailable"`만 허용합니다. refresh token을 포함한 추가 필드는 거절합니다. 현재 사용자 소유의 일반 파일, link 수 1, 정확한 `0600`, read-only/no-follow 열기가 필요합니다. 누락·링크·잘못된 JSON/schema·unavailable·만료는 네트워크 전송 전에 차단합니다.
+
+매 새 V1 요청은 projection을 다시 읽으므로 같은 loader가 access A를 사용한 뒤 다음 새 요청에서 갱신된 access B를 사용할 수 있습니다. 대기 중인 시도는 원래 경로·토큰 fingerprint·만료·선택 gate·수명에 묶여 관찰된 변경 시 차단되며, 교체 자격 증명을 채택하거나 옛 프롬프트를 재전송하지 않습니다. 전송 전에 신뢰하는 xAI 대상·취소·dispose를 다시 확인하고 redirect는 거절합니다. 401 프롬프트 replay, 커넥터 갱신, 새 grant, 유료 fallback은 없습니다.
+
+전용 `./xai` Node 진입점은 `xaiAuthServer`만 export합니다:
+
+```ts
+import { xaiAuthServer } from "opencode-ext-connector/xai"
+```
+
+raw npm `/xai` subpath를 V1 plugin spec으로 로드하는 계약은 검증되지 않았으므로 V1 설정에는 위 루트 npm tuple을 사용하십시오. V2 authority는 위 복수 `plugins`의 `dist/v2-entry` 디렉터리 URL과 `options`의 `xaiOAuth: { mode: "authority" }`를 사용합니다. V2 consumer는 설정 단계에서 거절됩니다.
 
 ## 호스트와 게스트
 
@@ -136,7 +172,7 @@ Claude 디렉터리를 mount하고 게스트 `CLAUDE_CONFIG_DIR`을 그 경로�
 
 ```jsonc
 {
-  "plugin": [["opencode-ext-connector@0.9.0", {
+  "plugin": [["opencode-ext-connector@0.9.1", {
     "providers": ["claude", "command-code", "ollama"],
     "ollamaBaseURL": "http://host.docker.internal:11434",
     "credentialRole": "reader"
@@ -166,7 +202,7 @@ Claude·Command Code 독립 API SDK는 별도로 명시적으로 선택하는 �
 
 업데이트할 때는 원하는 공개 버전을 확인하고 정확한 플러그인 spec으로 바꾼 후 완전히 재시작하십시오. 제거는 해당 플러그인 항목을 설정에서 삭제하고 재시작하면 됩니다. 캐시된 패키지는 설정되어 있지 않으면 비활성입니다.
 
-모델이 없으면 정확한 integration gate, 벤더 자격 증명 또는 선택한 Command Code 직접 키, V2 선택 연결과 데몬 가용성을 확인하십시오. 클라이언트 버전을 구할 수 없으면 env override·선택적 바이너리·npm 접근을 확인합니다. 정책 거절은 role/저수준 혼합이나 management/deprecated 혼합 여부를 확인하고, Cursor와 xAI OAuth는 제거합니다. 오래된 모델이 거절되면 새 카탈로그 바인딩을 확보해야 합니다. 카탈로그 표시는 실제 생성 성공·툴 지원·이용 자격의 증거가 아닙니다.
+모델이 없으면 정확한 integration gate, 벤더 자격 증명 또는 선택한 Command Code 직접 키, V2 선택 연결과 데몬 가용성을 확인하십시오. 클라이언트 버전을 구할 수 없으면 env override·선택적 바이너리·npm 접근을 확인합니다. 정책 거절은 role/저수준 혼합이나 management/deprecated 혼합 여부를 확인하고 Cursor는 제외하십시오. xAI consumer는 V1에서만 사용하며 strict mode, 정확한 마커, 절대 경로, 소유자·단일 링크·0600·schema·미래 만료를 확인합니다. V2 consumer 설정은 할당 전 거절됩니다. helper 시작 실패는 성공이 아니라 retry이며 네이티브 V2 manager 호환성은 미검증입니다. 오래된 모델이 거절되면 새 카탈로그 바인딩을 확보해야 합니다. 카탈로그 표시는 실제 생성 성공·툴 지원·이용 자격의 증거가 아닙니다.
 
 ## 검사와 참고 자료
 
@@ -182,6 +218,8 @@ bun run verify:package
 ```
 
 검사는 오프라인 가짜 자격 증명·transport와 loopback 서버, 임시 HOME/XDG에서 실행하는 실제 격리 OpenCode 호스트 프로세스를 사용합니다. 호스트 비밀을 상속하거나 라이브 벤더 endpoint를 호출하면 안 됩니다. 기본 `bun test`는 `OPENCODE_V2_BIN`이 없고 `opencode2`도 없으면 V2를 건너뛸 수 있습니다. 명시적 V2 레인은 CLI 2.0.20을 대상으로 하며 바이너리가 없으면 조용히 건너뛰지 않고 실패합니다. 검사는 라이브 벤더 승인·이용 자격·청구 방식을 증명하지 않습니다.
+
+V2 경계 교정 후 부모의 `bun run check`는 종료 코드 0으로 통과했고, 전체 검사는 129개 파일에서 753 pass/0 fail, 1951개 assertion으로 통과했습니다. Bun 1.3.14·Node 24.20.0에서 빌드된 루트·전용 공개 진입점의 consumer QA와 production supervisor로 실행한 합성 helper의 초기 상태·변경·제거 QA도 통과했으며, 라이브 벤더는 호출하지 않았습니다. 소스 동결, packed package, CI 및 registry의 상세 증거는 패키지 외부의 부모 릴리스 ledger에서 관리합니다.
 
 [Anthropic API](https://platform.claude.com/docs/en/api/overview) · [Command Code Provider API](https://commandcode.ai/docs/provider) · [Cursor API 범위](https://cursor.com/docs/api) · [파생 소스 고지](../THIRD_PARTY_NOTICES.md)
 
